@@ -21,3 +21,5 @@ symfony.lock
 phpunit.dist.xml
 notes.local.md
 /target
+composer.link.*                                                  
+symfony.link.lock  
