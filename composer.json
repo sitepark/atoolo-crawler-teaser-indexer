@@ -86,6 +86,10 @@
             "@test:phpunit"
         ],
         "test:infection": "vendor/bin/infection --threads=8 --no-progress --only-covered -s || exit 0",
-        "test:phpunit": "./tools/phpunit.phar -c phpunit.xml --coverage-text"
+        "test:phpunit": "./tools/phpunit.phar -c phpunit.xml --coverage-text",
+        "auto-scripts": {
+            "cache:clear": "symfony-cmd",
+            "assets:install %PUBLIC_DIR%": "symfony-cmd"
+        }
     }
 }
