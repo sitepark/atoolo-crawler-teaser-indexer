@@ -64,7 +64,7 @@ The application was developed as a Symfony bundle and is distributed as a Compos
 Location in your Project:  
 `config/packages/atoolo_crawler_master.yaml`
 
-An 1 example configuration lay in: `https://github.com/sitepark/atoolo-crawler-teaser-indexer/config/packages/atoolo_crawler_master.yaml`
+An 1 example configuration lay in: `https://github.com/sitepark/atoolo-crawler-teaser-indexer/blob/main/config/packages/atoolo_crawler_master.yaml`
 
 Purpose:
 
@@ -116,7 +116,7 @@ parameters:
 These configurations must be located in your Project. The directory defined by parameter `atoolo.crawler.sites_config_dir` in your `atoolo_crawler_master.yaml`.
 Warnings will be thrown in the test environment and at runtime if configurations are missing.
 
-An 2 example configuration lay in: `https://github.com/sitepark/atoolo-crawler-teaser-indexer/atoolo.crawler.sites_config_dir`
+An 2 example configuration lay in: `https://github.com/sitepark/atoolo-crawler-teaser-indexer/tree/main/config/sites/atoolo_crawler`
 
 ### Core / Meta
 
