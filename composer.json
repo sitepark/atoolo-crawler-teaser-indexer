@@ -31,7 +31,7 @@
             "symfony/flex": true,
             "symfony/runtime": true
         },
-        "bump-after-update": true,
+        "bump-after-update": false,
         "sort-packages": true
     },
     "autoload": {
