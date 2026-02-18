@@ -19,3 +19,5 @@ composer.lock
 .env
 symfony.lock
 phpunit.dist.xml
+notes.local.md
+/target
