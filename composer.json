@@ -19,7 +19,7 @@
         "symfony/flex": "^2.10",
         "symfony/framework-bundle": "^7.4.5",
         "symfony/http-client": "^7.4.5",
-        "symfony/monolog-bundle": ">=4.0.1",
+        "symfony/monolog-bundle": "^4.0.1",
         "symfony/runtime": "^7.4.1",
         "symfony/yaml": "^7.4.1"
     },
