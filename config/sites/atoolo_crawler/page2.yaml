@@ -1,0 +1,194 @@
+# Only exmaple
+parameters:
+    ###########################################################################
+    # 1) Identity / Runtime Context
+    ###########################################################################
+    # Unique ID for this website configuration (Solr core/namespace)
+    atoolo.crawler.id: "source_pagename"
+
+    ###########################################################################
+    # 2) Robots / Crawl Policy
+    ###########################################################################
+    # Respects robots.txt
+    atoolo.crawler.respect_robots_txt: false
+
+    # Correct robots.txt URL of the target domain
+    atoolo.crawler.robots_url: ""
+
+    ###########################################################################
+    # 3) Discovery / URLCollector
+    ###########################################################################
+    # Start points incl. depth
+    atoolo.crawler.start_urls:
+        - url: "https://www.example.com/microsite/index.php"
+          extraction_depth: 2
+
+    # Extract links only from the content area
+    atoolo.crawler.link_section: ".SP-Body"
+    atoolo.crawler.link_selector: "a[href]"
+
+    # Allowed URL prefixes
+    atoolo.crawler.allow_prefixes:
+        - https://www.example.com/microsite/
+
+    # Explicit exclusions
+    atoolo.crawler.deny_prefixes:
+        - https://www.example.com/microsite/meta/
+        - https://www.example.com/microsite/download/
+        - https://www.example.com/microsite/ueber_uns/team
+        - https://www.example.com/microsite/ueber_uns/Dozentenvertretung
+        - https://www.example.com/microsite/ueber_uns/E-Mail-Kontakt
+        - https://www.example.com/microsite/ueber_uns/Business
+        - https://www.example.com/microsite/ueber_uns/veranstaltungsorte
+        - https://www.example.com/microsite/aktuelles/index
+        - https://www.example.com/microsite/aktuelles/Podcast
+        - https://www.example.com/microsite/service/Sprachtests
+        - https://www.example.com/microsite/service/faqs
+        - https://www.example.com/microsite/service/Business
+        - https://www.example.com/microsite/service/bildungsberatung_90715
+        - https://www.example.com/microsite/service/SEPA-Lastschriftmandat
+        - https://www.example.com/microsite/service/Sprachberatung_online_264224
+
+    atoolo.crawler.deny_endings:
+        # Images & graphics (avoid rendering assets)
+        - .jpg
+        - .jpeg
+        - .png
+        - .gif
+        - .svg
+        - .webp
+        - .ico
+        - .bmp
+        - .tiff
+
+        # Documents (often large, require special parsing)
+        - .pdf
+        - .doc
+        - .docx
+        - .xls
+        - .xlsx
+        - .ppt
+        - .pptx
+        - .odt
+        - .rtf
+
+        # Archives (risk of "zip bombs" and high memory usage)
+        - .zip
+        - .tar
+        - .gz
+        - .7z
+        - .rar
+        - .iso
+
+        # Web assets & data (no relevant content for text crawler)
+        - .js
+        - .css
+        - .json
+        - .xml
+        - .map
+        - .webmanifest
+
+        # Media (video & audio consume significant bandwidth)
+        - .mp3
+        - .mp4
+        - .wav
+        - .avi
+        - .mov
+        - .mkv
+        - .webm
+        - .ogg
+
+        # Fonts & miscellaneous
+        - .woff
+        - .woff2
+        - .ttf
+        - .eot
+        - .exe
+        - .bin
+
+    # URLs that should always/never be treated as articles
+    atoolo.crawler.forced_article_urls: []
+
+    # Max. number of teasers
+    atoolo.crawler.max_teaser: 1000
+
+    ###########################################################################
+    # 4) URL Normalization
+    ###########################################################################
+    atoolo.crawler.strip_query_params_active: true
+    atoolo.crawler.strip_query_params:
+        - "page"
+        - "p"
+        - "offset"
+        - "sort"
+        - "view"
+        - "print"
+        - "showpm"
+        - "utm_source"
+        - "utm_medium"
+        - "utm_campaign"
+        - "utm_term"
+        - "utm_content"
+        - "mtm_source"
+        - "mtm_medium"
+        - "mtm_campaign"
+        - "fbclid"
+        - "gclid"
+
+    ###########################################################################
+    # 5) HTTP / Fetcher / RequestExecutor
+    ###########################################################################
+    atoolo.crawler.user_agent: "Atoolo/Crawler-Teaser-Indexer/1.0 (+contact@example.org)"
+
+    atoolo.crawler.concurrency_per_host: 3
+    atoolo.crawler.delay_ms: 500
+
+    atoolo.crawler.max_retry: 3
+    atoolo.crawler.retry_status_codes:
+        - 408
+        - 429
+        - 500
+        - 501
+        - 502
+        - 503
+        - 504
+
+    ###########################################################################
+    # 6) Parser: Extract Fields
+    ###########################################################################
+    # Title
+    atoolo.crawler.title.present: true
+    atoolo.crawler.title.prefix: "Pagename - "
+    atoolo.crawler.title.opengraph: ["og:title"]
+    atoolo.crawler.title.css: ["h1", ".page-title"]
+    atoolo.crawler.title.max_chars: 120
+
+    # IntroText
+    atoolo.crawler.introText.present: true
+    atoolo.crawler.introText.required_field: false
+    atoolo.crawler.introText.opengraph: ["og:description"]
+    atoolo.crawler.introText.css:
+        - "#content p"
+        - "main p"
+    atoolo.crawler.introText.max_chars: 200
+
+    # Date/Time (disabled)
+    atoolo.crawler.datetime.present: false
+    atoolo.crawler.datetime.required_field: false
+    atoolo.crawler.datetime.only-date: true
+    atoolo.crawler.datetime.opengraph: []
+    atoolo.crawler.datetime.css: []
+
+    ###########################################################################
+    # 7) Content Scoring / Filter
+    ###########################################################################
+    atoolo.crawler.content_scoring.active: false
+    atoolo.crawler.content_scoring.min_score: 0
+
+    atoolo.crawler.content_scoring.positive:
+        - score: 0
+          match_any: []
+
+    atoolo.crawler.content_scoring.negative:
+        - score: 0
+          match_any: []

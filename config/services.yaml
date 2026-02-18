@@ -1,0 +1,42 @@
+# https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
+parameters:
+
+services:
+    _defaults:
+        autowire: true # Automatically injects dependencies in your services.
+        autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
+    _instanceof:
+        Symfony\Component\Console\Command\Command:
+            tags: ["command"]
+
+    Atoolo\Crawler\:
+        resource: "../src/"
+
+    Atoolo\Crawler\Config\SiteConfigLoader:
+        arguments:
+            $dir: '%atoolo.crawler.sites_config_dir%'
+
+    # Run in Development
+    Atoolo\Crawler\Command\Index:
+        arguments:
+            $sites: "%atoolo.crawler.sites%"
+
+    # Run in Customer Projekt
+    Atoolo\Crawler\Application\Schedule:
+        arguments:
+            $sites: "%atoolo.crawler.sites%"
+
+    Atoolo\Crawler\Controller\CrawlerManager:
+        arguments:
+            $urlCollector: '@Atoolo\Crawler\Domain\Crawler\Steps\URLCollector'
+            $fetcher: '@Atoolo\Crawler\Domain\Crawler\Steps\Fetcher'
+            $processor: '@Atoolo\Crawler\Domain\Crawler\Steps\Processor'
+            $logger: "@logger"
+            $indexer: '@Atoolo\Crawler\Domain\Crawler\Steps\Indexer'
+
+    Atoolo\Crawler\Domain\Crawler\Ports\RequestExecutorInterface: '@Atoolo\Crawler\Domain\Crawler\Ports\RequestExecutor'
+
+    Atoolo\Crawler\Domain\Crawler\Steps\Indexer:
+        arguments:
+            $indexService: "@atoolo_search.indexer.solr_index_service"
+            $progressHandler: "@atoolo_search.indexer.internal_resource_progress_state"

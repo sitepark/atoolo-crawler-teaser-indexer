@@ -1,0 +1,10 @@
+# Only exmaple
+parameters:
+    # Directory containing the site configurations
+    atoolo.crawler.sites_config_dir: '%kernel.project_dir%/config/sites/atoolo_crawler'
+    # Defines execution schedule
+    atoolo.crawler.sites:
+        - siteKey: "page1"
+          schedule: '0 3 * * *'
+        - siteKey: "page2"
+          schedule: '30 3 * * *'

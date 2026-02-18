@@ -1,0 +1,13 @@
+monolog:
+    channels: ["crawler"]
+    handlers:
+        main:
+            type: stream
+            path: "%kernel.logs_dir%/%kernel.environment%.log"
+            level: debug
+            channels: ["!event"]
+        crawler:
+            type: stream
+            path: "%kernel.logs_dir%/crawler.log"
+            level: info
+            channels: ["crawler"]

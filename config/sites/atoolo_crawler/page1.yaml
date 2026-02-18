@@ -1,0 +1,308 @@
+# Only exmaple
+parameters:
+    ###########################################################################
+    # 1) Identity / Runtime Context
+    ###########################################################################
+    atoolo.crawler.id: "source_pagename"
+
+    ###########################################################################
+    # 2) Robots / Crawl Policy
+    ###########################################################################
+    atoolo.crawler.respect_robots_txt: true
+    atoolo.crawler.robots_url: "https://example.com/robots.txt"
+
+    ###########################################################################
+    # 3) Discovery / URLCollector
+    ###########################################################################
+    atoolo.crawler.start_urls:
+        - url: "https://example.com/"
+          extraction_depth: 2
+
+    # Content section
+    atoolo.crawler.link_section: "#content"
+
+    # Do not include fragment links (#...) (prevents #list-A, #tab...)
+    atoolo.crawler.link_selector: "a[href]:not([href^='#']):not([href*='#'])"
+
+    # Only desired target areas
+    atoolo.crawler.allow_prefixes:
+        - https://example.com/news/
+        - https://example.com/service/
+        - https://example.com/search/-/vr-bis-detail/
+
+    # Known noise paths
+    atoolo.crawler.deny_prefixes:
+        - https://example.com/news
+
+    # URLs that should always/never be treated as articles
+    atoolo.crawler.forced_article_urls:
+        - https://example.com/
+        - https://example.com/service/
+
+    atoolo.crawler.deny_endings:
+        # Images & graphics (avoid rendering assets)
+        - .jpg
+        - .jpeg
+        - .png
+        - .gif
+        - .svg
+        - .webp
+        - .ico
+        - .bmp
+        - .tiff
+
+        # Documents (often large, require special parsing)
+        - .pdf
+        - .doc
+        - .docx
+        - .xls
+        - .xlsx
+        - .ppt
+        - .pptx
+        - .odt
+        - .rtf
+
+        # Archives (risk of "zip bombs" and high memory usage)
+        - .zip
+        - .tar
+        - .gz
+        - .7z
+        - .rar
+        - .iso
+
+        # Web assets & data (no relevant content for text crawler)
+        - .js
+        - .css
+        - .json
+        - .xml
+        - .map
+        - .webmanifest
+
+        # Media (video & audio consume significant bandwidth)
+        - .mp3
+        - .mp4
+        - .wav
+        - .avi
+        - .mov
+        - .mkv
+        - .webm
+        - .ogg
+
+        # Fonts & miscellaneous
+        - .woff
+        - .woff2
+        - .ttf
+        - .eot
+        - .exe
+        - .bin
+
+    # Maximum number of teasers
+    atoolo.crawler.max_teaser: 1000
+
+    ###########################################################################
+    # 4) URL Normalization
+    ###########################################################################
+    atoolo.crawler.strip_query_params_active: true
+    atoolo.crawler.strip_query_params:
+        - utm_source
+        - utm_medium
+        - utm_campaign
+        - utm_term
+        - utm_content
+        - fbclid
+        - gclid
+        - mtm_source
+        - mtm_medium
+        - mtm_campaign
+        - p_p_id
+        - p_p_lifecycle
+        - p_p_state
+        - p_p_mode
+        - p_p_col_id
+        - p_p_col_count
+        - redirect
+        - _com_liferay_login_web_portlet_LoginPortlet_redirect
+        - page
+        - p
+        - offset
+        - sort
+        - view
+        - print
+        - showpm
+
+    ###########################################################################
+    # 5) HTTP / Fetcher / RequestExecutor
+    ###########################################################################
+    atoolo.crawler.user_agent: "Atoolo/Crawler-Teaser-Indexer/1.0 (+contact@example.org)"
+
+    atoolo.crawler.concurrency_per_host: 3
+    atoolo.crawler.delay_ms: 500
+
+    atoolo.crawler.max_retry: 3
+    atoolo.crawler.retry_status_codes:
+        - 408
+        - 429
+        - 500
+        - 501
+        - 502
+        - 503
+        - 504
+
+    ###########################################################################
+    # 6) Parser: Extract Fields
+    ###########################################################################
+    # Title
+    atoolo.crawler.title.present: true
+    atoolo.crawler.title.prefix: "Pagename - "
+    atoolo.crawler.title.opengraph: ["og:title"]
+    atoolo.crawler.title.css:
+        - "#content .service-detail h2"
+        - ".service-detail h2"
+        - "#content .news h3"
+        - "#content h3"
+    atoolo.crawler.title.max_chars: 140
+
+    # IntroText
+    atoolo.crawler.introText.present: true
+    atoolo.crawler.introText.required_field: false
+    atoolo.crawler.introText.opengraph: ["og:description", "description"]
+    atoolo.crawler.introText.css:
+        - "#content .service-detail p"
+        - ".service-detail p"
+        - "#content h3 + p"
+    atoolo.crawler.introText.max_chars: 280
+
+    # DateTime (disabled)
+    atoolo.crawler.datetime.present: false
+    atoolo.crawler.datetime.required_field: false
+    atoolo.crawler.datetime.only-date: true
+    atoolo.crawler.datetime.opengraph: []
+    atoolo.crawler.datetime.css: []
+
+    ###########################################################################
+    # 7) Content Scoring / Filter
+    ###########################################################################
+    atoolo.crawler.content_scoring.active: true
+    atoolo.crawler.content_scoring.min_score: 7
+
+    # Positive signals
+    atoolo.crawler.content_scoring.positive:
+        # Strong boost: service detail pages / homepage
+        - score: 6
+          match_any:
+              - "/vr-bis-detail/dienstleistung/"
+              - "vr-bis-detail/dienstleistung"
+              - "Homepage"
+
+        - score: 4
+          match_any:
+              - "event"
+              - "meeting"
+              - "assembly"
+
+        # Online / Application / Appointment
+        - score: 4
+          match_any:
+              - "onlinedienstleistung"
+              - "online-antrag"
+              - "apply online"
+              - "onlineantrag"
+
+        - score: 4
+          match_any:
+              - "form"
+              - "appointment booking"
+              - "book appointment"
+              - "submit application"
+              - "apply digitally"
+
+        - score: 2
+          match_any:
+              - "requirements"
+              - "required documents"
+              - "documents"
+              - "proof"
+
+        - score: 2
+          match_any:
+              - "costs"
+              - "fees"
+              - "charges"
+
+        - score: 2
+          match_any:
+              - "deadlines"
+              - "processing time"
+              - "duration"
+
+        - score: 2
+          match_any:
+              - "responsible authority"
+              - "responsible office"
+              - "jurisdiction"
+
+        - score: 2
+          match_any:
+              - "contact person"
+              - "contact"
+
+        - score: 2
+          match_any:
+              - "contact"
+              - "phone"
+              - "e-mail"
+              - "email"
+              - "address"
+
+        # Slight boost
+        - score: 1
+          match_any:
+              - "procedure"
+              - "process"
+              - "notes and special features"
+              - "legal basis"
+              - "forms and links"
+              - "downloads"
+              - "further information"
+
+    # Negative signals (noise)
+    atoolo.crawler.content_scoring.negative:
+        # Staff pages
+        - score: -12
+          match_any:
+              - "/vr-bis-detail/mitarbeiter/"
+              - "vr-bis-detail/mitarbeiter"
+
+        # Overview / list / tile pages
+        - score: -8
+          match_any:
+              - "/dienstleistungen/"
+              - "services"
+              - "additional services"
+              - "tile"
+              - "tile-list"
+              - "bereich="
+              - "deputy"
+
+        # Search / navigation
+        - score: -6
+          match_any:
+              - "/suche/"
+              - "search"
+              - "search result"
+              - "result"
+
+        # Classic noise terms
+        - score: -6
+          match_any:
+              - "test service"
+              - "asset publisher"
+              - "newsletter"
+              - "advertising"
+              - "press office"
+              - "mayor deputy"
+
+        # Too little text
+        - score: -3
+          condition:
+              body_text_length_lt: 350

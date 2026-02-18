@@ -1,0 +1,41 @@
+#!/usr/bin/env php
+<?php
+
+use Atoolo\Crawler\Console\Application;
+use Atoolo\Crawler\AtooloCrawlerBundle;
+use Atoolo\Resource\AtooloResourceBundle;
+use Atoolo\Search\AtooloSearchBundle;
+use Symfony\Component\HttpKernel\Kernel;
+use Symfony\Bundle\FrameworkBundle\FrameworkBundle;
+use Symfony\Component\Config\Loader\LoaderInterface;
+
+if (!is_dir(dirname(__DIR__) . '/vendor')) {
+    throw new LogicException('Dependencies are missing. Try running "composer install".');
+}
+
+if (!is_file(dirname(__DIR__) . '/vendor/autoload_runtime.php')) {
+    throw new LogicException('Symfony Runtime is missing. Try running "composer require symfony/runtime".');
+}
+
+require_once dirname(__DIR__) . '/vendor/autoload_runtime.php';
+
+$kernel = new class($_SERVER['APP_ENV'] ?? 'prod', (bool)($_SERVER['APP_DEBUG'] ?? true)) extends Kernel {
+    #[\Override]
+    public function registerBundles(): iterable
+    {
+        return [
+            new FrameworkBundle(),
+            new AtooloCrawlerBundle(),
+            new AtooloResourceBundle(),
+            new AtooloSearchBundle(),
+        ];
+    }
+
+    #[\Override]
+    public  function registerContainerConfiguration(LoaderInterface $loader): void {
+    }
+};
+$kernel->boot();
+
+$application = $kernel->getContainer()->get(Application::class);
+$application->run();
