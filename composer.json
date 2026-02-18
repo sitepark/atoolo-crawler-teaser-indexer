@@ -1,5 +1,6 @@
 {
     "name": "atoolo/crawler",
+    "version": "1.0.0",
     "description": "Automated crawler-based generation and indexing to Solr for a public information portal.",
     "type": "symfony-bundle",
     "license": "proprietary",
