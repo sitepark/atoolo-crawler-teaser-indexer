@@ -1,7 +1,7 @@
 /var/
 *.swp
+/phpcs.xml
 .phpunit.result.cache
-phpstan.neon.dist
 /.phpunit.cache/
 /.phpcs-cache
 /phpcs.xml

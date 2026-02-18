@@ -1,13 +1,13 @@
 {
     "name": "atoolo/crawler",
     "version": "1.0.0",
-    "description": "Automated crawler-based generation and indexing to Solr for a public information portal.",
+    "description": "Automated crawler-based generation and indexing to Solr.",
     "type": "symfony-bundle",
     "license": "proprietary",
     "minimum-stability": "dev",
     "prefer-stable": true,
     "require": {
-        "php": ">=8.4",
+        "php": ">=8.2",
         "ext-ctype": "*",
         "ext-iconv": "*",
         "atoolo/search-bundle": "^1.14",
