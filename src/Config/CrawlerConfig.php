@@ -42,7 +42,7 @@ final class CrawlerConfig
      */
     public function startUrls(): array
     {
-        $raw = $this->crawlerConfigHelper->intStringList('atoolo.crawler.start_urls', []);
+        $raw = $this->crawlerConfigHelper->intStringList('atoolo.crawler.start_urls');
 
         if (!is_array($raw)) {
             return [];

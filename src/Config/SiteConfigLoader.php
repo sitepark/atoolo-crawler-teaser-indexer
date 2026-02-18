@@ -12,7 +12,7 @@ final class SiteConfigLoader
     {
     }
 
-    public function load(string $siteKey): array
+    public function load(string $siteKey): mixed
     {
         $path = rtrim($this->dir, '/') . '/' . $siteKey . '.yaml';
         $data = Yaml::parseFile($path);

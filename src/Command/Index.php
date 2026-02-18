@@ -16,9 +16,6 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 final class Index extends Command
 {
-    /**
-     * @param list<array{siteKey:string, schedule:string}> $sites
-     */
     public function __construct(
         private readonly array $sites,
         private readonly CrawlSiteRunner $runner
