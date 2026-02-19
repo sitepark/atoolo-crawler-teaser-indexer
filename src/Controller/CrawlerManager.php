@@ -75,7 +75,7 @@ class CrawlerManager
 
     /**
      * @param list<string> $urls
-     * @return \Generator<int, array<string, mixed>> // Hier präzise definieren!
+     * @return \Generator<int, array<string, mixed>>
      */
     private function storageHandlingFetcherParser($urls): iterable
     {
@@ -113,7 +113,7 @@ class CrawlerManager
      * @param callable $fn    The function representing the step
      * @param mixed    $input Optional input for the step function
      *
-     * @return iterable<mixed> Die Daten des Schritts
+     * @return iterable<mixed>
      */
     private function executeStep(string $name, callable $fn, mixed $input = null): iterable
     {
