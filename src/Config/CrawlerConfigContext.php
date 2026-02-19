@@ -12,8 +12,10 @@ final class CrawlerConfigContext implements ResetInterface
      * @var array<string, mixed>
      */
     private array $params = [];
-
-    public function __construct(mixed $input)
+    /**
+     * @param array<string, mixed> $input
+     */
+    public function __construct(mixed $input = [])
     {
         $this->set($input);
     }

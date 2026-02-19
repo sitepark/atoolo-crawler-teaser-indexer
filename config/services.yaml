@@ -1,6 +1,6 @@
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
-
+    env(DEFAULT_URI): 'https://localhost'
 services:
     _defaults:
         autowire: true # Automatically injects dependencies in your services.
