@@ -1,10 +1,54 @@
-/var/
-*.swp
-/phpcs.xml
-.phpunit.result.cache
+#/var/
+#*.swp
+#/phpcs.xml
+#.phpunit.result.cache
+#/.phpunit.cache/
+#/.phpcs-cache
+#/phpcs.xml
+#/vendor
+#/vendor.orig
+#composer.lock
+#.idea
+#/var/cache/*
+#!var/cache/.gitkeep
+#/var/log/*
+#!var/log/.gitkeep
+#/var/test/*
+#/tools
+#.phpactor.json
+#.env
+#.env*
+#symfony.lock
+#phpunit.dist.xml
+#notes.local.md
+#/target
+#composer.link.*                                                  
+#symfony.link.lock  
+####> symfony/framework-bundle ###
+#/.env.local
+#/.env.local.php
+#/.env.*.local
+#/config/secrets/prod/prod.decrypt.private.php
+#/public/bundles/
+#/var/
+#/vendor/
+###< symfony/framework-bundle ###
+
+###> phpunit/phpunit ###
+/phpunit.xml
 /.phpunit.cache/
+###< phpunit/phpunit ###
+
+###> phpstan/phpstan ###
+phpstan.neon
+###< phpstan/phpstan ###
+
+###> squizlabs/php_codesniffer ###
 /.phpcs-cache
 /phpcs.xml
+###< squizlabs/php_codesniffer ###
+
+### NEW ###
 /vendor
 /vendor.orig
 composer.lock
@@ -16,28 +60,3 @@ composer.lock
 /var/test/*
 /tools
 .phpactor.json
-.env
-symfony.lock
-phpunit.dist.xml
-notes.local.md
-/target
-composer.link.*                                                  
-symfony.link.lock  
-###> symfony/framework-bundle ###
-/.env.local
-/.env.local.php
-/.env.*.local
-/config/secrets/prod/prod.decrypt.private.php
-/public/bundles/
-/var/
-/vendor/
-###< symfony/framework-bundle ###
-
-###> phpunit/phpunit ###
-/phpunit.xml
-/.phpunit.cache/
-###< phpunit/phpunit ###
-
-###> phpstan/phpstan ###
-phpstan.neon
-###< phpstan/phpstan ###
