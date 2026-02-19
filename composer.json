@@ -1,5 +1,5 @@
 {
-    "name": "atoolo/crawler",
+    "name": "atoolo/crawler-teaser-indexer",
     "version": "1.0.0",
     "description": "Automated crawler-based generation and indexing to Solr.",
     "type": "symfony-bundle",
