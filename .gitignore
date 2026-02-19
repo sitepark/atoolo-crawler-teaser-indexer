@@ -49,7 +49,7 @@ phpstan.neon
 ###< squizlabs/php_codesniffer ###
 
 ### NEW ###
-/vendor
+/vendor/
 /vendor.orig
 composer.lock
 .idea
@@ -58,5 +58,6 @@ composer.lock
 /var/log/*
 !var/log/.gitkeep
 /var/test/*
-/tools
+/tools/
 .phpactor.json
+.env*
