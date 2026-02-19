@@ -162,8 +162,37 @@ final class CrawlerConfigHelper
         return $out;
     }
 
+    /**
+     * @return list<string>
+     */
+    public function stringList(string $key): array
+    {
+        $v = $this->ctx->get($key, self::MISSING);
 
-    /** @return list<string> */
+        if ($v === self::MISSING) {
+            $this->logger->warning('Config missing string list, using empty list', ['key' => $key]);
+            return [];
+        }
+
+        if (!is_array($v)) {
+            $this->logger->error('Config invalid string list, using empty list', [
+                'key' => $key,
+                'value' => $v
+            ]);
+            return [];
+        }
+
+        $out = [];
+        foreach ($v as $item) {
+            if (is_string($item) && $item !== '') {
+                $out[] = $item;
+            }
+        }
+
+        return $out;
+    }
+
+    /** @return list<mixed> */
     public function intStringList(string $key): array
     {
         $v = $this->ctx->get($key, self::MISSING);
@@ -185,7 +214,7 @@ final class CrawlerConfigHelper
             }
         }
 
-        return array_values($out);
+        return $out;
     }
 
     /**

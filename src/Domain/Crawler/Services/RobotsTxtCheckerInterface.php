@@ -6,6 +6,8 @@ namespace Atoolo\Crawler\Domain\Crawler\Services;
 
 interface RobotsTxtCheckerInterface
 {
-    /** @param array<int,string> $urls @return array<int,string> */
+    /** @param list<string> $urls
+     * @return list<string>
+     */
     public function filterAllowed(array $urls): array;
 }

@@ -28,16 +28,15 @@ use Psr\Log\LoggerInterface;
  */
 final class URLCollectorTest extends TestCase
 {
-    private $url1 = 'https://example.com/page1';
-    private $urlPrefix = 'https://example.com';
+    private string $url1 = 'https://example.com/page1';
+    private string $urlPrefix = 'https://example.com';
 
     private function createCollector(
         RequestExecutorInterface $requestExecutor,
         LoggerInterface $logger,
         RobotsTxtCheckerInterface $robotsTxtChecker,
     ): URLCollector {
-        $ctx = new CrawlerConfigContext();
-        $ctx->set([
+        $ctx = new CrawlerConfigContext([
             'atoolo.crawler.start_urls' => [['url' => $this->urlPrefix, 'extraction_depth' => 0]],
             'atoolo.crawler.link_section' => '#content',
             'atoolo.crawler.link_selector' => 'a[href]',

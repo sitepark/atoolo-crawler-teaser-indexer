@@ -21,8 +21,8 @@ use Psr\Log\LoggerInterface;
 
 final class CrawlerManagerE2ETest extends TestCase
 {
-    private $url1 = 'https://example.com/page1';
-    private $url2 = 'https://example.com/page2';
+    private string $url1 = 'https://example.com/page1';
+    private string $url2 = 'https://example.com/page2';
     private function makeIndexerStatus(int $errors = 0): IndexerStatus
     {
         $now = new \DateTime();
@@ -40,12 +40,15 @@ final class CrawlerManagerE2ETest extends TestCase
         );
     }
 
+    /**
+     * @param array<int|string> $overrides
+     */
     private function createConfig(LoggerInterface $logger, array $overrides = []): CrawlerConfig
     {
         $ctx = new CrawlerConfigContext(array_merge([
             'atoolo.crawler.max_retry' => 1,
             'atoolo.crawler.delay_ms' => 0,
-            'atoolo.crawler.retry_status_codes' => [],
+            'atoolo.crawler.retry_status_codes' => [408, 429, 500, 501, 502, 503, 504],
             'atoolo.crawler.concurrency_per_host' => 1,
             'atoolo.crawler.user_agent' => 'TestAgent/1.0',
             'atoolo.crawler.forced_article_urls' => [],
@@ -161,7 +164,7 @@ final class CrawlerManagerE2ETest extends TestCase
         try {
             $manager->startCrawler();
         } finally {
-            $output = ob_get_clean();
+            $output = (string) ob_get_clean();
         }
 
         $this->assertTrue(
@@ -193,10 +196,13 @@ final class CrawlerManagerE2ETest extends TestCase
             ->with($this->equalTo([]))
             ->willReturn($this->makeIndexerStatus(0));
 
-        $logger = $this->createMock(LoggerInterface::class);
-        $logger->expects($this->once())
-            ->method('error')
-            ->with($this->stringContains('[URLCollector] Error: Collector failed'));
+        $errors = [];
+
+        $logger = $this->createStub(LoggerInterface::class);
+        $logger->method('error')
+            ->willReturnCallback(function ($message) use (&$errors): void {
+                $errors[] = (string) $message;
+            });
 
         $config = $this->createConfig($logger);
 
@@ -206,8 +212,17 @@ final class CrawlerManagerE2ETest extends TestCase
         try {
             $manager->startCrawler();
         } finally {
-            $output = ob_get_clean();
+            $output = (string) ob_get_clean();
         }
+
+        $this->assertTrue(
+            array_reduce(
+                $errors,
+                fn(bool $carry, string $m) => $carry || str_contains($m, '[URLCollector] Error: Collector failed'),
+                false
+            ),
+            'Expected error "[URLCollector] Error: Collector failed" not found. Got: ' . implode(' | ', $errors)
+        );
 
         $this->assertStringNotContainsString('Title', $output);
         $this->assertStringNotContainsString('Cleaned', $output);
@@ -221,11 +236,17 @@ final class CrawlerManagerE2ETest extends TestCase
         $fetcher = $this->createStub(Fetcher::class);
         $fetcher->method('fetchUrls')->willReturn([]);
 
+        $warnings = [];
+
         $logger = $this->createStub(LoggerInterface::class);
+        $logger->method('warning')
+            ->willReturnCallback(function ($message) use (&$warnings): void {
+                $warnings[] = (string) $message;
+            });
+
         $config = $this->createConfig($logger);
 
         $evaluator = $this->createStub(TeaserRelevanceEvaluatorInterface::class);
-
         $parser = new Parser($logger, $config, $evaluator);
         $processor = new Processor($logger);
 
@@ -235,21 +256,13 @@ final class CrawlerManagerE2ETest extends TestCase
             ->with([])
             ->willReturn($this->makeIndexerStatus(0));
 
-        $warnings = [];
-
-        $loggerWithCallback = $this->createStub(LoggerInterface::class);
-        $loggerWithCallback->method('warning')
-            ->willReturnCallback(function ($message) use (&$warnings): void {
-                $warnings[] = (string) $message;
-            });
-
         $manager = new CrawlerManager(
             $urlCollector,
             $fetcher,
             $parser,
             $processor,
             $config,
-            $loggerWithCallback,
+            $logger,
             $indexer
         );
 
@@ -261,7 +274,7 @@ final class CrawlerManagerE2ETest extends TestCase
                 fn(bool $carry, string $m) => $carry || str_contains($m, '[Fetcher] Step returned no data.'),
                 false
             ),
-            'Expected warning "[Fetcher] Step returned no data." not found.'
+            'Expected warning "[Fetcher] Step returned no data." not found. Got: ' . implode(' | ', $warnings)
         );
     }
 

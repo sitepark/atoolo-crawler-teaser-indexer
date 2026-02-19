@@ -16,6 +16,9 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 final class Index extends Command
 {
+    /**
+     * @param array<array{siteKey: string}> $sites
+     */
     public function __construct(
         private readonly array $sites,
         private readonly CrawlSiteRunner $runner
@@ -30,9 +33,9 @@ final class Index extends Command
             $output->writeln('<comment>No sites configured (atoolo.crawler.sites is empty).</comment>');
         } else {
             foreach ($this->sites as $site) {
-                $siteKey = $site['siteKey'] ?? null;
+                $siteKey = $site['siteKey'];
 
-                if (!is_string($siteKey) || $siteKey === '') {
+                if ($siteKey === '') {
                     $output->writeln('<error>Invalid site config: missing "siteKey".</error>');
                     $exitCode = Command::FAILURE;
                     break;

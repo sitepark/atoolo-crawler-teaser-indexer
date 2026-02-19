@@ -30,7 +30,7 @@ class Fetcher
     /**
      * Fetches raw HTML for multiple URLs in batches.
      *
-     * @param string[] $urls A list of URLs
+     * @param list<string> $urlChunk
      * @return array<int, array{url: string, html: string}>
      */
     public function fetchUrls(array $urlChunk): array
@@ -42,14 +42,17 @@ class Fetcher
     /**
      * Starts the HTTP requests for a batch of URLs with a retry mechanism.
      *
-     * @param string[] $urls A list of URLs for the batch
-     * @return ResponseInterface[] An array of ResponseInterface objects keyed by URL
+     * @param list<string> $urlChunk
+     * @return array<string, \Symfony\Contracts\HttpClient\ResponseInterface>
      */
     private function startRequests(array $urlChunk): array
     {
         $responses = [];
         foreach ($urlChunk as $url) {
-            $responses[$url] = $this->requestExecutor->request($url);
+            $response = $this->requestExecutor->request($url);
+            if ($response !== null) {
+                $responses[$url] = $response;
+            }
         }
         return $responses;
     }
@@ -65,10 +68,6 @@ class Fetcher
         $results = [];
         foreach ($responses as $url => $response) {
             try {
-                if (!$response) {
-                    continue;
-                }
-
                 $status = $response->getStatusCode();
                 if ($status >= 200 && $status < 300) {
                     $results[] = [

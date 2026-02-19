@@ -18,8 +18,7 @@ final class ParserTest extends TestCase
 
     protected function setUp(): void
     {
-        $ctx = new CrawlerConfigContext();
-        $ctx->set([
+        $ctx = new CrawlerConfigContext([
             'atoolo.crawler.title.present' => true,
             'atoolo.crawler.title.opengraph' => ['og:title'],
             'atoolo.crawler.title.prefix' => '',

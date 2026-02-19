@@ -21,9 +21,9 @@ final class TeaserRelevanceEvaluator implements TeaserRelevanceEvaluatorInterfac
      * @param array{
      * url: string,
      * title: string,
-     * ?introText: string,
-     * ?html: string,
-     * ?datetime: \DateTimeImmutable
+     * introText?: string,
+     * html?: string,
+     * datetime?: \DateTimeImmutable
      * } $relevanceData
      * @return bool
      */
@@ -46,7 +46,13 @@ final class TeaserRelevanceEvaluator implements TeaserRelevanceEvaluatorInterfac
     }
 
     /**
-     * @param array<string,mixed> $t
+     * @param array{
+     * url: string,
+     * title: string,
+     * introText?: string,
+     * html?: string,
+     * datetime?: \DateTimeImmutable
+     * } $t
      * @return array{score:int,reasons:array<int,string>}
      */
     private function evaluate(array $t, ContentScoringConfig $cfg): array
@@ -54,9 +60,9 @@ final class TeaserRelevanceEvaluator implements TeaserRelevanceEvaluatorInterfac
         $score = 0;
         $reasons = [];
 
-        $title = (string) ($t['title'] ?? '');
+        $title = (string) ($t['title']);
         $intro = (string) ($t['introText'] ?? '');
-        $url   = (string) ($t['url'] ?? '');
+        $url   = (string) ($t['url']);
         $body  = $this->extractBodyTextFromHtml((string) ($t['html'] ?? ''));
 
         $haystack = $this->normalize($title . "\n" . $intro . "\n" . $body);

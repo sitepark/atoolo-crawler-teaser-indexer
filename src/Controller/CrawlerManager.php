@@ -46,12 +46,13 @@ class CrawlerManager
      */
     public function startCrawler(): void
     {
+        /** @var list<string> $urls */
         $urls = $this->executeStep(
             'URLCollector',
             fn() => $this->urlCollector->findHrefUrlsByCssSelector()
-        ); //collects the URLs
+        );
 
-        $rawTeaserStream = $this->storageHandlingFetcherParser($urls); // collects the HTML and extracts the TeaserData
+        $rawTeaserStream = $this->storageHandlingFetcherParser($urls);
 
         $teaserStream = $this->executeStep(
             'Processor',
@@ -59,6 +60,9 @@ class CrawlerManager
             $rawTeaserStream
         ); //Cleans and formats the data
 
+        /**
+         *  @var array<int, array<string, mixed>> $finalTeaserStream
+         */
         $finalTeaserStream = iterator_to_array($teaserStream);
 
         $indexerStatus = $this->indexer->doIndex($finalTeaserStream);
@@ -69,9 +73,14 @@ class CrawlerManager
         }
     }
 
+    /**
+     * @param list<string> $urls
+     * @return \Generator<int, array<string, mixed>> // Hier präzise definieren!
+     */
     private function storageHandlingFetcherParser($urls): iterable
     {
-        $urlChunks = array_chunk($urls, $this->config->concurrencyPerHost());
+        $concurrency = max(1, $this->config->concurrencyPerHost());
+        $urlChunks = array_chunk($urls, $concurrency);
 
         foreach ($urlChunks as $chunk) {
             $htmlData = $this->executeStep(
@@ -86,6 +95,9 @@ class CrawlerManager
                 $htmlData
             );
 
+            /**
+             * @var array<string, mixed> $teaser
+             */
             foreach ($teaserData as $teaser) {
                 yield $teaser;
             }
@@ -101,16 +113,18 @@ class CrawlerManager
      * @param callable $fn    The function representing the step
      * @param mixed    $input Optional input for the step function
      *
-     * @return array The result of the step, or empty array on failure
+     * @return iterable<mixed> Die Daten des Schritts
      */
     private function executeStep(string $name, callable $fn, mixed $input = null): iterable
     {
         try {
             $result = $fn($input);
+
             if (is_array($result) && $result === []) {
                 $this->logger->warning("[$name] Step returned no data.");
                 return [];
             }
+
             $this->logger->info("[$name] Step initialized.");
             return $result;
         } catch (\Throwable $e) {

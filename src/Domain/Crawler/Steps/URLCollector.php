@@ -30,7 +30,10 @@ class URLCollector
      * DOM section, resolves absolute URLs, removes duplicates and finally applies
      * allow/deny path filtering.
      *
-     * @return array<int, string> A list of unique, filtered absolute URLs
+     * @return list<string> A list of unique, filtered absolute URLs
+     */
+    /**
+     * @return list<string> A list of unique, filtered absolute URLs
      */
     public function findHrefUrlsByCssSelector(): array
     {
@@ -43,18 +46,17 @@ class URLCollector
         $urls = $this->urlNormalizer->normalize($urls);
 
         if ($this->config->respectRobotsTxt()) {
-            $urls = $this->robotsTxtChecker->filterAllowed($urls);
+            $urls = $this->robotsTxtChecker->filterAllowed(array_values($urls));
         }
 
         if (count($urls) > $this->config->maxTeaser()) {
-            $urls = array_values(array_slice($urls, 0, $this->config->maxTeaser()));
+            $urls = array_slice($urls, 0, $this->config->maxTeaser());
         }
 
-        if ($this->config->forcedArticleUrls() !== null) {
-            return array_values(array_unique(array_merge($urls, $this->config->forcedArticleUrls())));
+        if ($this->config->forcedArticleUrls() !== []) {
+            $urls = array_merge($urls, $this->config->forcedArticleUrls());
         }
-
-        return array_values(array_unique($urls));
+        return array_values(array_unique(array_filter($urls, 'is_string')));
     }
 
     /**
@@ -123,7 +125,9 @@ class URLCollector
         $queue   = [['url' => $start['url'], 'depth' => 0]];
         $visited = [];
 
+        /** @var list<string> $denyPrefixes */
         $denyPrefixes  = $this->config->denyPrefixes();
+        /** @var list<string> $allowPrefixes */
         $allowPrefixes = $this->config->allowPrefixes();
 
         for ($i = 0; $i < count($queue); $i++) {
@@ -149,6 +153,7 @@ class URLCollector
                 if ($this->startsWithAny($link, $denyPrefixes)) {
                     continue;
                 }
+
                 if ($allowPrefixes !== [] && !$this->startsWithAny($link, $allowPrefixes)) {
                     continue;
                 }
@@ -219,7 +224,6 @@ class URLCollector
                 }
             });
 
-        /** @var array<int, string> $urls */
         return array_values(array_filter($found));
     }
 }

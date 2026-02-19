@@ -48,27 +48,39 @@ class Indexer implements \Atoolo\Search\Indexer
         foreach ($items as $item) {
             try {
                 $document = $updater->createDocument();
-                $document->id = $item['url'];
-                $document->title = $item['title'];
+
+                $document->setField('id', $item['url']);
+                $document->setField('title', $item['title']);
+
                 if (!empty($item['introText']) && $this->config->introTextPresent()) {
-                    $document->sp_intro = (string) $item['introText'];
+                    $intro = is_string($item['introText']) ? $item['introText'] : '';
+                    $document->setField('sp_intro', $intro);
                 }
 
                 if (!empty($item['date']) && $this->config->dateTimePresent()) {
                     try {
-                        $document->sp_date = new \DateTimeImmutable((string) $item['date'], new \DateTimeZone('UTC'));
+                        $date = $item['date'];
+                        if ($date instanceof \DateTimeInterface) {
+                            $dateValue = $date;
+                        } elseif (is_scalar($date)) {
+                            $dateValue = new \DateTimeImmutable((string)$date, new \DateTimeZone('UTC'));
+                        } else {
+                            throw new \InvalidArgumentException('Invalid date type');
+                        }
+
+                        $document->setField('sp_date', $dateValue);
                     } catch (\Exception $e) {
                         $this->logger->warning('[Indexer] Invalid date format', [
                             'date' => $item['date'],
-                            'url'  => $item['url'] ?? null,
+                            'error' => $e->getMessage()
                         ]);
                     }
                 }
 
-                $document->url = $item['url'];
-                $document->sp_objecttype = $this->source;
-                $document->crawl_process_id = $processId;
-                $document->sp_source = [$this->source];
+                $document->setField('url', $item['url']);
+                $document->setField('sp_objecttype', $this->source);
+                $document->setField('crawl_process_id', $processId);
+                $document->setField('sp_source', [$this->source]);
 
                 $updater->addDocument($document);
                 $this->progressHandler->advance(1);

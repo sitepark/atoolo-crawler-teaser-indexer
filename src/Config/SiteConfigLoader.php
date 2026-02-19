@@ -8,14 +8,23 @@ use Symfony\Component\Yaml\Yaml;
 
 final class SiteConfigLoader
 {
-    public function __construct(private readonly string $dir)
-    {
+    public function __construct(
+        private readonly string $dir
+    ) {
     }
 
-    public function load(string $siteKey): mixed
+    /**
+     * @return array<mixed, mixed>
+     */
+    public function load(string $siteKey): array
     {
         $path = rtrim($this->dir, '/') . '/' . $siteKey . '.yaml';
         $data = Yaml::parseFile($path);
-        return $data['parameters'] ?? [];
+
+        if (is_array($data) && isset($data['parameters']) && is_array($data['parameters'])) {
+            return $data['parameters'];
+        }
+
+        return [];
     }
 }

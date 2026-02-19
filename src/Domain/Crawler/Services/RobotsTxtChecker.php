@@ -52,17 +52,22 @@ final class RobotsTxtChecker implements RobotsTxtCheckerInterface
             return $this->cache[$robotsUrl];
         }
 
+        $robots = null;
+
         try {
             $response = $this->requestExecutor->request($robotsUrl);
-            $content  = $response->getContent(false);
 
-            return $this->cache[$robotsUrl] = new RobotsTxt(trim((string) $content));
+            if ($response !== null) {
+                $content = $response->getContent(false);
+                $robots  = new RobotsTxt(trim($content));
+            }
         } catch (\Throwable $e) {
             $this->logger->warning('robots.txt could not be read, defaulting to allow', [
                 'robotsUrl' => $robotsUrl,
-                'exception' => $e,
+                'exception' => $e->getMessage(),
             ]);
-            return $this->cache[$robotsUrl] = null;
         }
+
+        return $this->cache[$robotsUrl] = $robots;
     }
 }

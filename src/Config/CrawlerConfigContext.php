@@ -8,12 +8,22 @@ use Symfony\Contracts\Service\ResetInterface;
 
 final class CrawlerConfigContext implements ResetInterface
 {
+    /**
+     * @var array<string, mixed>
+     */
     private array $params = [];
 
-
-    public function set(array $params): void
+    public function __construct(mixed $input)
     {
-        $this->params = $params;
+        $this->set($input);
+    }
+
+    /**
+     * @param mixed $params
+     */
+    public function set(mixed $params): void
+    {
+        $this->params = is_array($params) ? $params : [];
     }
 
     public function get(string $key, mixed $default = null): mixed

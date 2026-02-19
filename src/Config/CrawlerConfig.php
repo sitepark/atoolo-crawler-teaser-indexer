@@ -44,10 +44,6 @@ final class CrawlerConfig
     {
         $raw = $this->crawlerConfigHelper->intStringList('atoolo.crawler.start_urls');
 
-        if (!is_array($raw)) {
-            return [];
-        }
-
         $out = [];
         foreach ($raw as $item) {
             if (is_string($item)) {
@@ -77,25 +73,28 @@ final class CrawlerConfig
         return $this->crawlerConfigHelper->string('atoolo.crawler.link_selector', 'a[href]');
     }
 
-    /** @return list<string> */
+    /** @return list<mixed> */
     public function allowPrefixes(): array
     {
         return $this->crawlerConfigHelper->intStringList('atoolo.crawler.allow_prefixes');
     }
 
-    /** @return list<string> */
+    /**
+     * @return list<string>
+     */
     public function denyPrefixes(): array
     {
-        return $this->crawlerConfigHelper->intStringList('atoolo.crawler.deny_prefixes');
+        $denyPrefixes = $this->crawlerConfigHelper->intStringList('atoolo.crawler.deny_prefixes');
+        return array_values(array_filter($denyPrefixes, 'is_string'));
     }
 
-    /** @return list<string> */
+    /** @return list<mixed> */
     public function denyEndings(): array
     {
         return $this->crawlerConfigHelper->intStringList('atoolo.crawler.deny_endings');
     }
 
-    /** @return list<string> */
+    /** @return list<mixed> */
     public function forcedArticleUrls(): array
     {
         return $this->crawlerConfigHelper->intStringList('atoolo.crawler.forced_article_urls');
@@ -109,7 +108,7 @@ final class CrawlerConfig
     /** @return list<string> */
     public function stripQueryParams(): array
     {
-        return $this->crawlerConfigHelper->intStringList('atoolo.crawler.strip_query_params');
+        return $this->crawlerConfigHelper->stringList('atoolo.crawler.strip_query_params');
     }
 
     public function maxTeaser(): int
@@ -124,10 +123,10 @@ final class CrawlerConfig
         return $this->crawlerConfigHelper->int('atoolo.crawler.max_retry', 3);
     }
 
-    /** @return list<int> */
+    /** @return list<mixed> */
     public function retryStatusCodes(): array
     {
-        return $this->crawlerConfigHelper->intStringList('atoolo.crawler.retry_status_codes', []);
+        return $this->crawlerConfigHelper->intStringList('atoolo.crawler.retry_status_codes');
     }
 
     public function delayMs(): int
@@ -153,8 +152,8 @@ final class CrawlerConfig
             present: $this->crawlerConfigHelper->bool('atoolo.crawler.title.present', true),
             requiredField: true,
             prefix: $this->crawlerConfigHelper->string('atoolo.crawler.title.prefix', ""),
-            opengraph: $this->crawlerConfigHelper->intStringList('atoolo.crawler.title.opengraph'),
-            css: $this->crawlerConfigHelper->intStringList('atoolo.crawler.title.css'),
+            opengraph: $this->crawlerConfigHelper->stringList('atoolo.crawler.title.opengraph'),
+            css: $this->crawlerConfigHelper->stringList('atoolo.crawler.title.css'),
             maxChars: $this->crawlerConfigHelper->int('atoolo.crawler.title.max_chars', 120),
         );
     }
@@ -165,8 +164,8 @@ final class CrawlerConfig
             present: $this->crawlerConfigHelper->bool('atoolo.crawler.introText.present', false),
             requiredField: $this->crawlerConfigHelper->bool('atoolo.crawler.introText.required_field', false),
             prefix: $this->crawlerConfigHelper->string('atoolo.crawler.title.prefix', ""),
-            opengraph: $this->crawlerConfigHelper->intStringList('atoolo.crawler.introText.opengraph'),
-            css: $this->crawlerConfigHelper->intStringList('atoolo.crawler.introText.css'),
+            opengraph: $this->crawlerConfigHelper->stringList('atoolo.crawler.introText.opengraph'),
+            css: $this->crawlerConfigHelper->stringList('atoolo.crawler.introText.css'),
             maxChars: $this->crawlerConfigHelper->int('atoolo.crawler.introText.max_chars', 120),
         );
     }
@@ -177,8 +176,8 @@ final class CrawlerConfig
             present: $this->crawlerConfigHelper->bool('atoolo.crawler.datetime.present', false),
             requiredField: $this->crawlerConfigHelper->bool('atoolo.crawler.introText.required_field', false),
             onlyDate: $this->crawlerConfigHelper->bool('atoolo.crawler.datetime.only-date', true),
-            opengraph: $this->crawlerConfigHelper->intStringList('atoolo.crawler.datetime.opengraph'),
-            css: $this->crawlerConfigHelper->intStringList('atoolo.crawler.datetime.css'),
+            opengraph: $this->crawlerConfigHelper->stringList('atoolo.crawler.datetime.opengraph'),
+            css: $this->crawlerConfigHelper->stringList('atoolo.crawler.datetime.css'),
         );
     }
 

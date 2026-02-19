@@ -22,7 +22,7 @@ class Parser
      * Extract teaser-data from fetched HTML.
      *
      * @param array<int, array{url: string, html: string}> $htmlData
-     * @return array<int, array{url: string, title: string, ?introText: string, ?datetime: \DateTimeImmutable}>
+     * @return array<int, array{url: string, title: string, introText?: string, datetime?: \DateTimeImmutable}>
      */
     public function extractTeasers(array $htmlData): array
     {
@@ -105,7 +105,7 @@ class Parser
             return null;
         }
 
-        // 1) OG/Meta hat Priorität
+        // OG/Meta have priority
         foreach ($config->opengraph as $property) {
             $v = $this->findMetaTagContent($crawler, $property);
             if ($v !== null && $v !== '') {
@@ -113,7 +113,7 @@ class Parser
             }
         }
 
-        // 2) CSS Fallbacks
+        // CSS Fallbacks
         foreach ($config->css as $selector) {
             $v = $this->findCssSelectorContent($crawler, $selector);
             if ($v !== null && $v !== '') {

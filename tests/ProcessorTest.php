@@ -26,7 +26,7 @@ final class ProcessorTest extends TestCase
      */
     public function testTextLetterProcessorRemovesTagsScriptsAndWhitespace(): void
     {
-        $datetime = "12.10.12T00:00:00";
+        $datetime = new \DateTimeImmutable("2012-10-12T00:00:00", new \DateTimeZone('UTC'));
         $input = [
             [
                 "url"   => "https://example.com/1",

@@ -117,19 +117,19 @@ final class URLNormalizer
     /**
      * Extracts query parameters from parsed URL parts.
      *
-     * @param array<string,mixed> $parts Parsed URL parts
-     *
-     * @return array<string,mixed> Query parameters as key/value pairs
+     * @param array<string,mixed> $parts
+     * @return array<int|string,mixed>
      */
     private function parseQueryParams(array $parts): array
     {
-        if (!isset($parts['query']) || $parts['query'] === '') {
+        $query = $parts['query'] ?? null;
+        if (!is_string($query) || $query === '') {
             return [];
         }
 
-        parse_str($parts['query'], $queryParams);
+        parse_str($query, $queryParams);
 
-        return is_array($queryParams) ? $queryParams : [];
+        return $queryParams;
     }
 
     /**
@@ -139,24 +139,35 @@ final class URLNormalizer
      * scheme://host[:port]/path?query#fragment
      *
      * @param array<string,mixed> $parts
-     * @param array<string,mixed> $queryParams
+     * @param array<int|string,mixed> $queryParams
      */
     private function rebuildUrlFromParts(array $parts, array $queryParams): string
     {
-        $url = $parts['scheme'] . '://' . $parts['host'];
+        $scheme = $parts['scheme'] ?? '';
+        $host = $parts['host'] ?? '';
 
-        if (isset($parts['port'])) {
+        if (!is_string($scheme) || !is_string($host)) {
+            return '';
+        }
+
+        $url = $scheme . '://' . $host;
+
+        if (isset($parts['port']) && is_scalar($parts['port'])) {
             $url .= ':' . $parts['port'];
         }
 
-        $url .= $parts['path'] ?? '';
+        $path = $parts['path'] ?? '';
+        if (is_string($path)) {
+            $url .= $path;
+        }
 
         if ($queryParams !== []) {
             $url .= '?' . http_build_query($queryParams);
         }
 
-        if (isset($parts['fragment']) && $parts['fragment'] !== '') {
-            $url .= '#' . $parts['fragment'];
+        $fragment = $parts['fragment'] ?? '';
+        if (is_string($fragment) && $fragment !== '') {
+            $url .= '#' . $fragment;
         }
 
         return $url;
@@ -182,7 +193,7 @@ final class URLNormalizer
 
         $filtered = array_filter($rawUrls, function (string $url): bool {
             foreach ($this->config->allowPrefixes() as $prefix) {
-                if (str_starts_with($url, $prefix)) {
+                if (is_string($prefix) && str_starts_with($url, $prefix)) {
                     return true;
                 }
             }
@@ -236,13 +247,13 @@ final class URLNormalizer
 
         return array_values(array_filter($urls, function (string $url) use ($denyEndings): bool {
             $path = parse_url($url, PHP_URL_PATH);
-            if ($path === null || $path === '') {
+            if (!is_string($path) || $path === '') {
                 return true;
             }
 
             $lowerPath = strtolower($path);
             foreach ($denyEndings as $ending) {
-                if (str_ends_with($lowerPath, strtolower($ending))) {
+                if (is_string($ending) && str_ends_with($lowerPath, strtolower($ending))) {
                     return false;
                 }
             }
