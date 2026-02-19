@@ -51,7 +51,7 @@ phpstan.neon
 ### NEW ###
 /vendor/
 /vendor.orig
-#composer.lock
+composer.lock
 .idea
 /var/cache/*
 !var/cache/.gitkeep
