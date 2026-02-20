@@ -15,7 +15,7 @@ use Symfony\Component\HttpKernel\Bundle\Bundle;
 /**
  * @codeCoverageIgnore
  */
-class AtooloCrawlerBundle extends Bundle
+class AtooloCrawlerTeaserIndexerBundle extends Bundle
 {
     /**
      * @throws Exception

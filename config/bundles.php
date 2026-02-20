@@ -5,4 +5,5 @@ return [
     Atoolo\Resource\AtooloResourceBundle::class => ['all' => true],
     Atoolo\Search\AtooloSearchBundle::class => ['all' => true],
     Symfony\Bundle\MonologBundle\MonologBundle::class => ['all' => true],
+    Atoolo\Crawler\AtooloCrawlerTeaserIndexerBundle::class => ['all' => true],
 ];
