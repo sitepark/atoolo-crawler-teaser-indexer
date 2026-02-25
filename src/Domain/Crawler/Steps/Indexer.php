@@ -94,7 +94,15 @@ class Indexer implements \Atoolo\Search\Indexer
             }
         }
 
-        $result = $updater->update();
+        try {
+            $result = $updater->update();
+        } catch (\Throwable $e) {
+            $this->logger->critical('Solr update failed - Solr not reachable?', [
+                'exception' => $e,
+            ]);
+            throw $e;
+        }
+
         if ($result->getStatus() !== 0) {
             $this->progressHandler->error(
                 new \Exception($result->getResponse()->getStatusMessage())
@@ -108,7 +116,15 @@ class Indexer implements \Atoolo\Search\Indexer
             );
         }
 
-        $this->indexService->commit($language);
+        try {
+            $this->indexService->commit($language);
+        } catch (\Throwable $e) {
+            $this->logger->critical('Solr commit failed', [
+                'exception' => $e,
+            ]);
+            throw $e;
+        }
+
         $this->progressHandler->finish();
 
         return $this->progressHandler->getStatus();
