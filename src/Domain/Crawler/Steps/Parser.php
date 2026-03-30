@@ -195,11 +195,12 @@ class Parser
     {
         $raw = trim($raw);
 
-        if (
-            $config->onlyDate
-            && preg_match('/^\d{4}-\d{2}-\d{2}$/', $raw) === 1
-        ) {
-            $raw .= ' 00:00:00';
+        if ($config->onlyDate) {
+            $date = \DateTime::createFromFormat('Y-m-d', $raw);
+
+            if ($date && $date->format('Y-m-d') === $raw) {
+                return $raw . ' 00:00:00';
+            }
         }
 
         return $raw;
