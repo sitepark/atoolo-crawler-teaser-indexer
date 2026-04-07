@@ -38,7 +38,6 @@ final class URLCollectorTest extends TestCase
     ): URLCollector {
         $ctx = new CrawlerConfigContext([
             'atoolo.crawler.start_urls' => [['url' => $this->urlPrefix, 'extraction_depth' => 0]],
-            'atoolo.crawler.link_section' => '#content',
             'atoolo.crawler.link_selector' => 'a[href]',
             'atoolo.crawler.forced_article_urls' => [],
             'atoolo.crawler.max_teaser' => 999,

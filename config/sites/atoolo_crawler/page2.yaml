@@ -24,7 +24,6 @@ parameters:
           extraction_depth: 2
 
     # Extract links only from the content area
-    atoolo.crawler.link_section: ".SP-Body"
     atoolo.crawler.link_selector: "a[href]"
 
     # Allowed URL prefixes

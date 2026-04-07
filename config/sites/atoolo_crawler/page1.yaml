@@ -18,9 +18,6 @@ parameters:
         - url: "https://example.com/"
           extraction_depth: 2
 
-    # Content section
-    atoolo.crawler.link_section: "#content"
-
     # Do not include fragment links (#...) (prevents #list-A, #tab...)
     atoolo.crawler.link_selector: "a[href]:not([href^='#']):not([href*='#'])"
 

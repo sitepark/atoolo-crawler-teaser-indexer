@@ -79,34 +79,6 @@ class URLCollector
     }
 
     /**
-     * Resolves the DOM scope in which link discovery is allowed.
-     *
-     * If a link section selector is configured, only this section is used.
-     * If the section cannot be found, null is returned and the URL is skipped.
-     *
-     * @param Crawler $crawler The full-page HTML crawler
-     * @param string  $baseUrl The base URL used for logging context
-     * @return Crawler|null The scoped crawler or null if the section was not found
-     */
-    private function resolveScope(Crawler $crawler, string $baseUrl): ?Crawler
-    {
-        $linkSection = $this->config->linkSection();
-        if ($linkSection === '') {
-            return $crawler;
-        }
-        $scope = $crawler->filter($linkSection);
-
-        if ($scope->count() === 0) {
-            $this->logger->warning('Link section in html not found', [
-                'section' => $linkSection,
-                'url'     => $baseUrl,
-            ]);
-            return null;
-        }
-        return $scope;
-    }
-
-    /**
      * Crawls URLs breadth-first from a start URL up to its extraction_depth.
      *
      * @param array{url:string, extraction_depth:int} $start
@@ -144,12 +116,8 @@ class URLCollector
             $visited[$url] = true;
 
             $crawler = $this->loadCrawlerForBaseUrl($url);
-            $scope   = $this->resolveScope($crawler, $url);
-            if ($scope === null) {
-                continue;
-            }
 
-            foreach ($this->extractAbsoluteUrlsFromScope($scope, $url) as $link) {
+            foreach ($this->extractAbsoluteUrlsFromScope($crawler, $url) as $link) {
                 if ($this->startsWithAny($link, $denyPrefixes)) {
                     continue;
                 }
