@@ -92,7 +92,7 @@ class URLCollector
     {
         $found = [];
         $maxDepth = (int) $start['extraction_depth'];
-        $limit = $this->config->maxTeaser(); // <- früh limitieren
+        $limit = $this->config->maxTeaser();
 
         $queue   = [['url' => $start['url'], 'depth' => 0]];
         $visited = [];

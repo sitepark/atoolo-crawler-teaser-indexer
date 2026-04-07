@@ -8,7 +8,18 @@ namespace Atoolo\Crawler\Application;
  */
 final class StartCrawlerMessage
 {
-    public function __construct(public readonly string $siteKey)
+    /**
+     * @param array<string, mixed> $site
+     */
+    public function __construct(
+        private readonly array $site
+    ) {
+    }
+    /**
+     * @return array<string, mixed>
+     */
+    public function getSite(): array
     {
+        return $this->site;
     }
 }

@@ -5,31 +5,30 @@ declare(strict_types=1);
 namespace Atoolo\Crawler\Application;
 
 use Atoolo\Crawler\Config\CrawlerConfigContext;
-use Atoolo\Crawler\Config\SiteConfigLoader;
 use Atoolo\Crawler\Controller\CrawlerManager;
 use Psr\Log\LoggerInterface;
 
 final class CrawlSiteRunner
 {
     public function __construct(
-        private readonly SiteConfigLoader $siteConfigLoader,
         private readonly CrawlerConfigContext $configContext,
         private readonly CrawlerManager $crawlerManager,
         private readonly LoggerInterface $logger,
     ) {
     }
-
-    public function run(string $siteKey): void
+    /**
+     * @param array<string, mixed> $site
+     */
+    public function run(array $site): void
     {
-        $this->logger->info(sprintf('[Crawler] Starting site: %s', $siteKey));
+        $this->configContext->set($site);
 
-        $params = $this->siteConfigLoader->load($siteKey);
-        $this->configContext->set($params);
+        $this->logger->info('[Crawler] Starting');
 
         try {
             $this->crawlerManager->startCrawler();
         } catch (\Throwable $e) {
-            $this->logger->error(sprintf('[Crawler] Failed site: %s', $siteKey), [
+            $this->logger->error('[Crawler] Failed site', [
                 'exception' => $e,
             ]);
             throw $e;
@@ -37,6 +36,6 @@ final class CrawlSiteRunner
             $this->configContext->reset();
         }
 
-        $this->logger->info(sprintf('[Crawler] Finished site: %s', $siteKey));
+        $this->logger->info('[Crawler] Finished site');
     }
 }

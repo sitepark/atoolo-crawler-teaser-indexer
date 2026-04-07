@@ -15,7 +15,11 @@ final class RequestExecutor implements RequestExecutorInterface
     /** @var array<string, int> */
     private array $lastRequestPerHost = [];
 
+    /**
+     * @param array<string, mixed> $retryStatusCodes
+     */
     public function __construct(
+        private readonly array $retryStatusCodes,
         private readonly CrawlerConfig $config,
         private HttpClientInterface $httpClient,
         private readonly LoggerInterface $logger
@@ -52,7 +56,7 @@ final class RequestExecutor implements RequestExecutorInterface
                 $status = $response->getStatusCode();
 
                 $isSuccess = ($status >= 200 && $status < 300);
-                $isRetryable = in_array($status, $this->config->retryStatusCodes(), true);
+                $isRetryable = in_array($status, $this->retryStatusCodes, true);
 
                 // success OR non-retryable -> stop
                 if ($isSuccess || !$isRetryable) {

@@ -251,8 +251,8 @@ final class CrawlerConfigHelper
             if (isset($rule['condition']) && is_array($rule['condition'])) {
                 $bodyTextLengthLt = null;
 
-                if (array_key_exists('body_text_length_lt', $rule['condition'])) {
-                    $v = $rule['condition']['body_text_length_lt'];
+                if (array_key_exists('body_text_length', $rule['condition'])) {
+                    $v = $rule['condition']['body_text_length'];
                     if (is_numeric($v)) {
                         $bodyTextLengthLt = (int) $v;
                     }
