@@ -152,7 +152,7 @@ final class CrawlerConfig
         return new FieldExtractConfig(
             present: $this->crawlerConfigHelper->bool('introText_present', false),
             requiredField: $this->crawlerConfigHelper->bool('introText_required_field', false),
-            prefix: "",/* $this->crawlerConfigHelper->string('introText.prefix', ""), */
+            prefix: "", /* $this->crawlerConfigHelper->string('introText.prefix', ""), */
             opengraph: $this->crawlerConfigHelper->stringList('introText_opengraph'),
             css: $this->crawlerConfigHelper->stringList('introText_css'),
             maxChars: $this->crawlerConfigHelper->int('introText_max_chars', 120),

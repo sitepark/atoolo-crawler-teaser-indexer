@@ -19,23 +19,23 @@ final class ParserTest extends TestCase
     protected function setUp(): void
     {
         $ctx = new CrawlerConfigContext([
-            'atoolo.crawler.title.present' => true,
-            'atoolo.crawler.title.opengraph' => ['og:title'],
-            'atoolo.crawler.title.prefix' => '',
-            'atoolo.crawler.title.css' => ['h1', '#content h1', 'h1.h1'],
-            'atoolo.crawler.title.max_chars' => 200,
+            'title_present' => true,
+            'title_opengraph' => ['og:title'],
+            'title_prefix' => '',
+            'title_css' => ['h1', '#content h1', 'h1.h1'],
+            'title_max_chars' => 200,
 
-            'atoolo.crawler.introText.present' => true,
-            'atoolo.crawler.introText.required_field' => false,
-            'atoolo.crawler.introText.opengraph' => [],
-            'atoolo.crawler.introText.css' => ['.introText'],
-            'atoolo.crawler.introText.max_chars' => 200,
+            'introText_present' => true,
+            'introText_required_field' => false,
+            'introText_opengraph' => [],
+            'introText_css' => ['.introText'],
+            'introText_max_chars' => 200,
 
-            'atoolo.crawler.datetime.present' => true,
-            'atoolo.crawler.datetime.required_field' => false,
-            'atoolo.crawler.datetime.only-date' => true,
-            'atoolo.crawler.datetime.opengraph' => [],
-            'atoolo.crawler.datetime.css' => ['.date', '#content .date'],
+            'datetime_present' => true,
+            'datetime_required_field' => false,
+            'datetime_only_date' => true,
+            'datetime_opengraph' => [],
+            'datetime_css' => ['.date', '#content .date'],
         ]);
 
         $logger = $this->createStub(LoggerInterface::class);

@@ -37,14 +37,14 @@ final class URLCollectorTest extends TestCase
         RobotsTxtCheckerInterface $robotsTxtChecker,
     ): URLCollector {
         $ctx = new CrawlerConfigContext([
-            'atoolo.crawler.start_urls' => [['url' => $this->urlPrefix, 'extraction_depth' => 0]],
-            'atoolo.crawler.link_selector' => 'a[href]',
-            'atoolo.crawler.forced_article_urls' => [],
-            'atoolo.crawler.max_teaser' => 999,
-            'atoolo.crawler.deny_prefixes' => [],
-            'atoolo.crawler.allow_prefixes' => [$this->urlPrefix],
-            'atoolo.crawler.strip_query_params_active' => false,
-            'atoolo.crawler.strip_query_params' => [],
+            'start_urls' => [['url' => $this->urlPrefix, 'extraction_depth' => 0]],
+            'link_selector' => 'a[href]',
+            'forced_article_urls' => [],
+            'max_teaser' => 999,
+            'deny_prefixes' => [],
+            'allow_prefixes' => [$this->urlPrefix],
+            'strip_query_params_active' => false,
+            'strip_query_params' => [],
         ]);
 
         $helper = new CrawlerConfigHelper($ctx, $logger);

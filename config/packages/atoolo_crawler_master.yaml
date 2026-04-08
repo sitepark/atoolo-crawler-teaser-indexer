@@ -1,9 +1,8 @@
 # Only exmaple
 parameters:
-    # Directory containing the site configurations
-    atoolo.crawler.sites_config_dir: '%kernel.project_dir%/config/sites/atoolo_crawler'
     # Defines execution schedule
-    atoolo.crawler.schedule: '30 2 * * *'
+    atoolo.crawler.schedule: 
+        - '30 2 * * *'
 
     # Status codes that trigger retries
     atoolo.crawler.retry_status_codes:

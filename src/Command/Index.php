@@ -32,9 +32,14 @@ final class Index extends Command
 
         try {
             $config = $this->indexerConfigurationLoader->load("atooloTeaserCrawler");
+            /** @var array<string, mixed> $params */
             $params = $config->data->get();
 
-            $sites = $params["data"]["crawling_sites"] ?? [];
+            /** @var array<string, mixed> $data */
+            $data = $params["data"] ?? [];
+
+            /** @var array<array<string, mixed>> $sites */
+            $sites = $data["crawling_sites"] ?? [];
 
             if (empty($sites)) {
                 $output->writeln('<comment>No sites configured.</comment>');
@@ -48,6 +53,7 @@ final class Index extends Command
             $failedSites = [];
 
             foreach ($sites as $site) {
+                /** @var string $siteKey */
                 $siteKey = $site['id'] ?? null;
 
                 if (empty($siteKey)) {

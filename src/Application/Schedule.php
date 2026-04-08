@@ -15,7 +15,8 @@ use Symfony\Contracts\Cache\CacheInterface;
 final class Schedule implements ScheduleProviderInterface
 {
     public function __construct(
-        private readonly string $schedule,
+        /** @var string[] $schedule*/
+        private readonly array $schedule,
         private readonly IndexerConfigurationLoader $indexerConfigurationLoader,
         private readonly CacheInterface $cache,
         private readonly LoggerInterface $logger,
@@ -30,8 +31,15 @@ final class Schedule implements ScheduleProviderInterface
 
         try {
             $config = $this->indexerConfigurationLoader->load("atooloTeaserCrawler");
+
+            /** @var array<string, mixed> $params */
             $params = $config->data->get();
-            $sites = $params["data"]["crawling_sites"] ?? [];
+
+            /** @var array<string, mixed> $data */
+            $data = $params["data"] ?? [];
+
+            /** @var array<array<string, mixed>> $sites */
+            $sites = $data["crawling_sites"] ?? [];
 
             if (empty($sites)) {
                 $this->logger->warning('No crawler sites configured.');
@@ -40,14 +48,16 @@ final class Schedule implements ScheduleProviderInterface
 
             $successCount = 0;
             foreach ($sites as $site) {
-                if ($this->isValidSite($site)) {
-                    $schedule->add(
-                        RecurringMessage::cron(
-                            $this->schedule,
-                            new StartCrawlerMessage($site)
-                        )
-                    );
-                    $successCount++;
+                foreach ($this->schedule as $scheduleTime) {
+                    if ($this->isValidSite($site)) {
+                        $schedule->add(
+                            RecurringMessage::cron(
+                                $scheduleTime,
+                                new StartCrawlerMessage($site)
+                            )
+                        );
+                        $successCount++;
+                    }
                 }
             }
 

@@ -46,16 +46,16 @@ final class CrawlerManagerE2ETest extends TestCase
     private function createConfig(LoggerInterface $logger, array $overrides = []): CrawlerConfig
     {
         $ctx = new CrawlerConfigContext(array_merge([
-            'atoolo.crawler.max_retry' => 1,
-            'atoolo.crawler.delay_ms' => 0,
-            'atoolo.crawler.retry_status_codes' => [408, 429, 500, 501, 502, 503, 504],
-            'atoolo.crawler.concurrency_per_host' => 1,
-            'atoolo.crawler.user_agent' => 'TestAgent/1.0',
-            'atoolo.crawler.forced_article_urls' => [],
-            'atoolo.crawler.content_scoring.active' => false,
-            'atoolo.crawler.content_scoring.min_score' => 0,
-            'atoolo.crawler.content_scoring.positive' => [],
-            'atoolo.crawler.content_scoring.negative' => [],
+            'max_retry' => 1,
+            'delay_ms' => 0,
+            'retry_status_codes' => [408, 429, 500, 501, 502, 503, 504],
+            'concurrency_per_host' => 1,
+            'user_agent' => 'TestAgent/1.0',
+            'forced_article_urls' => [],
+            'content_scoring_active' => false,
+            'content_scoring_min_score' => 0,
+            'content_scoring_positive' => [],
+            'content_scoring_negative' => [],
         ], $overrides));
 
         $helper = new CrawlerConfigHelper($ctx, $logger);
