@@ -42,7 +42,7 @@ final class Schedule implements ScheduleProviderInterface
                 $this->logger->warning('No crawler sites configured.');
                 return $schedule;
             }
-            
+
             $this->logger->info(sprintf('Starting crawler for %d sites', count($sites)));
 
             $successCount = 0;
