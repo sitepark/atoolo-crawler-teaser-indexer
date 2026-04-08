@@ -51,7 +51,7 @@ The application was developed as a Symfony bundle and is distributed as a Compos
   `vendor/bin/phpunit`
 
 - Run the application inside the project:  
-  `docker compose exec -u ${UID} fpm /var/www/-->Projectname<--/www/app/bin/console crawler:index -vvv`
+  `docker compose exec -u ${UID} fpm /-->Projectpath whre the package lays<-- crawler:index -vvv`
 
 - Run without indexing:  
   `php bin/console crawler:index`

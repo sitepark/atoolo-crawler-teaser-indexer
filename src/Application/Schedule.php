@@ -32,11 +32,8 @@ final class Schedule implements ScheduleProviderInterface
         try {
             $config = $this->indexerConfigurationLoader->load("atooloTeaserCrawler");
 
-            /** @var array<string, mixed> $params */
-            $params = $config->data->get();
-
             /** @var array<string, mixed> $data */
-            $data = $params["data"] ?? [];
+            $data = $config->data->get();
 
             /** @var array<array<string, mixed>> $sites */
             $sites = $data["crawling_sites"] ?? [];
@@ -45,6 +42,8 @@ final class Schedule implements ScheduleProviderInterface
                 $this->logger->warning('No crawler sites configured.');
                 return $schedule;
             }
+            
+            $this->logger->info(sprintf('Starting crawler for %d sites', count($sites)));
 
             $successCount = 0;
             foreach ($sites as $site) {
