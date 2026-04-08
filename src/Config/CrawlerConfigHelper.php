@@ -16,29 +16,6 @@ final class CrawlerConfigHelper
 
     private const MISSING = '__MISSING__';
 
-    public function int(string $key, int $default = 0): int
-    {
-        $result = $default;
-        $v = $this->ctx->get($key, self::MISSING);
-
-        if ($v === self::MISSING) {
-            $this->logger->warning(
-                'Config missing int, using default',
-                ['key' => $key, 'default' => $default]
-            );
-        } elseif (is_int($v)) {
-            $result = $v;
-        } elseif (is_string($v) && ctype_digit($v)) {
-            $result = (int) $v;
-        } else {
-            $this->logger->error(
-                'Config invalid int, using default',
-                ['key' => $key, 'value' => $v, 'default' => $default]
-            );
-        }
-        return $result;
-    }
-
     public function bool(string $key, bool $default = false): bool
     {
         $result = $default;
@@ -46,7 +23,7 @@ final class CrawlerConfigHelper
 
         if ($v === self::MISSING) {
             $this->logger->warning(
-                'Config missing bool, using default',
+                'Config missing boolean, using default',
                 ['key' => $key, 'default' => $default]
             );
         } elseif (is_bool($v)) {
@@ -59,17 +36,40 @@ final class CrawlerConfigHelper
                 $result = false;
             } else {
                 $this->logger->error(
-                    'Config invalid bool, using default',
+                    'Config invalid boolean, using default',
                     ['key' => $key, 'value' => $v, 'default' => $default]
                 );
             }
         } else {
             $this->logger->error(
-                'Config invalid bool, using default',
+                'Config invalid boolean, using default',
                 ['key' => $key, 'value' => $v, 'default' => $default]
             );
         }
 
+        return $result;
+    }
+
+    public function int(string $key, int $default = 0): int
+    {
+        $result = $default;
+        $v = $this->ctx->get($key, self::MISSING);
+
+        if ($v === self::MISSING) {
+            $this->logger->warning(
+                'Config missing integer, using default',
+                ['key' => $key, 'default' => $default]
+            );
+        } elseif (is_int($v)) {
+            $result = $v;
+        } elseif (is_string($v) && ctype_digit($v)) {
+            $result = (int) $v;
+        } else {
+            $this->logger->error(
+                'Config invalid integer, using default',
+                ['key' => $key, 'value' => $v, 'default' => $default]
+            );
+        }
         return $result;
     }
 

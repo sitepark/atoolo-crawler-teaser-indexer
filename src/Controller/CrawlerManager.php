@@ -79,7 +79,7 @@ class CrawlerManager
      */
     private function storageHandlingFetcherParser($urls): iterable
     {
-        $concurrency = max(1, $this->config->concurrencyPerHost());
+        $concurrency = max(1, $this->config->parallelRequests());
         $urlChunks = array_chunk($urls, $concurrency);
 
         foreach ($urlChunks as $chunk) {

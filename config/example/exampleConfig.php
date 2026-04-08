@@ -1,4 +1,6 @@
-<?php return [
+<?php
+
+return [
    "name" => "Indexer für externe Teaser",
    "data" => [
       "crawling_sites" => [[

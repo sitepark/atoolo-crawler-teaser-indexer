@@ -123,9 +123,9 @@ final class CrawlerConfig
         return $this->crawlerConfigHelper->int('delay_ms', 0);
     }
 
-    public function concurrencyPerHost(): int
+    public function parallelRequests(): int
     {
-        return $this->crawlerConfigHelper->int('concurrency_per_host', 1);
+        return $this->crawlerConfigHelper->int('parallel_requests', 1);
     }
 
     public function userAgent(): string
@@ -138,12 +138,12 @@ final class CrawlerConfig
     public function titleConfig(): FieldExtractConfig
     {
         return new FieldExtractConfig(
-            present: $this->crawlerConfigHelper->bool('title_present', true),
+            present: true,
             requiredField: true,
             prefix: $this->crawlerConfigHelper->string('title_prefix', ""),
             opengraph: $this->crawlerConfigHelper->stringList('title_opengraph'),
             css: $this->crawlerConfigHelper->stringList('title_css'),
-            maxChars: $this->crawlerConfigHelper->int('title_max_chars', 120),
+            maxChars: $this->crawlerConfigHelper->int('title_max_chars', 999),
         );
     }
 
@@ -152,10 +152,10 @@ final class CrawlerConfig
         return new FieldExtractConfig(
             present: $this->crawlerConfigHelper->bool('introText_present', false),
             requiredField: $this->crawlerConfigHelper->bool('introText_required_field', false),
-            prefix: "", /* $this->crawlerConfigHelper->string('introText.prefix', ""), */
+            prefix: "",
             opengraph: $this->crawlerConfigHelper->stringList('introText_opengraph'),
             css: $this->crawlerConfigHelper->stringList('introText_css'),
-            maxChars: $this->crawlerConfigHelper->int('introText_max_chars', 120),
+            maxChars: $this->crawlerConfigHelper->int('introText_max_chars', 999),
         );
     }
 
