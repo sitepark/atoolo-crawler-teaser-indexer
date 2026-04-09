@@ -3,8 +3,8 @@ framework:
     secret: "%env(APP_SECRET)%"
 
     session: true
-    property_info:
-        with_constructor_extractor: false
+#    property_info:
+#        with_constructor_extractor: false
 
 when@test:
     framework:

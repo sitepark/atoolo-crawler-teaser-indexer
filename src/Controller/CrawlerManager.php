@@ -46,11 +46,14 @@ class CrawlerManager
      */
     public function startCrawler(): void
     {
-        /** @var list<string> $urls */
-        $urls = $this->executeStep(
+        /** @var \Iterator<int, string> $urlsIterator */
+        $urlsIterator = $this->executeStep(
             'URLCollector',
             fn() => $this->urlCollector->findHrefUrlsByCssSelector()
         );
+
+        // Konvertiere nur wenn nötig (für array_chunk)
+        $urls = iterator_to_array($urlsIterator);
 
         $rawTeaserStream = $this->storageHandlingFetcherParser($urls);
 
@@ -83,17 +86,25 @@ class CrawlerManager
         $urlChunks = array_chunk($urls, $concurrency);
 
         foreach ($urlChunks as $chunk) {
-            $htmlData = $this->executeStep(
+            $htmlDataIterator = $this->executeStep(
                 'Fetcher',
                 fn($urls) => $this->fetcher->fetchUrls($urls),
                 $chunk
             );
+            
+            // Konvertiere zu Array
+            $htmlData = iterator_to_array($htmlDataIterator);
 
-            $teaserData = $this->executeStep(
+            $teaserDataIterator = $this->executeStep(
                 'Parser',
-                fn($pages) => $this->parser->extractTeasers($pages),
+                fn($pages) => $this->parser->extractTeasers(
+                    is_array($pages) ? $pages : iterator_to_array($pages)  // ← Konvertiere hier!
+                ),
                 $htmlData
             );
+            
+            // Konvertiere zu Array
+            $teaserData = iterator_to_array($teaserDataIterator);
 
             /**
              * @var array<string, mixed> $teaser
@@ -102,7 +113,7 @@ class CrawlerManager
                 yield $teaser;
             }
 
-            unset($htmlData, $teaserData);
+            unset($htmlData, $teaserData, $htmlDataIterator, $teaserDataIterator);
         }
     }
 
@@ -113,23 +124,29 @@ class CrawlerManager
      * @param callable $fn    The function representing the step
      * @param mixed    $input Optional input for the step function
      *
-     * @return iterable<mixed>
+     * @return \Iterator<mixed>
      */
-    private function executeStep(string $name, callable $fn, mixed $input = null): iterable
+    private function executeStep(string $name, callable $fn, mixed $input = null): \Iterator
     {
         try {
             $result = $fn($input);
 
             if (is_array($result) && $result === []) {
                 $this->logger->warning("[$name] Step returned no data.");
-                return [];
+                return new \ArrayIterator([]);  // ← GEÄNDERT
             }
 
             $this->logger->info("[$name] Step initialized.");
+            
+            // Stelle sicher, dass wir immer einen Iterator zurückgeben
+            if (is_array($result)) {
+                return new \ArrayIterator($result);  // ← GEÄNDERT
+            }
+            
             return $result;
         } catch (\Throwable $e) {
             $this->logger->error("[$name] Error: " . $e->getMessage(), ['exception' => $e]);
-            return [];
+            return new \ArrayIterator([]);  // ← GEÄNDERT
         }
     }
 }

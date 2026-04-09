@@ -26,8 +26,7 @@ final class Schedule implements ScheduleProviderInterface
     public function getSchedule(): SymfonySchedule
     {
         $schedule = (new SymfonySchedule())
-            ->stateful($this->cache)
-            ->processOnlyLastMissedRun(true);
+            ->stateful($this->cache);
 
         try {
             $config = $this->indexerConfigurationLoader->load("atooloTeaserCrawler");
