@@ -13,6 +13,6 @@ jobs:
     verify:
         uses: sitepark/github-project-workflow/.github/workflows/composer-verify.yml@release/1.x
         with:
-            phpVersions: '["8.1","8.2","8.3"]'
+            phpVersions: '["8.1"]'
         secrets:
             CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
