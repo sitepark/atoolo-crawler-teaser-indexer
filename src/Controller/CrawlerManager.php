@@ -91,19 +91,17 @@ class CrawlerManager
                 fn($urls) => $this->fetcher->fetchUrls($urls),
                 $chunk
             );
-            
-            // Konvertiere zu Array
+
             $htmlData = iterator_to_array($htmlDataIterator);
 
             $teaserDataIterator = $this->executeStep(
                 'Parser',
                 fn($pages) => $this->parser->extractTeasers(
-                    is_array($pages) ? $pages : iterator_to_array($pages)  // ← Konvertiere hier!
+                    is_array($pages) ? $pages : iterator_to_array($pages)
                 ),
                 $htmlData
             );
-            
-            // Konvertiere zu Array
+
             $teaserData = iterator_to_array($teaserDataIterator);
 
             /**
@@ -137,12 +135,12 @@ class CrawlerManager
             }
 
             $this->logger->info("[$name] Step initialized.");
-            
+
             // Stelle sicher, dass wir immer einen Iterator zurückgeben
             if (is_array($result)) {
                 return new \ArrayIterator($result);  // ← GEÄNDERT
             }
-            
+
             return $result;
         } catch (\Throwable $e) {
             $this->logger->error("[$name] Error: " . $e->getMessage(), ['exception' => $e]);
