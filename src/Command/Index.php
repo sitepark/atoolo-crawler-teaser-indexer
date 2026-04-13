@@ -59,11 +59,7 @@ final class Index extends Command
                 }
 
                 try {
-                    $this->logger->info(sprintf('Processing site: %s', $siteKey));
-
                     $this->runner->run($site);
-
-                    $this->logger->info(sprintf('Successfully crawled: %s', $siteKey));
                 } catch (\Throwable $e) {
                     $this->logger->error(sprintf(
                         'Crawling failed for "%s": %s',

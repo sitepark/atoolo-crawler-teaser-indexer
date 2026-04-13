@@ -32,9 +32,7 @@ final class StartCrawlerMessageHandler
         }
         foreach ($sites as $site) {
             if ($this->isValidSite($site)) {
-                $this->logger->info(sprintf('Starting crawler for %d sites', count($sites)));
                 $this->runner->run($site);
-                $this->logger->info(sprintf('Finished crawler for %d sites', count($sites)));
             }
         }
     }

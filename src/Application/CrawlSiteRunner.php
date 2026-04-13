@@ -22,9 +22,13 @@ final class CrawlSiteRunner
     public function run(array $site): void
     {
         $this->configContext->set($site);
+        /** @var string $siteKey */
+        $siteKey = $site['id'] ?? null;
 
         try {
+            $this->logger->info(sprintf('Processing site: %s', $siteKey));
             $this->crawlerManager->startCrawler();
+            $this->logger->info(sprintf('Successfully crawled: %s', $siteKey));
         } catch (\Throwable $e) {
             $this->logger->error('[Crawler] Failed site', [
                 'exception' => $e,
