@@ -37,14 +37,14 @@ final class URLCollectorTest extends TestCase
         RobotsTxtCheckerInterface $robotsTxtChecker,
     ): URLCollector {
         $ctx = new CrawlerConfigContext([
-            'start_urls' => [['url' => $this->urlPrefix, 'extraction_depth' => 0]],
-            'link_selector' => 'a[href]',
-            'forced_article_urls' => [],
-            'max_teaser' => 999,
-            'deny_prefixes' => [],
-            'allow_prefixes' => [$this->urlPrefix],
-            'strip_query_params_active' => false,
-            'strip_query_params' => [],
+            'sp_start_urls' => [['sp_url' => $this->urlPrefix, 'sp_extraction_depth' => 0]],
+            'sp_link_selector' => '#content a[href]',
+            'sp_forced_article_urls' => [],
+            'sp_max_teaser' => 999,
+            'sp_deny_prefixes' => [],
+            'sp_allow_prefixes' => [$this->urlPrefix],
+            'sp_strip_query_params_active' => false,
+            'sp_strip_query_params' => [],
         ]);
 
         $helper = new CrawlerConfigHelper($ctx, $logger);

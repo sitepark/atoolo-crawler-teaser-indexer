@@ -37,7 +37,7 @@ final class Index extends Command
             $data = $config->data->get();
 
             /** @var array<array<string, mixed>> $sites */
-            $sites = $data["crawling_sites"] ?? [];
+            $sites = $data["sp_crawling_sites"] ?? [];
 
             if (empty($sites)) {
                 $this->logger->warning('No crawler sites configured');
@@ -50,7 +50,7 @@ final class Index extends Command
 
             foreach ($sites as $site) {
                 /** @var string $siteKey */
-                $siteKey = $site['id'] ?? null;
+                $siteKey = $site['sp_id'] ?? null;
 
                 if (empty($siteKey)) {
                     $this->logger->error('Invalid site config: missing "id" field');

@@ -46,16 +46,16 @@ final class CrawlerManagerE2ETest extends TestCase
     private function createConfig(LoggerInterface $logger, array $overrides = []): CrawlerConfig
     {
         $ctx = new CrawlerConfigContext(array_merge([
-            'max_retry' => 1,
-            'delay_ms' => 0,
-            'retry_status_codes' => [408, 429, 500, 501, 502, 503, 504],
-            'concurrency_per_host' => 1,
-            'user_agent' => 'TestAgent/1.0',
-            'forced_article_urls' => [],
-            'content_scoring_active' => false,
-            'content_scoring_min_score' => 0,
-            'content_scoring_positive' => [],
-            'content_scoring_negative' => [],
+            'sp_max_retry' => 1,
+            'sp_delay_ms' => 0,
+            'sp_retry_status_codes' => [408, 429, 500, 501, 502, 503, 504],
+            'sp_concurrency_per_host' => 1,
+            'sp_user_agent' => 'TestAgent/1.0',
+            'sp_forced_article_urls' => [],
+            'sp_content_scoring_active' => false,
+            'sp_content_scoring_min_score' => 0,
+            'sp_content_scoring_positive' => [],
+            'sp_content_scoring_negative' => [],
         ], $overrides));
 
         $helper = new CrawlerConfigHelper($ctx, $logger);

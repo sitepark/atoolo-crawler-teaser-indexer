@@ -19,12 +19,12 @@ final class StartCrawlerMessageHandler
     public function __invoke(StartCrawlerMessage $message): void
     {
         $config = $this->indexerConfigurationLoader->load("atooloTeaserCrawler");
-
+        
         /** @var array<string, mixed> $data */
         $data = $config->data->get();
-
+        
         /** @var array<array<string, mixed>> $sites */
-        $sites = $data["crawling_sites"] ?? [];
+        $sites = $data["sp_crawling_sites"] ?? [];
 
         if (empty($sites)) {
             $this->logger->warning('No crawler sites configured.');
@@ -41,7 +41,7 @@ final class StartCrawlerMessageHandler
      */
     private function isValidSite(array $site): bool
     {
-        if (empty($site['id'] ?? null)) {
+        if (empty($site['sp_id'] ?? null)) {
             $this->logger->error('Invalid site config: missing "id" field.');
             return false;
         }

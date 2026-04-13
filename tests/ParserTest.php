@@ -19,23 +19,23 @@ final class ParserTest extends TestCase
     protected function setUp(): void
     {
         $ctx = new CrawlerConfigContext([
-            'title_present' => true,
-            'title_opengraph' => ['og:title'],
-            'title_prefix' => '',
-            'title_css' => ['h1', '#content h1', 'h1.h1'],
-            'title_max_chars' => 200,
+            'sp_title_present' => true,
+            'sp_title_opengraph' => ['og:title'],
+            'sp_title_prefix' => '',
+            'sp_title_css' => ['h1', '#content h1', 'h1.h1'],
+            'sp_title_max_chars' => 200,
 
-            'introText_present' => true,
-            'introText_required_field' => false,
-            'introText_opengraph' => [],
-            'introText_css' => ['.introText'],
-            'introText_max_chars' => 200,
+            'sp_introText_present' => true,
+            'sp_introText_required_field' => false,
+            'sp_introText_opengraph' => [],
+            'sp_introText_css' => ['.introText'],
+            'sp_introText_max_chars' => 200,
 
-            'datetime_present' => true,
-            'datetime_required_field' => false,
-            'datetime_only_date' => true,
-            'datetime_opengraph' => [],
-            'datetime_css' => ['.date', '#content .date'],
+            'sp_datetime_present' => true,
+            'sp_datetime_required_field' => false,
+            'sp_datetime_only_date' => true,
+            'sp_datetime_opengraph' => [],
+            'sp_datetime_css' => ['.date', '#content .date'],
         ]);
 
         $logger = $this->createStub(LoggerInterface::class);

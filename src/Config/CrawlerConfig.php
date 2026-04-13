@@ -80,7 +80,7 @@ final class CrawlerConfig
     public function denyPrefixes(): array
     {
         $denyPrefixes = $this->crawlerConfigHelper->intStringList('sp_deny_prefixes');
-        return array_values(array_filter($denyPrefixes, 'sp_is_string'));
+        return array_values(array_filter($denyPrefixes, 'is_string'));
     }
 
     /** @return list<mixed> */

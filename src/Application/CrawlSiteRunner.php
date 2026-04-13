@@ -23,7 +23,7 @@ final class CrawlSiteRunner
     {
         $this->configContext->set($site);
         /** @var string $siteKey */
-        $siteKey = $site['id'] ?? null;
+        $siteKey = $site['sp_id'] ?? null;
 
         try {
             $this->logger->info(sprintf('Processing site: %s', $siteKey));
