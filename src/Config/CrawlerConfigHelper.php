@@ -234,13 +234,13 @@ final class CrawlerConfigHelper
             }
 
             $score = 0;
-            if (isset($rule['score']) && is_numeric($rule['score'])) {
-                $score = (int) $rule['score'];
+            if (isset($rule['sp_score']) && is_numeric($rule['sp_score'])) {
+                $score = (int) $rule['sp_score'];
             }
 
             $matchAny = [];
-            if (isset($rule['match_any']) && is_array($rule['match_any'])) {
-                foreach ($rule['match_any'] as $m) {
+            if (isset($rule['sp_match_any']) && is_array($rule['sp_match_any'])) {
+                foreach ($rule['sp_match_any'] as $m) {
                     if (is_string($m) && $m !== '') {
                         $matchAny[] = $m;
                     }
@@ -248,11 +248,11 @@ final class CrawlerConfigHelper
             }
 
             $condition = null;
-            if (isset($rule['condition']) && is_array($rule['condition'])) {
+            if (isset($rule['sp_condition']) && is_array($rule['sp_condition'])) {
                 $bodyTextLengthLt = null;
 
-                if (array_key_exists('body_text_length', $rule['condition'])) {
-                    $v = $rule['condition']['body_text_length'];
+                if (array_key_exists('sp_body_text_length', $rule['sp_condition'])) {
+                    $v = $rule['sp_condition']['sp_body_text_length'];
                     if (is_numeric($v)) {
                         $bodyTextLengthLt = (int) $v;
                     }
