@@ -222,44 +222,81 @@ final class CrawlerConfigHelper
      */
     public function readScoreRules(string $key): array
     {
-        $raw = $this->ctx->get($key, []);
-        if (!is_array($raw)) {
+        $rules = $this->ctx->get($key, self::MISSING);
+
+        if ($rules === self::MISSING) {
+            $this->logger->warning('Config missing score rules, using empty list', ['key' => $key]);
+            return [];
+        }
+
+        if (!is_array($rules)) {
+            $this->logger->error('Config invalid score rules, using empty list', [
+                'key' => $key,
+                'value' => $rules
+            ]);
             return [];
         }
 
         $out = [];
-        foreach ($raw as $rule) {
+        foreach ($rules as $index => $rule) {
             if (!is_array($rule)) {
+                $this->logger->warning('Config invalid score rule entry, skipping', [
+                    'key' => $key,
+                    'index' => $index,
+                    'value' => $rule
+                ]);
                 continue;
             }
 
+            // sp_score handling
             $score = 0;
-            if (isset($rule['sp_score']) && is_numeric($rule['sp_score'])) {
-                $score = (int) $rule['sp_score'];
+            if (isset($rule['sp_score'])) {
+                if (is_numeric($rule['sp_score'])) {
+                    $score = (int) $rule['sp_score'];
+                } else {
+                    $this->logger->warning('Config invalid sp_score, using default', [
+                        'key' => $key,
+                        'index' => $index,
+                        'value' => $rule['sp_score']
+                    ]);
+                }
             }
 
+            // sp_match_any handling
             $matchAny = [];
-            if (isset($rule['sp_match_any']) && is_array($rule['sp_match_any'])) {
-                foreach ($rule['sp_match_any'] as $m) {
-                    if (is_string($m) && $m !== '') {
-                        $matchAny[] = $m;
+            if (isset($rule['sp_match_any'])) {
+                if (!is_array($rule['sp_match_any'])) {
+                    $this->logger->warning('Config invalid sp_match_any, must be array', [
+                        'key' => $key,
+                        'index' => $index,
+                        'value' => $rule['sp_match_any']
+                    ]);
+                } else {
+                    foreach ($rule['sp_match_any'] as $m) {
+                        if (is_string($m) && $m !== '') {
+                            $matchAny[] = $m;
+                        } elseif (!is_string($m) || $m === '') {
+                            $this->logger->warning('Config invalid sp_match_any entry, skipping', [
+                                'key' => $key,
+                                'index' => $index,
+                                'value' => $m
+                            ]);
+                        }
                     }
                 }
             }
 
+            // sp_condition handling
             $condition = null;
-            if (isset($rule['sp_condition']) && is_array($rule['sp_condition'])) {
-                $bodyTextLengthLt = null;
-
-                if (array_key_exists('sp_body_text_length', $rule['sp_condition'])) {
-                    $v = $rule['sp_condition']['sp_body_text_length'];
-                    if (is_numeric($v)) {
-                        $bodyTextLengthLt = (int) $v;
-                    }
-                }
-
-                if ($bodyTextLengthLt !== null) {
-                    $condition = new LengthConditionConfig(bodyTextLengthLt: $bodyTextLengthLt);
+            if (isset($rule['sp_condition'])) {
+                if (!is_array($rule['sp_condition'])) {
+                    $this->logger->warning('Config invalid sp_condition, must be array', [
+                        'key' => $key,
+                        'index' => $index,
+                        'value' => $rule['sp_condition']
+                    ]);
+                } else {
+                    $condition = $this->readCondition($rule['sp_condition'], $key, $index);
                 }
             }
 
@@ -271,5 +308,32 @@ final class CrawlerConfigHelper
         }
 
         return $out;
+    }
+
+    /**
+     * @param array<string, mixed> $conditionData
+     */
+    private function readCondition(array $conditionData, string $parentKey, int $index): ?LengthConditionConfig
+    {
+        $bodyTextLengthLt = null;
+
+        if (array_key_exists('sp_body_text_length', $conditionData)) {
+            $v = $conditionData['sp_body_text_length'];
+            if (is_numeric($v)) {
+                $bodyTextLengthLt = (int) $v;
+            } else {
+                $this->logger->warning('Config invalid sp_body_text_length, skipping condition', [
+                    'parentKey' => $parentKey,
+                    'index' => $index,
+                    'value' => $v
+                ]);
+            }
+        }
+
+        if ($bodyTextLengthLt !== null) {
+            return new LengthConditionConfig(bodyTextLengthLt: $bodyTextLengthLt);
+        }
+
+        return null;
     }
 }
