@@ -131,20 +131,20 @@ class CrawlerManager
 
             if (is_array($result) && $result === []) {
                 $this->logger->warning("[$name] Step returned no data.");
-                return new \ArrayIterator([]);  // ← GEÄNDERT
+                return new \ArrayIterator([]);
             }
 
             $this->logger->info("[$name] Step initialized.");
 
             // Stelle sicher, dass wir immer einen Iterator zurückgeben
             if (is_array($result)) {
-                return new \ArrayIterator($result);  // ← GEÄNDERT
+                return new \ArrayIterator($result);
             }
 
             return $result;
         } catch (\Throwable $e) {
             $this->logger->error("[$name] Error: " . $e->getMessage(), ['exception' => $e]);
-            return new \ArrayIterator([]);  // ← GEÄNDERT
+            return new \ArrayIterator([]);
         }
     }
 }
