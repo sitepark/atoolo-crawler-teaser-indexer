@@ -23,8 +23,6 @@ final class CrawlSiteRunner
     {
         $this->configContext->set($site);
 
-        $this->logger->info('[Crawler] Starting');
-
         try {
             $this->crawlerManager->startCrawler();
         } catch (\Throwable $e) {
@@ -35,7 +33,5 @@ final class CrawlSiteRunner
         } finally {
             $this->configContext->reset();
         }
-
-        $this->logger->info('[Crawler] Finished site');
     }
 }

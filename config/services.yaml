@@ -21,7 +21,10 @@ services:
     Atoolo\Crawler\Application\Schedule:
         arguments:
             $schedule: "%atoolo.crawler.schedule%"
-            $indexerConfigurationLoader: '@atoolo_search.indexer.configuration_loader'
+
+    Atoolo\Crawler\Application\StartCrawlerMessageHandler:
+        arguments:
+             $indexerConfigurationLoader: '@atoolo_search.indexer.configuration_loader'
 
     Atoolo\Crawler\Domain\Crawler\Ports\RequestExecutor:
         arguments:

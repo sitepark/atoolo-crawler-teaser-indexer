@@ -3,7 +3,6 @@
 namespace Atoolo\Crawler\Application;
 
 use Atoolo\Crawler\Application\StartCrawlerMessage;
-use Atoolo\Search\Service\Indexer\IndexerConfigurationLoader;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Scheduler\Attribute\AsSchedule;
 use Symfony\Component\Scheduler\RecurringMessage;
@@ -11,13 +10,14 @@ use Symfony\Component\Scheduler\Schedule as SymfonySchedule;
 use Symfony\Component\Scheduler\ScheduleProviderInterface;
 use Symfony\Contracts\Cache\CacheInterface;
 
-#[AsSchedule]
+#[AsSchedule(
+    name: 'crawler:index',
+)]
 final class Schedule implements ScheduleProviderInterface
 {
     public function __construct(
         /** @var string[] $schedule*/
         private readonly array $schedule,
-        private readonly IndexerConfigurationLoader $indexerConfigurationLoader,
         private readonly CacheInterface $cache,
         private readonly LoggerInterface $logger,
     ) {
@@ -29,35 +29,16 @@ final class Schedule implements ScheduleProviderInterface
             ->stateful($this->cache);
 
         try {
-            $config = $this->indexerConfigurationLoader->load("atooloTeaserCrawler");
-
-            /** @var array<string, mixed> $data */
-            $data = $config->data->get();
-
-            /** @var array<array<string, mixed>> $sites */
-            $sites = $data["crawling_sites"] ?? [];
-
-            if (empty($sites)) {
-                $this->logger->warning('No crawler sites configured.');
-                return $schedule;
-            }
-
-            $this->logger->info(sprintf('Starting crawler for %d sites', count($sites)));
-
             $successCount = 0;
-            foreach ($sites as $site) {
                 foreach ($this->schedule as $scheduleTime) {
-                    if ($this->isValidSite($site)) {
                         $schedule->add(
                             RecurringMessage::cron(
                                 $scheduleTime,
-                                new StartCrawlerMessage($site)
+                                new StartCrawlerMessage()
                             )
                         );
                         $successCount++;
-                    }
                 }
-            }
 
             $this->logger->info(sprintf('Crawler scheduled for %d sites', $successCount));
         } catch (\Throwable $e) {
@@ -67,18 +48,5 @@ final class Schedule implements ScheduleProviderInterface
         }
 
         return $schedule;
-    }
-
-    /**
-     * @param array<string, mixed> $site
-     */
-    private function isValidSite(array $site): bool
-    {
-        if (empty($site['id'] ?? null)) {
-            $this->logger->error('Invalid site config: missing "id" field.');
-            return false;
-        }
-
-        return true;
     }
 }
