@@ -30,15 +30,15 @@ final class Schedule implements ScheduleProviderInterface
 
         try {
             $successCount = 0;
-                foreach ($this->schedule as $scheduleTime) {
-                        $schedule->add(
-                            RecurringMessage::cron(
-                                $scheduleTime,
-                                new StartCrawlerMessage()
-                            )
-                        );
-                        $successCount++;
-                }
+            foreach ($this->schedule as $scheduleTime) {
+                $schedule->add(
+                    RecurringMessage::cron(
+                        $scheduleTime,
+                        new StartCrawlerMessage()
+                    )
+                );
+                $successCount++;
+            }
 
             $this->logger->info(sprintf('Crawler scheduled for %d sites', $successCount));
         } catch (\Throwable $e) {

@@ -18,7 +18,6 @@ final class StartCrawlerMessageHandler
 
     public function __invoke(StartCrawlerMessage $message): void
     {
-        
         $config = $this->indexerConfigurationLoader->load("atooloTeaserCrawler");
 
         /** @var array<string, mixed> $data */
@@ -28,7 +27,7 @@ final class StartCrawlerMessageHandler
         $sites = $data["crawling_sites"] ?? [];
 
         if (empty($sites)) {
-            $this->logger->warning(sprintf('No crawler sites configured.', count($sites)));
+            $this->logger->warning('No crawler sites configured.');
             return;
         }
         foreach ($sites as $site) {
