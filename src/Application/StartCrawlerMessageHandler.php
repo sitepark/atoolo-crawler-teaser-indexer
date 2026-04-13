@@ -19,10 +19,10 @@ final class StartCrawlerMessageHandler
     public function __invoke(StartCrawlerMessage $message): void
     {
         $config = $this->indexerConfigurationLoader->load("atooloTeaserCrawler");
-        
+
         /** @var array<string, mixed> $data */
         $data = $config->data->get();
-        
+
         /** @var array<array<string, mixed>> $sites */
         $sites = $data["sp_crawling_sites"] ?? [];
 

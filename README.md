@@ -34,9 +34,76 @@ This pattern was chosen to ensure loose coupling between the individual processi
 
 ---
 
-## 2 Installation and Operation
+## 2 Quick start Guide
 
-### 2.1 Installation
+### 2.1 Install the module, in your project, via Composer
+
+`composer require atoolo/crawler-teaser-indexer`
+
+### 2.2 Create this file in your Project
+
+`config/packages/atoolo_crawler_master.yaml`
+
+### 2.3 Copy this in the `atoolo_crawler_master.yaml`
+
+```yaml
+atoolo.crawler.schedule:
+- 0 3 * * *
+# Status codes that trigger retries
+atoolo.crawler.retry_status_codes:
+- 408
+- 429
+- 500
+- 501
+- 502
+- 503
+- 504
+```
+
+### 2.4 Add module configuration to the customer project
+
+Path example Paderborn:
+
+  `/git/paderborn/paderborn-module/src/main/webapp/WEB-INF/config/client/paderborn/groupTypes.json`
+
+```json
+  "indexerGroup": {
+    "objectTypes": {
+      "atoolo-teaserCrawlerIndexer": ":objectTypes.atoolo-teaserCrawlerIndexer"
+    }
+  }
+```
+
+### 2.5 Minimal configuration
+
+| Beschreibung                                                     | Example                          |
+| ---------------------------------------------------------------- | -------------------------------- |
+| Bezeichnung der Seite                                            | `example-site`                   |
+| Maximale Menge der zu extrahierenden Teaser                      | `10`                             |
+| Anzahl der Wiederholungen falls die Adresse nicht erreichbar ist | `3`                              |
+| Zeit die vergeht zwischen zwei Anfragen                          | `500`                            |
+| Anzahl gleichzeitiger Anfragen.                                  | `3`                              |
+| Angabe des User-Agents                                           | `Bot/1.0 (+contact@example.org)` |
+| Start URL                                                        | `https://example.com`            |
+| Tiefe der URL Extraktion                                         | `3`                              |
+| CSS-Selektor für die Link-Extraktion                             | `#content a[href]`               |
+| Erlaubter URL Anfang                                             | `https://`                       |
+| OpenGraph-Tag für die Titel Extraktion                           | og:title                         |
+| CssSelectoren für die Titel Extraktion                           | `h2`                             |
+
+### 2.6 Run the Crawler
+
+  docker compose exec -w /var/www/CUSTOMERNAME.YOURLASTNAME.sitepark.de/www fpm /srv/sitepark/ies-webnode/feds/commons-feds/bin/console crawler:index -vvv
+
+### 2.7 Perhaps you need Worker Configuration
+
+  `https://github.com/sitepark/atoolo-docs/blob/dcd815492e937ebfd929cdf4b96f1641613d4646/docs/operate/worker.md`
+
+---
+
+## 3 Installation and Operation
+
+### 3.1 Installation
 
 The application was developed as a Symfony bundle and is distributed as a Composer package.
 
@@ -58,9 +125,9 @@ The application was developed as a Symfony bundle and is distributed as a Compos
 
 ---
 
-## 3 Configuration
+## 4 Configuration
 
-### 3.1 Central Orchestrating Configuration
+### 4.1 Central Orchestrating Configuration
 
 Location in your Project:  
 `config/packages/atoolo_crawler_master.yaml`
@@ -69,7 +136,7 @@ An example configuration lay in: `https://github.com/sitepark/atoolo-crawler-tea
 
 Purpose:
 
-- Specifies when (cron) each site crawler is executed
+- Specifies when each site crawler is executed
 - Specifies statuscodes to retry
 
 The data from this file is injected via configuration.  
@@ -109,14 +176,14 @@ parameters:
     - 504
 ```
 
-## Site-Specific Configurations
+## 5 Site-Specific Configurations
 
 Warnings will be thrown in the test environment and at runtime if configurations are missing.
 This data is in a two-dimensional array.
 
 An 2 example configuration lay in: `https://github.com/sitepark/atoolo-crawler-teaser-indexer/tree/main/config/sites/atoolo_crawler`TODO new example
 
-### Core / Meta
+### 5.1 Core / Meta
 
 ```php
   # Unique ID for this website configuration (used for Solr)
@@ -149,7 +216,7 @@ An 2 example configuration lay in: `https://github.com/sitepark/atoolo-crawler-t
 
 ```
 
-### URLCollector (Discovery)
+### 5.2 URLCollector (Discovery)
 
 ```php
   # Start URLs for the crawler
@@ -256,7 +323,7 @@ An 2 example configuration lay in: `https://github.com/sitepark/atoolo-crawler-t
     - gclid
 ```
 
-### Parser
+### 5.4 Parser
 
 Default values should always be provided for selectors to ensure flexibility.
 The Symfony CSS-Selector package is used to extract teaser content.
@@ -268,7 +335,7 @@ The configured values are passed directly to the package.
 - ID selector: "#page-title"
 - Class selector: ".page-title"
 
-### Title
+#### Title
 
 ```php
   # Title is mandatory; otherwise the article is not indexed
@@ -287,7 +354,7 @@ The configured values are passed directly to the package.
   title_max_chars: 120
 ```
 
-### Intro Text
+#### Intro Text
 
 ```php
   # Intro text is optional
@@ -308,7 +375,7 @@ The configured values are passed directly to the package.
   introText_max_chars: 200
 ```
 
-### DateTime
+#### DateTime
 
 ```php
   datetime_present: false
@@ -324,7 +391,7 @@ The configured values are passed directly to the package.
   datetime_css: []
 ```
 
-### Filter Function "Utility Score" (Content Filter)
+### 5.5 Filter Function "Utility Score" (Content Filter)
 
 ```php
   # Enable scoring

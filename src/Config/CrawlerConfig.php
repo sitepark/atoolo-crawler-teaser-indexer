@@ -47,7 +47,7 @@ final class CrawlerConfig
         $out = [];
         foreach ($raw as $item) {
             if (is_string($item)) {
-                $out[] = ['url' => $item, 'sp_extraction_depth' => 0];
+                $out[] = ['url' => $item, 'extraction_depth' => 0];
                 continue;
             }
 
