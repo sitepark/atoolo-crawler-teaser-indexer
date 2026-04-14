@@ -52,7 +52,6 @@
     },
     "require-dev": {
         "dealerdirect/phpcodesniffer-composer-installer": "^1.2",
-        "infection/infection": ">=0.29.9",
         "phpcompatibility/php-compatibility": "^9.3.5",
         "phpdocumentor/type-resolver": "^2.0",
         "roave/security-advisories": "dev-latest",
