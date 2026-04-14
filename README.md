@@ -1,4 +1,4 @@
-# Atoolo-Modul: Teaser-Crawler
+# Crawler Teaser Indexer Bundle
 
 [![codecov](https://codecov.io/gh/sitepark/atoolo-crawler-teaser-indexer/graph/badge.svg?token=qmIoUbUs3h)](https://codecov.io/gh/sitepark/atoolo-crawler-teaser-indexer)
 ![phpstan](https://img.shields.io/badge/PHPStan-level%209-brightgreen)
@@ -6,133 +6,177 @@
 ![php](https://img.shields.io/badge/PHP-8.3-blue)
 ![php](https://img.shields.io/badge/PHP-8.4-blue)
 
-## 1 Overview
+## Sources
 
-The crawler automates the collection of teaser content (title, intro text, date, link) from a specific website.  
-It filters this data and passes the final processed information to the Apache Solr index in order to make the teaser content searchable.  
+The sources can be accessed via the GitHub project [Crawler Teaser Indexer Bundle](https://github.com/sitepark/atoolo-crawler-teaser-indexer)
 
-The architecture is modular and follows the principles of the Symfony framework.  
-The project uses the Pipes-and-Filters architectural pattern.  
-This pattern was chosen to ensure loose coupling between the individual processing steps.
+## Motivation
 
-## 1.1 Core Processing Steps
-
-1. `Schedule` → `CrawlerManager` →  
-2. `CrawlerManager` → `URLCollector` →  
-3. `CrawlerManager` → `Fetcher` →  
-4. `CrawlerManager` → `Parser` →  
-5. `CrawlerManager` → `Processor` →  
-6. `CrawlerManager` → `Indexer`
-
-- **`Schedule`**: A scheduled task that invokes the `CrawlerManager` via a Symfony command. This enables time-controlled execution of the crawler.  
-- **`CrawlerManager`**: The central coordinator that calls the components `URLCollector`, `Fetcher`, `Parser`, `Processor`, and `Indexer` in the correct order.  
-- **`URLCollector`**: Collects URLs to crawl by parsing the `sitemap.xml` and filtering them based on predefined patterns.  
-- **`Fetcher`**: Sends HTTP requests to retrieve the HTML content of a URL.  
-- **`Parser`**: Specialized in data extraction. Uses `symfony/dom-crawler` to extract teaser data via CSS selectors or OpenGraph tags from the HTML content.  
-- **`Processor`**: Responsible for data transformation. Raw data is cleaned, trimmed to a maximum length of 120 characters, and transformed into the data model required for indexing.  
-- **`Indexer`**: Provides the interface to Apache Solr. Receives the processed data and submits it for indexing via the `atoolo-search-bundle`.
+This bundle provides a simple crawler designed to generate teasers from external sources and indexing them into the Apache Solr search platform. This ensures that the teasers are discoverable via the website's search function. The process utilizes a PHP array containing the data that the crawler need to extract. You can extract the Title, Introtext, Date and DateTime.
 
 ---
 
-## 2 Quick start Guide
+## Quick start Guide
 
-### 2.1 Install the module, in your project, via Composer
+### 1 Install the module, in your project, via Composer
 
-`composer require atoolo/crawler-teaser-indexer`
-
-### 2.2 Create this file in your Project
-
-`config/packages/atoolo_crawler_master.yaml`
-
-### 2.3 Copy this in the `atoolo_crawler_master.yaml`
-
-```yaml
-atoolo.crawler.schedule:
-- 0 3 * * *
-# Status codes that trigger retries
-atoolo.crawler.retry_status_codes:
-- 408
-- 429
-- 500
-- 501
-- 502
-- 503
-- 504
+```sh
+composer require atoolo/crawler-teaser-indexer
 ```
-
-### 2.4 Add module configuration to the customer project
-
-Path example Paderborn:
-
-  `/git/paderborn/paderborn-module/src/main/webapp/WEB-INF/config/client/paderborn/groupTypes.json`
-
-```json
-  "indexerGroup": {
-    "objectTypes": {
-      "atoolo-teaserCrawlerIndexer": ":objectTypes.atoolo-teaserCrawlerIndexer"
-    }
-  }
-```
-
-### 2.5 Minimal configuration
-
-| Beschreibung                                                     | Example                          |
-| ---------------------------------------------------------------- | -------------------------------- |
-| Bezeichnung der Seite                                            | `example-site`                   |
-| Maximale Menge der zu extrahierenden Teaser                      | `10`                             |
-| Anzahl der Wiederholungen falls die Adresse nicht erreichbar ist | `3`                              |
-| Zeit die vergeht zwischen zwei Anfragen                          | `500`                            |
-| Anzahl gleichzeitiger Anfragen.                                  | `3`                              |
-| Angabe des User-Agents                                           | `Bot/1.0 (+contact@example.org)` |
-| Start URL                                                        | `https://example.com`            |
-| Tiefe der URL Extraktion                                         | `3`                              |
-| CSS-Selektor für die Link-Extraktion                             | `#content a[href]`               |
-| Erlaubter URL Anfang                                             | `https://`                       |
-| OpenGraph-Tag für die Titel Extraktion                           | og:title                         |
-| CssSelectoren für die Titel Extraktion                           | `h2`                             |
-
-### 2.6 Run the Crawler
-
-  docker compose exec -w /var/www/CUSTOMERNAME.YOURLASTNAME.sitepark.de/www fpm /srv/sitepark/ies-webnode/feds/commons-feds/bin/console crawler:index -vvv
-
-### 2.7 Perhaps you need Worker Configuration
-
-  `https://github.com/sitepark/atoolo-docs/blob/dcd815492e937ebfd929cdf4b96f1641613d4646/docs/operate/worker.md`
-
----
-
-## 3 Installation and Operation
-
-### 3.1 Installation
-
-The application was developed as a Symfony bundle and is distributed as a Composer package.
-
-1. Install the module via Composer:  
-   `composer require atoolo/crawler-teaser-indexer`
 
 - Register Bundle in config/bundles.php: `Atoolo\Crawler\AtooloCrawlerTeaserIndexerBundle::class => ['all' => true],`
 
-- Run `composer update` to resolve all dependencies.
+### 2 Create this file in your Project
 
-- Run tests:  
-  `vendor/bin/phpunit`
+```sh
+config/packages/atoolo_crawler_master.yaml
+```
 
-- Run the application inside the project:  
-  `docker compose exec -u ${UID} fpm /-->Projectpath whre the package lays<-- crawler:index -vvv`
+### 3 Copy this in the `atoolo_crawler_master.yaml`
 
-- Run without indexing:  
-  `php bin/console crawler:index`
+```yaml
+parameters:
+  # Defines execution schedule
+  atoolo.crawler.schedule:
+    - 0 3 * * *
+    - 15 3 * * *
+
+  # Status codes that trigger retries
+  atoolo.crawler.retry_status_codes: 
+    408
+    429
+    500
+    501
+    502
+    503
+    504
+```
+
+### 4 Minimal PHP-Array configuration
+
+The file have to be located in: `base_dir/indexer/atooloTeaserCrawler.php`
+
+Fill out the fields: sp_id, sp_url and sp_title_css.
+
+```php
+<?php return [
+  "name" => "Indexer für externe Teaser",
+  "data" => [
+    "sp_crawling_sites" => [
+      [
+        "sp_id" => "!To Fill in the Pagename in snakecase!",
+        "sp_respect_robots_txt" => false,
+        "sp_robots_url" => "",
+        "sp_max_teaser" => "11",
+        "sp_max_retry" => "3",
+        "sp_parallel_requests" => "3",
+        "sp_delay_ms" => "500",
+        "sp_user_agent" => "EntwicklungBot/1.0 (+contact@example.org)",
+        "sp_start_urls" => [[
+            "sp_url" => "!To Fill in the startpage absolute url!",
+            "sp_extraction_depth" => "2"
+        ]],
+        "sp_link_selector" => "#content a[href]",
+        "sp_allow_prefixes" => [
+            "https://"
+        ],
+        "sp_deny_prefixes" => [],
+        "sp_deny_endings" => [],
+        "sp_forced_article_urls" => [],
+        "sp_strip_query_params_active" => false,
+        "sp_strip_query_params" => [],
+        "sp_title_prefix" => "Pagename - ",
+        "sp_title_opengraph" => ["og:title"],
+        "sp_title_css" => [
+            "!To Fill in the Title CssSelector!"
+            "#content h2",
+            ".service-detail h2",
+            "#content h3"
+        ],
+        "sp_title_max_chars" => "",
+        "sp_introText_present" => false,
+        "sp_introText_required_field" => false,
+        "sp_introText_opengraph" => [],
+        "sp_introText_css" => [],
+        "sp_introText_max_chars" => "",
+        "sp_datetime_present" => false,
+        "sp_datetime_required_field" => false,
+        "sp_datetime_only_date" => false,
+        "sp_datetime_opengraph" => [],
+        "sp_datetime_css" => [],
+        "sp_content_scoring_active" => false,
+        "sp_content_scoring_min_score" => "",
+        "sp_content_scoring_positive" => []
+        "sp_content_scoring_negative" => []
+      ]
+    ]
+  ]
+];
+```
+
+### 5 Run the Crawler
+
+```sh
+  docker compose exec -u ${UID} fpm /var/www/fillTheBlank/www bin/console crawler:index -vvv
+```
+
+### 6 Search in the Solr-index
+
+Search the Solr index for the value defined in the `sp_id` field of the PHP configuration array.
+
+### 7 Worker Configuration
+
+You need a Worker to run the Scheduler
+ [Atoolo Scheduler Docs](https://github.com/sitepark/atoolo-docs/blob/dcd815492e937ebfd929cdf4b96f1641613d4646/docs/operate/worker.md)
 
 ---
 
-## 4 Configuration
+## Installation and Operation in detail
 
-### 4.1 Central Orchestrating Configuration
+### Installation
+
+The application was developed as a Symfony bundle and is distributed as a Composer package.
+
+#### 1 Install the module via Composer
+
+```sh
+composer require atoolo/crawler-teaser-indexer
+```
+
+#### 2 Register Bundle
+
+  config/bundles.php: `Atoolo\Crawler\AtooloCrawlerTeaserIndexerBundle::class => ['all' => true],`
+
+#### 3 Resolve all dependencies
+
+```sh
+composer update
+```
+
+#### Run the application
+
+```sh
+  docker compose exec -u ${UID} fpm /var/www/fillTheBlank/www bin/console crawler:index -vvv
+```
+
+[Atoolo Run Indexer Docs](https://sitepark.github.io/atoolo-docs/operate/indexing/)
+
+#### Run without indexing
+
+```sh
+  bin/console crawler:index
+```
+
+---
+
+## Configuration
+
+### Central Orchestrating Configuration
 
 Location in your Project:  
 `config/packages/atoolo_crawler_master.yaml`
 
-An example configuration lay in: `https://github.com/sitepark/atoolo-crawler-teaser-indexer/blob/main/config/example/exampleConfig.php`
+An example configuration lay in: [PHP Array Config Example](https://github.com/sitepark/atoolo-crawler-teaser-indexer/blob/main/config/example/exampleConfig.php)
 
 Purpose:
 
@@ -141,7 +185,10 @@ Purpose:
 
 The data from this file is injected via configuration.  
 Therefore, after changes the cache must be rebuilt:
-`./bin/console cache:clear`
+
+```sh
+./bin/console cache:clear
+```
 
 ```yaml
 parameters:
@@ -161,169 +208,136 @@ parameters:
   # schedule (field 2): 3      → hour
   # schedule (field 3): */3    → every 3 days
   # schedule (field 4-5): * *  → every month, every weekday
-  atoolo.crawler.schedule: 
+  atoolo.crawler.schedule:
     - 0 3 * * *
     - 15 3 * * *
-      
+  
   # Status codes that trigger retries
-  atoolo.crawler.retry_status_codes:
-    - 408
-    - 429
-    - 500
-    - 501
-    - 502
-    - 503
-    - 504
+  atoolo.crawler.retry_status_codes: 
+    408
+    429
+    500
+    501
+    502
+    503
+    504
 ```
 
-## 5 Site-Specific Configurations
+## Site-Specific Configurations
 
 Warnings will be thrown in the test environment and at runtime if configurations are missing.
 This data is in a two-dimensional array.
 
-An 2 example configuration lay in: `https://github.com/sitepark/atoolo-crawler-teaser-indexer/tree/main/config/sites/atoolo_crawler`TODO new example
+A full example configuration can be found in: `https://github.com/sitepark/atoolo-crawler-teaser-indexer/blob/main/config/example/exampleConfig.php`
 
-### 5.1 Core / Meta
+### Core / Meta
 
 ```php
   # Unique ID for this website configuration (used for Solr)
-  id: "source_pagename"
-
+  "sp_id" => "source_pagename",
+  
   # Respect robots.txt
-  respect_robots_txt: false
-
+  "sp_respect_robots_txt" => false,
+  
   # Correct robots.txt URL of the target domain
-  robots_url: "https://www.example/robots.txt"
-
+  "sp_robots_url" => "https://www.example/robots.txt",
+  
   # Limit the number of detected teasers
-  # Teasers are extracted from the first 100 detected URLs
-  max_teaser: 100
-
+  # Teasers are extracted from the first X detected URLs
+  "sp_max_teaser" => 100,
+  
   # Maximum number of retry attempts for unreachable URLs
   # Retries use exponential backoff: 1s, 2s, 4s, 8s, etc.
   # 0 means only one attempt (no retries)
-  max_retry: 3
-
-
-  # Delay between requests (increase if the target system blocks requests)
-  delay_ms: 500
-
+  "sp_max_retry" => 3,
+  
+  # Delay between requests in milliseconds
+  # (increase if the target system blocks requests)
+  "sp_delay_ms" => 500,
+  
   # Maximum parallel requests per host (recommended 1–3, never above 10)
-  concurrency_per_host: 3
-
+  "sp_parallel_requests" => 3,
+  
   # Clearly identifiable User-Agent
-  user_agent: "Atoolo/Crawler-Teaser-Indexer/1.0 (+contact@example.org)"
+  "sp_user_agent" => "Atoolo/Crawler-Teaser-Indexer/1.0 (+contact@example.org)"
 
 ```
 
-### 5.2 URLCollector (Discovery)
+### URLCollector (Discovery)
 
 ```php
   # Start URLs for the crawler
   # extraction_depth: crawl depth (homepage → teaser → detail page)
-  start_urls:
-    - url: "https://www.example/microsite/index.php"
-      extraction_depth: 2
-    - url: "https://www.example/"
-      extraction_depth: 2
-
+  "sp_start_urls" => [
+      [
+          "sp_url" => "https://www.example/microsite/index.php",
+          "sp_extraction_depth" => 2
+      ],
+      [
+          "sp_url" => "https://www.example/",
+          "sp_extraction_depth" => 2
+      ]
+  ],
+  
   # Selector for links (recommended: #content a[href])
-  link_selector: "#content a[href]"
-
-  # Allowed URL prefixes
-  allow_prefixes:
-    - "https://www.example/microsite/"
-
-  # Explicit exclusions of URL prefixes
-  deny_prefixes:
-    - "https://www.example/microsite/meta/"
-    - "https://www.example/index.php?sp%3Aout=sitemap"
-    - "https://www.example/microsite/ueber_uns/team.php"
-    - "https://www.example/microsite/ueber_uns/Dozentenvertretung.php"
-    - "https://www.example/microsite/ueber_uns/E-Mail-Kontakt.php"
-    - "https://www.example/microsite/ueber_uns/Business.php"
-    - "https://www.example/microsite/service/SEPA-Lastschriftmandat.php"
-
+  "sp_link_selector" => "#content a[href]",
+  
+  # Allowed URL prefixes (whitelist)
+  "sp_allow_prefixes" => [
+      "https://www.example/microsite/"
+  ],
+  
+  # Explicit exclusions of URL prefixes (blacklist)
+  "sp_deny_prefixes" => [
+      "https://www.example/microsite/meta/",
+      "https://www.example/index.php?sp%3Aout=sitemap",
+      "https://www.example/microsite/about_us/team.php",
+      "https://www.example/microsite/about_us/Classes.php",
+      "https://www.example/microsite/about_us/E-Mail-Contakt.php",
+      "https://www.example/microsite/about_us/Business.php",
+      "https://www.example/microsite/service/SEPA-Info.php"
+  ],
+  
   # Explicit exclusions of URL endings
-  deny_endings:
-    # Images & graphics
-    - .jpg
-    - .jpeg
-    - .png
-    - .gif
-    - .svg
-    - .webp
-    - .ico
-    - .bmp
-    - .tiff
-
-    # Documents
-    - .pdf
-    - .doc
-    - .docx
-    - .xls
-    - .xlsx
-    - .ppt
-    - .pptx
-    - .odt
-    - .rtf
-
-    # Archives
-    - .zip
-    - .tar
-    - .gz
-    - .7z
-    - .rar
-    - .iso
-
-    # Web assets & data
-    - .js
-    - .css
-    - .json
-    - .xml
-    - .map
-    - .webmanifest
-
-    # Media
-    - .mp3
-    - .mp4
-    - .wav
-    - .avi
-    - .mov
-    - .mkv
-    - .webm
-    - .ogg
-
-    # Fonts & miscellaneous
-    - .woff
-    - .woff2
-    - .ttf
-    - .eot
-    - .exe
-    - .bin
-
+  "sp_deny_endings" => [
+      # Images & graphics
+      ".jpg", ".jpeg", ".png", ".gif", ".svg", ".webp", ".ico", ".bmp", ".tiff",
+      # Documents
+      ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".odt", ".rtf",
+      # Archives
+      ".zip", ".tar", ".gz", ".7z", ".rar", ".iso",
+      # Web assets & data
+      ".js", ".css", ".json", ".xml", ".map", ".webmanifest",
+      # Media
+      ".mp3", ".mp4", ".wav", ".avi", ".mov", ".mkv", ".webm", ".ogg",
+      # Fonts & miscellaneous
+      ".woff", ".woff2", ".ttf", ".eot", ".exe", ".bin"
+  ],
+  
   # Teasers are always included in the final result
   # unless the title cannot be determined
-  forced_article_urls:
-    - "https://www.example"
-
+  "sp_forced_article_urls" => [
+      "https://www.example"
+  ],
+  
   # URL normalization
   # Query parameters are temporarily removed to detect duplicate URLs
   # and later reattached.
-  strip_query_params_active: true
-
-  strip_query_params:
-    - page
-    - p
-    - offset
-    - sort
-    - view
-    - print
-    - fbclid
-    - gclid
+  "sp_strip_query_params_active" => true,
+  
+  "sp_strip_query_params" => [
+      "page",
+      "p",
+      "offset",
+      "sort",
+      "view",
+      "print",
+      "fbclid",
+      "gclid"
+  ]
 ```
 
-### 5.4 Parser
+### Parser
 
 Default values should always be provided for selectors to ensure flexibility.
 The Symfony CSS-Selector package is used to extract teaser content.
@@ -332,121 +346,166 @@ The configured values are passed directly to the package.
 #### Example CSS Selectors
 
 - HTML tag: "h1"
-- ID selector: "#page-title"
-- Class selector: ".page-title"
+- ID selector: "#content #page-title"
+- Class selector: "#content .page-title"
 
 #### Title
 
 ```php
   # Title is mandatory; otherwise the article is not indexed
-  title_present: true
-
-  # Used to clearly identify the article’s source
-  title_prefix: "Pagename - "
-
+  "sp_title_present" => true,
+  
+  # Used to clearly identify the article's source
+  "sp_title_prefix" => "Pagename - ",
+  
   # OpenGraph tags are preferred when extracting data
-  title_opengraph: ["og:title"]
-
+  "sp_title_opengraph" => [
+      "og:title"
+  ],
+  
   # CSS selectors (skipped if empty)
-  title_css: ["h1", ".page-title"]
-
+  # Example CSS Selectors:
+  # - HTML tag: "h1"
+  # - ID selector: "#content #page-title"
+  # - Class selector: "#content .page-title"
+  "sp_title_css" => [
+      "h1",
+      ".page-title",
+      "#content h2"
+  ],
+  
   # Maximum character length (text is truncated and "..." appended)
-  title_max_chars: 120
+  "sp_title_max_chars" => 120
 ```
 
 #### Intro Text
 
 ```php
   # Intro text is optional
-  introText_present: true
-
+  "sp_introText_present" => true,
+  
   # If false, the teaser can remain even if the field is missing
-  introText_required_field: false
-
+  "sp_introText_required_field" => false,
+  
   # Preferred OpenGraph tags
-  introText_opengraph: ["og:description"]
-
+  "sp_introText_opengraph" => [
+      "og:description"
+  ],
+  
   # CSS selectors (skipped if empty)
-  introText_css:
-    - "#content p"
-    - "main p"
-
-  # Maximum character length
-  introText_max_chars: 200
+  "sp_introText_css" => [
+      "#content p",
+      "main p",
+      ".description"
+  ],
+  
+  # Maximum character length (text is truncated and "..." appended)
+  # null = no limit
+  "sp_introText_max_chars" => 200
 ```
 
 #### DateTime
 
 ```php
-  datetime_present: false
-  datetime_required_field: false
-
+  # Enable DateTime extraction
+  "sp_datetime_present" => false,
+  
+  # If true, the teaser is excluded if no DateTime is found
+  "sp_datetime_required_field" => false,
+  
   # If only a date is present, append 00:00:00
   # Example:
   # "2026-01-21" → "2026-01-21 00:00:00"
-  # Solr requires DateTime, not Date
-  datetime_only_date: true
-
-  datetime_opengraph: []
-  datetime_css: []
+  # Solr requires DateTime, not Date Type
+  "sp_datetime_only_date" => true,
+  
+  # Preferred OpenGraph tags
+  "sp_datetime_opengraph" => [
+      "article:published_time",
+      "datePublished"
+  ],
+  
+  # CSS selectors (skipped if empty)
+  "sp_datetime_css" => [
+      ".published-date",
+      ".article-date",
+      ".created-at"
+  ]
 ```
 
-### 5.5 Filter Function "Utility Score" (Content Filter)
+### Filter Function "Utility Score" (Content Filter)
 
 ```php
-  # Enable scoring
-  content_scoring_active: false
-
-  # Minimum required score for a teaser
-  content_scoring_min_score: 7
-
-  # Positive signals
-  content_scoring_positive:
-    - score: 6
-      match_any:
-        - "/vr-bis-detail/dienstleistung/"
-        - "vr-bis-detail/dienstleistung"
-
-    - score: 4
-      match_any:
-        - "onlinedienstleistung"
-        - "online-antrag"
-        - "online apply"
-        - "onlineantrag"
-        - "form"
-        - "appointment booking"
-        - "book appointment"
-        - "submit application"
-        - "apply digitally"
-
-    - score: 1
-      match_any:
-        - "procedure"
-        - "process"
-        - "legal basis"
-        - "forms and links"
-        - "downloads"
-        - "further information"
-    - score: 3
-      condition:
-        body_text_length: 350
-
-  # Negative signals
-  content_scoring_negative:
-    - score: -12
-      match_any:
-        - "/vr-bis-detail/mitarbeiter/"
-        - "vr-bis-detail/mitarbeiter"
-
-    - score: -6
-      match_any:
-        - "test service"
-        - "asset publisher"
-        - "newsletter"
-        - "advertising"
-        - "press office"
-
-    - score: -3
-      condition:
-        body_text_length: 150
+  # Enable content scoring
+  "sp_content_scoring_active" => false,
+  
+  # Minimum required score for a teaser to be indexed
+  "sp_content_scoring_min_score" => 7,
+  
+  # Positive signals (increase score)
+  "sp_content_scoring_positive" => [
+      [
+          "sp_score" => 6,
+          "sp_match_any" => [
+              "vr-bis-detail/dienstleistung"
+          ]
+      ],
+      [
+          "sp_score" => 4,
+          "sp_match_any" => [
+              "onlinedienstleistung",
+              "online-antrag",
+              "online apply",
+              "onlineantrag",
+              "form",
+              "appointment booking",
+              "book appointment",
+              "submit application",
+              "apply digitally"
+          ]
+      ],
+      [
+          "sp_score" => 1,
+          "sp_match_any" => [
+              "procedure",
+              "process",
+              "legal basis",
+              "forms and links",
+              "downloads",
+              "further information"
+          ]
+      ],
+      [
+          "sp_score" => 3,
+          "sp_condition" => [
+              "sp_body_text_length" => 350
+          ]
+      ]
+  ],
+  
+  # Negative signals (decrease score)
+  "sp_content_scoring_negative" => [
+      [
+          "sp_score" => -12,
+          "sp_match_any" => [
+              "vr-bis-detail/mitarbeiter"
+          ]
+      ],
+      [
+          "sp_score" => -6,
+          "sp_match_any" => [
+              "test service",
+              "asset publisher",
+              "newsletter",
+              "advertising",
+              "press office"
+          ]
+      ],
+      [
+          "sp_score" => -3,
+          "sp_condition" => [
+              "sp_body_text_length" => 150
+          ]
+      ]
+  ]
 ```
