@@ -54,60 +54,60 @@ return [
             "#content h3 + p"
          ],
          "introText_max_chars" => null,
-         "datetime_present" => false,
-         "datetime_required_field" => true,
+         "datetime_present" => true,
+         "datetime_required_field" => false,
          "datetime_only_date" => true,
          "datetime_opengraph" => [
-            "22.111111",
-            "22.222222"
+            "article:published_time",
+            "datePublished"
          ],
          "datetime_css" => [
-            "23.111111",
-            "23.222222"
+            ".published-date",
+            ".article-date"
          ],
-         "content_scoring_active" => false,
-         "content_scoring_min_score" => "24.1",
+         "content_scoring_active" => true,
+         "content_scoring_min_score" => "10",
          "content_scoring_positive" => [
             [
-               "score" => "25.11111",
+               "score" => "5",
                "match_any" => [
-                  "26.161616",
-                  "26.123"
-               ]
-            ],
-            [
-               "score" => "25.2",
-               "match_any" => [
-                  "26.2626",
-                  "26.234"
-               ]
-            ],
-            [
-               "score" => "4",
-               "condition" => [
-                  "body_text_length" => "288888"
-               ]
-            ]
-         ],
-         "content_scoring_negative" => [
-            [
-               "score" => "29",
-               "match_any" => [
-                  "30.1",
-                  "30.2"
+                  ".news-article",
+                  "[data-article='true']"
                ]
             ],
             [
                "score" => "3",
                "match_any" => [
-                  "30.2.1",
-                  "30.2.2"
+                  ".featured",
+                  ".highlight"
                ]
             ],
             [
-               "score" => "8",
+               "score" => "4",
                "condition" => [
-                  "body_text_length" => "322222"
+                  "body_text_length" => "300"
+               ]
+            ]
+         ],
+         "content_scoring_negative" => [
+            [
+               "score" => "-5",
+               "match_any" => [
+                  ".archived",
+                  "[data-archived='true']"
+               ]
+            ],
+            [
+               "score" => "-2",
+               "match_any" => [
+                  ".outdated",
+                  ".deprecated"
+               ]
+            ],
+            [
+               "score" => "-3",
+               "condition" => [
+                  "body_text_length" => "50"
                ]
             ]
          ]
