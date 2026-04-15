@@ -55,3 +55,7 @@ composer.lock
 /tools/
 .phpactor.json
 .env*
+###> phpunit/phpunit ###
+/phpunit.xml
+/.phpunit.cache/
+###< phpunit/phpunit ###
