@@ -1,38 +1,3 @@
-#/var/
-#*.swp
-#/phpcs.xml
-#.phpunit.result.cache
-#/.phpunit.cache/
-#/.phpcs-cache
-#/phpcs.xml
-#/vendor
-#/vendor.orig
-#composer.lock
-#.idea
-#/var/cache/*
-#!var/cache/.gitkeep
-#/var/log/*
-#!var/log/.gitkeep
-#/var/test/*
-#/tools
-#.phpactor.json
-#.env
-#.env*
-#symfony.lock
-#phpunit.dist.xml
-#notes.local.md
-#/target
-#composer.link.*                                                  
-#symfony.link.lock  
-####> symfony/framework-bundle ###
-#/.env.local
-#/.env.local.php
-#/.env.*.local
-#/config/secrets/prod/prod.decrypt.private.php
-#/public/bundles/
-#/var/
-#/vendor/
-###< symfony/framework-bundle ###
 ###> phpstan/phpstan ###
 phpstan.neon
 ###< phpstan/phpstan ###
@@ -53,6 +18,7 @@ composer.lock
 !var/log/.gitkeep
 /var/test/*
 /tools/
+!tools/phpunit.phar
 .phpactor.json
 .env*
 ###> phpunit/phpunit ###
