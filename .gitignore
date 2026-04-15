@@ -17,8 +17,10 @@ composer.lock
 /var/log/*
 !var/log/.gitkeep
 /var/test/*
-/tools/
-!tools/phpunit.phar
+tools/composer-normalize
+tools/php-cs-fixer
+tools/phplint
+tools/phpstan
 .phpactor.json
 .env*
 ###> phpunit/phpunit ###
