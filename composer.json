@@ -55,8 +55,7 @@
         "infection/infection": "^0.29.9",
         "phpcompatibility/php-compatibility": "^9.3.5",
         "phpdocumentor/type-resolver": "^2.0",
-        "phpunit/phpunit": "^10.5",
-        "roave/security-advisories": "dev-latest",
+        "phpunit/phpunit": "^10.5.63",
         "squizlabs/php_codesniffer": "^3.13.5"
     },
     "scripts": {
