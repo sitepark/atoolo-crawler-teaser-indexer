@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Tests;
 
+use Atoolo\Crawler\Config\CrawlerConfig;
+use Atoolo\Crawler\Config\CrawlerConfigContext;
+use Atoolo\Crawler\Config\CrawlerConfigHelper;
 use Atoolo\Crawler\Domain\Crawler\Steps\Processor;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
@@ -17,8 +20,15 @@ final class ProcessorTest extends TestCase
      */
     protected function setUp(): void
     {
-        $loggerMock = $this->createStub(LoggerInterface::class);
-        $this->processor = new Processor($loggerMock);
+         $ctx = new CrawlerConfigContext([
+            'sp_title_max_chars' => 120,
+            'sp_introText_max_chars' => 120,
+        ]);
+
+        $logger = $this->createStub(LoggerInterface::class);
+        $helper = new CrawlerConfigHelper($ctx, $logger);
+        $config = new CrawlerConfig($helper);
+        $this->processor = new Processor($logger, $config);
     }
     /**
      * Tests that the sanitizeText method correctly processes input titles.

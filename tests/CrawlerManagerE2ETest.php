@@ -52,6 +52,8 @@ final class CrawlerManagerE2ETest extends TestCase
             'sp_concurrency_per_host' => 1,
             'sp_user_agent' => 'TestAgent/1.0',
             'sp_forced_article_urls' => [],
+            'sp_title_max_chars' => 140,
+            'sp_introText_max_chars' => 280,
             'sp_content_scoring_active' => false,
             'sp_content_scoring_min_score' => 0,
             'sp_content_scoring_positive' => [],
@@ -191,10 +193,8 @@ final class CrawlerManagerE2ETest extends TestCase
         $processor = $this->createStub(Processor::class);
 
         $indexer = $this->createMock(Indexer::class);
-        $indexer->expects($this->once())
-            ->method('doIndex')
-            ->with($this->equalTo([]))
-            ->willReturn($this->makeIndexerStatus(0));
+        $indexer->expects($this->never())
+            ->method('doIndex');
 
         $errors = [];
 
@@ -208,12 +208,20 @@ final class CrawlerManagerE2ETest extends TestCase
 
         $manager = new CrawlerManager($urlCollector, $fetcher, $parser, $processor, $config, $logger, $indexer);
 
+        $thrownException = null;
         ob_start();
         try {
             $manager->startCrawler();
+        } catch (\Atoolo\Crawler\Exception\StepExecution $e) {
+            $thrownException = $e;
         } finally {
             $output = (string) ob_get_clean();
         }
+
+        $this->assertNotNull(
+            $thrownException,
+            'Expected StepExecution exception to be thrown'
+        );
 
         $this->assertTrue(
             array_reduce(
@@ -248,7 +256,7 @@ final class CrawlerManagerE2ETest extends TestCase
 
         $evaluator = $this->createStub(TeaserRelevanceEvaluatorInterface::class);
         $parser = new Parser($logger, $config, $evaluator);
-        $processor = new Processor($logger);
+        $processor = new Processor($logger, $config);
 
         $indexer = $this->createMock(Indexer::class);
         $indexer->expects($this->once())
