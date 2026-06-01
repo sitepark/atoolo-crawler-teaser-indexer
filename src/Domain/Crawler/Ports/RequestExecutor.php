@@ -138,7 +138,7 @@ final class RequestExecutor implements RequestExecutorInterface
         }
 
         $nowUs = (int) (microtime(true) * 1_000_000);
-        $delayUs = $this->config->delayMS() * 1000;
+        $delayUs = $this->config->delayMs() * 1000;
 
         if (isset($this->lastRequestPerHost[$host])) {
             $elapsedUs = $nowUs - $this->lastRequestPerHost[$host];
