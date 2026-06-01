@@ -25,7 +25,8 @@ class Processor
     public function __construct(
         private LoggerInterface $logger,
         private readonly CrawlerConfig $config
-    ) {}
+    ) {
+    }
     /**
      * @param iterable<int, array{url: string,
      * title: string,
@@ -95,7 +96,7 @@ class Processor
      * Truncates a teaser string to a maximum length of 120 characters.
      *
      * @param string $text The cleaned text.
-     * @return string The truncated text with "..." appended if cut.
+     * @return string The truncated text with Ellipsis "…" appended if cut.
      */
     private function truncate(string $text, int $maxLength): string
     {
@@ -103,8 +104,8 @@ class Processor
             $this->logger->warning("[Processor] Empty teaser text encountered");
             return '';
         }
-        return mb_strlen($text) > $maxLength
-            ? mb_substr($text, 0, $maxLength) . '...'
+        return mb_strlen($text) > $maxLength - 1
+            ? mb_substr($text, 0, $maxLength - 1) . '…'
             : $text;
     }
 }
