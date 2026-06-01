@@ -65,7 +65,7 @@ class Parser
                 if ($introText !== null) {
                     $teaserData['introText'] = $introText;
                 } else {
-                    if ($introConfig->present) {
+                    if ($introConfig->requiredField) {
                         continue;
                     }
                 }
@@ -74,7 +74,7 @@ class Parser
                 if ($dateTime !== null) {
                     $teaserData['datetime'] = $dateTime;
                 } else {
-                    if ($dateTimeConfig->present) {
+                    if ($dateTimeConfig->requiredField) {
                         continue;
                     }
                 }
@@ -109,7 +109,7 @@ class Parser
         foreach ($config->opengraph as $property) {
             $v = $this->findMetaTagContent($crawler, $property);
             if ($v !== null && $v !== '') {
-                return $this->truncate($v, $config->maxChars);
+                return $v;
             }
         }
 
@@ -117,27 +117,11 @@ class Parser
         foreach ($config->css as $selector) {
             $v = $this->findCssSelectorContent($crawler, $selector);
             if ($v !== null && $v !== '') {
-                return $this->truncate($v, $config->maxChars);
+                return $v;
             }
         }
 
         return null;
-    }
-
-    private function truncate(string $text, int $maxChars): string
-    {
-        $text = trim($text);
-        if ($maxChars <= 0) {
-            return $text;
-        }
-
-        // mb_* für UTF-8
-        if (mb_strlen($text) <= $maxChars) {
-            return $text;
-        }
-
-        $cut = rtrim(mb_substr($text, 0, max(0, $maxChars - 3)));
-        return $cut . '...';
     }
 
     private function extractDateTime(Crawler $crawler, DateTimeExtractConfig $config): ?\DateTimeImmutable
