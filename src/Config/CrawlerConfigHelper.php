@@ -22,7 +22,7 @@ final class CrawlerConfigHelper
         $v = $this->ctx->get($key, self::MISSING);
 
         if ($v === self::MISSING) {
-            $this->logger->warning(
+            $this->logger->debug(
                 'Config missing boolean, using default',
                 ['key' => $key, 'default' => $default]
             );
@@ -56,7 +56,7 @@ final class CrawlerConfigHelper
         $v = $this->ctx->get($key, self::MISSING);
 
         if ($v === self::MISSING) {
-            $this->logger->warning(
+            $this->logger->debug(
                 'Config missing integer, using default',
                 ['key' => $key, 'default' => $default]
             );
@@ -78,7 +78,7 @@ final class CrawlerConfigHelper
         $v = $this->ctx->get($key, self::MISSING);
 
         if ($v === self::MISSING) {
-            $this->logger->warning('Config missing string, using default', ['key' => $key, 'default' => $default]);
+            $this->logger->debug('Config missing string, using default', ['key' => $key, 'default' => $default]);
             return $default;
         }
 
@@ -117,7 +117,7 @@ final class CrawlerConfigHelper
         $v = $this->ctx->get($key, self::MISSING);
 
         if ($v === self::MISSING) {
-            $this->logger->warning(
+            $this->logger->debug(
                 'Config missing int list, using empty list',
                 ['key' => $key]
             );
@@ -125,7 +125,7 @@ final class CrawlerConfigHelper
         }
 
         if (!is_array($v)) {
-            $this->logger->error(
+            $this->logger->warning(
                 'Config invalid int list, using empty list',
                 ['key' => $key, 'value' => $v]
             );
@@ -170,12 +170,12 @@ final class CrawlerConfigHelper
         $v = $this->ctx->get($key, self::MISSING);
 
         if ($v === self::MISSING) {
-            $this->logger->warning('Config missing string list, using empty list', ['key' => $key]);
+            $this->logger->debug('Config missing string list, using empty list', ['key' => $key]);
             return [];
         }
 
         if (!is_array($v)) {
-            $this->logger->error('Config invalid string list, using empty list', [
+            $this->logger->warning('Config invalid string list, using empty list', [
                 'key' => $key,
                 'value' => $v
             ]);
@@ -198,12 +198,12 @@ final class CrawlerConfigHelper
         $v = $this->ctx->get($key, self::MISSING);
 
         if ($v === self::MISSING) {
-            $this->logger->warning('Config missing string list, using empty list', ['key' => $key]);
+            $this->logger->debug('Config missing string list, using empty list', ['key' => $key]);
             return [];
         }
 
         if (!is_array($v)) {
-            $this->logger->error('Config invalid string list, using empty list', ['key' => $key, 'value' => $v]);
+            $this->logger->warning('Config invalid string list, using empty list', ['key' => $key, 'value' => $v]);
             return [];
         }
 
@@ -225,12 +225,12 @@ final class CrawlerConfigHelper
         $rules = $this->ctx->get($key, self::MISSING);
 
         if ($rules === self::MISSING) {
-            $this->logger->warning('Config missing score rules, using empty list', ['key' => $key]);
+            $this->logger->debug('Config missing score rules, using empty list', ['key' => $key]);
             return [];
         }
 
         if (!is_array($rules)) {
-            $this->logger->error('Config invalid score rules, using empty list', [
+            $this->logger->warning('Config invalid score rules, using empty list', [
                 'key' => $key,
                 'value' => $rules
             ]);
