@@ -20,7 +20,7 @@ use Psr\Log\NullLogger;
 
 class Indexer implements \Atoolo\Search\Indexer
 {
-    private string $source;
+    private string $source = '';
     public function __construct(
         private IndexerProgressHandler $progressHandler,
         private SolrIndexService $indexService,
