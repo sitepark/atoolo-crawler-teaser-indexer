@@ -111,6 +111,11 @@ final class CrawlerConfig
         return $this->crawlerConfigHelper->int('sp_max_teaser', 100);
     }
 
+    public function cleanupThreshold(): int
+    {
+        return $this->crawlerConfigHelper->int('sp_cleanup_threshold', 50);
+    }
+
     // --- Fetcher / HTTP ---
 
     public function maxRetry(): int
@@ -170,7 +175,7 @@ final class CrawlerConfig
         );
     }
 
-    // --- Parser: IntroText (dein introText.*) ---
+    // --- Parser: IntroText ---
 
     public function introTextPresent(): bool
     {
@@ -184,7 +189,7 @@ final class CrawlerConfig
         return $this->crawlerConfigHelper->bool('sp_datetime_present', false);
     }
 
-    // --- Content Scoring (Bürgernutzen-Score) ---
+    // --- content Scoring (The goal is to filter out only the relevant teasers when there are too many of them.) ---
 
     public function contentScoringActive(): bool
     {
