@@ -24,7 +24,7 @@ services:
 
     Atoolo\Crawler\Application\StartCrawlerMessageHandler:
         arguments:
-             $indexerConfigurationLoader: '@atoolo_search.indexer.configuration_loader'
+            $indexerConfigurationLoader: '@atoolo_search.indexer.configuration_loader'
 
     Atoolo\Crawler\Domain\Crawler\Ports\RequestExecutor:
         arguments:
