@@ -33,7 +33,7 @@ final class TeaserRelevanceEvaluator implements TeaserRelevanceEvaluatorInterfac
         $forcedArticleUrls = $this->config->forcedArticleUrls();
 
         if (in_array($relevanceData['url'], $forcedArticleUrls, true)) {
-            return false;
+            return true;
         }
 
         $evaluation = $this->evaluate($relevanceData, $scoringCfg);
