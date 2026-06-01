@@ -32,9 +32,6 @@ class URLCollector
      *
      * @return list<string> A list of unique, filtered absolute URLs
      */
-    /**
-     * @return list<string> A list of unique, filtered absolute URLs
-     */
     public function findHrefUrlsByCssSelector(): array
     {
         $urls = [];
@@ -81,10 +78,6 @@ class URLCollector
     /**
      * Crawls URLs breadth-first from a start URL up to its extraction_depth.
      *
-     * @param array{url:string, extraction_depth:int} $start
-     * @return array<int, string>
-     */
-    /**
      * @param array{url:string, extraction_depth:int} $start
      * @return array<int, string>
      */
