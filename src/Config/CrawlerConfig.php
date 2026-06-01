@@ -125,7 +125,7 @@ final class CrawlerConfig
 
     public function delayMs(): int
     {
-        return $this->crawlerConfigHelper->int('sp_delay_ms', 0);
+        return $this->crawlerConfigHelper->int('sp_delay_ms', 500);
     }
 
     public function parallelRequests(): int
