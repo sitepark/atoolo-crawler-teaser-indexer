@@ -17,7 +17,7 @@ final class CrawlerConfig
     }
 
     // --- Category ---
-    
+
     /** @return list<int> */
     public function categoriesId(): array
     {
@@ -25,7 +25,7 @@ final class CrawlerConfig
     }
 
     /** @return list<int> */
-     public function categoriesPathId(): array
+    public function categoriesPathId(): array
     {
         return $this->crawlerConfigHelper->intList('categoriesPath');
     }

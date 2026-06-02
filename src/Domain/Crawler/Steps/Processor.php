@@ -104,8 +104,8 @@ class Processor
             $this->logger->warning("[Processor] Empty teaser text encountered");
             return '';
         }
-        return mb_strlen($text) > $maxLength - 1
-            ? mb_substr($text, 0, $maxLength - 1) . '…'
+        return mb_strlen($text) > $maxLength
+            ? mb_substr($text, 0, $maxLength) . '…'
             : $text;
     }
 }

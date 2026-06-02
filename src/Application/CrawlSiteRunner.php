@@ -15,7 +15,8 @@ final class CrawlSiteRunner
         private readonly CrawlerConfigContext $configContext,
         private readonly CrawlerManager $crawlerManager,
         private readonly LoggerInterface $logger,
-    ) {}
+    ) {
+    }
     /**
      * @param array<string, mixed> $site
      */

@@ -75,7 +75,7 @@ class Indexer implements \Atoolo\Search\Indexer
                         ]);
                     }
                 }
-                
+
                 $document->setField('sp_category', $this->config->categoriesId());
                 $document->setField('sp_category_path', $this->config->categoriesPathId());
                 $document->setField('url', $item['url']);

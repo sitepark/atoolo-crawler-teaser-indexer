@@ -20,7 +20,7 @@ final class ProcessorTest extends TestCase
      */
     protected function setUp(): void
     {
-         $ctx = new CrawlerConfigContext([
+        $ctx = new CrawlerConfigContext([
             'sp_title_max_chars' => 120,
             'sp_introText_max_chars' => 120,
         ]);
@@ -104,8 +104,8 @@ final class ProcessorTest extends TestCase
             ],
             [
                 "url"   => "https://example.com/6",
-                "title" => str_repeat("a", 120) . "...",
-                "introText" => str_repeat("b", 120) . "...",
+                "title" => str_repeat("a", 120) . "…",
+                "introText" => str_repeat("b", 120) . "…",
                 "datetime" => $datetime,
             ],
             [
