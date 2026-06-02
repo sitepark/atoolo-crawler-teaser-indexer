@@ -140,7 +140,12 @@ final class CrawlerConfig
 
     public function delayMs(): int
     {
-        return $this->crawlerConfigHelper->int('sp_delay_ms', 500);
+        return $this->crawlerConfigHelper->int('sp_delay_ms', 150);
+    }
+
+    public function backoffMs(): int
+    {
+        return $this->crawlerConfigHelper->int('sp_backoff_ms', 500);
     }
 
     public function parallelRequests(): int
@@ -199,7 +204,7 @@ final class CrawlerConfig
 
     // --- Parser: Datetime ---
 
-    public function datetimePresent(): bool
+    public function dateTimePresent(): bool
     {
         return $this->crawlerConfigHelper->bool('sp_datetime_present', false);
     }

@@ -56,7 +56,7 @@ class Indexer implements \Atoolo\Search\Indexer
                     $document->setField('sp_intro', $intro);
                 }
 
-                if (!empty($item['date']) && $this->config->datetimePresent()) {
+                if (!empty($item['date']) && $this->config->dateTimePresent()) {
                     try {
                         $date = $item['date'];
                         if ($date instanceof \DateTimeInterface) {
