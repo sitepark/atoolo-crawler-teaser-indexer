@@ -110,17 +110,10 @@ class Indexer implements \Atoolo\Search\Indexer
             );
         }
 
-        if (
-            $successCount <= $this->config->cleanupThreshold()
-        ) {
-            $this->indexService->deleteExcludingProcessId(
-                $language,
-                $this->source,
-                $processId,
-            );
-            $this->logger->critical("Cleanup threshold not met. Aborting.", [
+        if ($successCount <= $this->config->cleanupThreshold()) {
+            $this->logger->critical('Cleanup threshold not met. Aborting.', [
                 'successCount' => $successCount,
-                'threshold' => $this->config->cleanupThreshold()
+                'threshold'    => $this->config->cleanupThreshold(),
             ]);
             throw new ThresholdNotMetException(
                 $successCount,
@@ -128,10 +121,15 @@ class Indexer implements \Atoolo\Search\Indexer
             );
         }
 
+        $this->indexService->deleteExcludingProcessId(
+            $language,
+            $this->source,
+            $processId,
+        );
+
         $this->indexService->commit($language);
 
         $this->progressHandler->finish();
-        print_r($this->progressHandler->getStatus());
 
         return $this->progressHandler->getStatus();
     }
