@@ -111,7 +111,7 @@ final class CrawlerConfigHelper
         return null;
     }
 
-        /** @return list<int> */
+    /** @return list<int> */
     public function intList(string $key): array
     {
         $v = $this->ctx->get($key, self::MISSING);

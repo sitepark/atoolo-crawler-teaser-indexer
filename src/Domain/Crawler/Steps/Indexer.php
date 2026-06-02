@@ -75,7 +75,9 @@ class Indexer implements \Atoolo\Search\Indexer
                         ]);
                     }
                 }
-
+                
+                $document->setField('sp_category', $this->config->categoriesId());
+                $document->setField('sp_category_path', $this->config->categoriesPathId());
                 $document->setField('url', $item['url']);
                 $document->setField('sp_objecttype', $this->source);
                 $document->setField('crawl_process_id', $processId);
@@ -129,6 +131,7 @@ class Indexer implements \Atoolo\Search\Indexer
         $this->indexService->commit($language);
 
         $this->progressHandler->finish();
+        print_r($this->progressHandler->getStatus());
 
         return $this->progressHandler->getStatus();
     }
