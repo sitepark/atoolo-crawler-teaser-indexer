@@ -21,13 +21,13 @@ final class CrawlerConfig
     /** @return list<int> */
     public function categoriesId(): array
     {
-        return $this->crawlerConfigHelper->intList('categories');
+        return $this->crawlerConfigHelper->intList('sp_categories');
     }
 
     /** @return list<int> */
     public function categoriesPathId(): array
     {
-        return $this->crawlerConfigHelper->intList('categoriesPath');
+        return $this->crawlerConfigHelper->intList('sp_categories_path');
     }
 
 
