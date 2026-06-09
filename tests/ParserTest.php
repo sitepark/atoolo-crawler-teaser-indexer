@@ -477,4 +477,62 @@ HTML;
         $this->assertCount(1, $result);
         $this->assertSame('Title', $result[0]['title']);
     }
+
+    // --- Exception paths (invalid selectors are caught and logged) ---
+
+    public function testInvalidCssInIntroTextIsCaughtAndFieldOmitted(): void
+    {
+        // '[invalid' is an unclosed CSS attribute selector → CssSelector throws
+        // findCssSelectorContent catches it and returns null
+        $parser = $this->makeParser([
+            'sp_introText_present'        => true,
+            'sp_introText_required_field' => false,
+            'sp_introText_css'            => ['[invalid'],
+        ]);
+        $html = '<html><body><h1>Title</h1></body></html>';
+
+        $result = $parser->extractTeasers([
+            ['url' => 'https://example.com/', 'html' => $html],
+        ]);
+
+        $this->assertCount(1, $result);
+        $this->assertArrayNotHasKey('introText', $result[0]);
+    }
+
+    public function testInvalidCssInDatetimeIsCaughtAndFieldOmitted(): void
+    {
+        // '[invalid' triggers exceptions in both findAttrByCss and findCssSelectorContent
+        $parser = $this->makeParser([
+            'sp_datetime_present'        => true,
+            'sp_datetime_required_field' => false,
+            'sp_datetime_css'            => ['[invalid'],
+        ]);
+        $html = '<html><body><h1>Title</h1></body></html>';
+
+        $result = $parser->extractTeasers([
+            ['url' => 'https://example.com/', 'html' => $html],
+        ]);
+
+        $this->assertCount(1, $result);
+        $this->assertArrayNotHasKey('datetime', $result[0]);
+    }
+
+    public function testParseDateTimeExceptionLogsWarningAndOmitsField(): void
+    {
+        // '@invalid' uses Unix timestamp syntax but is not a valid number → DateMalformedStringException
+        $parser = $this->makeParser([
+            'sp_datetime_present'        => true,
+            'sp_datetime_required_field' => false,
+            'sp_datetime_css'            => ['.date'],
+            'sp_datetime_only_date'      => false,
+        ]);
+        $html = '<html><body><h1>Title</h1><div class="date">@invalid</div></body></html>';
+
+        $result = $parser->extractTeasers([
+            ['url' => 'https://example.com/', 'html' => $html],
+        ]);
+
+        $this->assertCount(1, $result);
+        $this->assertArrayNotHasKey('datetime', $result[0]);
+    }
 }
