@@ -209,7 +209,7 @@ final class CrawlerConfig
         return $this->crawlerConfigHelper->bool('sp_datetime_present', false);
     }
 
-    // --- content Scoring (The goal is to filter out only the relevant teasers when there are too many of them.) ---
+    // --- content Scoring (The goal is to keep only the most relevant teasers when there are too many of them.) ---
 
     public function contentScoringActive(): bool
     {
