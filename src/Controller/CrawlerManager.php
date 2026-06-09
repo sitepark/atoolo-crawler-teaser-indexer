@@ -26,6 +26,7 @@ use Atoolo\Crawler\Domain\Crawler\Steps\Parser;
 use Atoolo\Crawler\Domain\Crawler\Steps\Fetcher;
 use Atoolo\Crawler\Domain\Crawler\Steps\Processor;
 use Atoolo\Crawler\Domain\Crawler\Steps\Indexer;
+use Atoolo\Crawler\Exception\StepExecution;
 use Psr\Log\LoggerInterface;
 
 class CrawlerManager
@@ -52,16 +53,16 @@ class CrawlerManager
             fn() => $this->urlCollector->findHrefUrlsByCssSelector()
         );
 
-        // Konvertiere nur wenn nötig (für array_chunk)
         $urls = iterator_to_array($urlsIterator);
 
         $rawTeaserStream = $this->storageHandlingFetcherParser($urls);
 
+        //Cleans and formats the data
         $teaserStream = $this->executeStep(
             'Processor',
             fn($rawData) => $this->processor->sanitizeText($rawData),
             $rawTeaserStream
-        ); //Cleans and formats the data
+        );
 
         /**
          *  @var array<int, array<string, mixed>> $finalTeaserStream
@@ -136,7 +137,6 @@ class CrawlerManager
 
             $this->logger->info("[$name] Step initialized.");
 
-            // Stelle sicher, dass wir immer einen Iterator zurückgeben
             if (is_array($result)) {
                 return new \ArrayIterator($result);
             }
@@ -144,7 +144,7 @@ class CrawlerManager
             return $result;
         } catch (\Throwable $e) {
             $this->logger->error("[$name] Error: " . $e->getMessage(), ['exception' => $e]);
-            return new \ArrayIterator([]);
+            throw new StepExecution($name, $e->getMessage(), $e);
         }
     }
 }

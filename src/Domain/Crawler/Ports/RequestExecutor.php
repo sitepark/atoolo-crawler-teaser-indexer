@@ -45,7 +45,7 @@ final class RequestExecutor implements RequestExecutorInterface
     public function request(string $url): ?ResponseInterface
     {
         $attempts = 0;
-        $backoffMs = $this->config->delayMs();
+        $backoffMs = $this->config->backoffMs();
         $response = null;
 
         while ($attempts < $this->config->maxRetry()) {
@@ -92,6 +92,10 @@ final class RequestExecutor implements RequestExecutorInterface
                 );
 
                 if ($attempts < $this->config->maxRetry()) {
+                    if ($backoffMs <= 50) {
+                        $waitMs = 200;
+                    }
+
                     usleep($backoffMs * 1000);
                     $backoffMs *= 2;
                 }
@@ -110,10 +114,10 @@ final class RequestExecutor implements RequestExecutorInterface
      * Determines the delay (in milliseconds) before retrying a request.
      *
      * @param ResponseInterface $response The HTTP response (used to read headers)
-     * @param int $fallbackBackoffMs The fallback backoff delay in milliseconds
+     * @param int $fallbackDelayMs The fallback backoff delay in milliseconds
      * @return int The delay in milliseconds to wait before the next retry
      */
-    private function retryDelayMsFromHeadersOrBackoff(ResponseInterface $response, int $fallbackBackoffMs): int
+    private function retryDelayMsFromHeadersOrBackoff(ResponseInterface $response, int $fallbackDelayMs): int
     {
         $retryAfter = $response->getHeaders(false)['retry-after'][0] ?? null;
 
@@ -121,7 +125,7 @@ final class RequestExecutor implements RequestExecutorInterface
             return max(0, (int) $retryAfter * 1000);
         }
 
-        return $fallbackBackoffMs;
+        return $fallbackDelayMs;
     }
 
     /**
@@ -138,7 +142,7 @@ final class RequestExecutor implements RequestExecutorInterface
         }
 
         $nowUs = (int) (microtime(true) * 1_000_000);
-        $delayUs = $this->config->delayMS() * 1000;
+        $delayUs = $this->config->delayMs() * 1000;
 
         if (isset($this->lastRequestPerHost[$host])) {
             $elapsedUs = $nowUs - $this->lastRequestPerHost[$host];

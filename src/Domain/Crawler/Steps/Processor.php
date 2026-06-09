@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Atoolo\Crawler\Domain\Crawler\Steps;
 
+use Atoolo\Crawler\Config\CrawlerConfig;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -22,7 +23,8 @@ use Psr\Log\LoggerInterface;
 class Processor
 {
     public function __construct(
-        private LoggerInterface $logger
+        private LoggerInterface $logger,
+        private readonly CrawlerConfig $config
     ) {
     }
     /**
@@ -38,7 +40,8 @@ class Processor
         foreach ($rawTeaserData as $item) {
             try {
                 $cleanTitle = $this->cleanString($item['title']);
-                $truncatedTitle = $this->truncate($cleanTitle);
+                $titleConfig = $this->config->titleConfig();
+                $truncatedTitle = $this->truncate($cleanTitle, $titleConfig->maxChars);
 
                 if ($truncatedTitle === '') {
                     continue;
@@ -51,7 +54,8 @@ class Processor
 
                 if (isset($item['introText']) && $item['introText'] !== '') {
                     $cleanIntroText = $this->cleanString($item['introText']);
-                    $cleaned['introText'] = $this->truncate($cleanIntroText);
+                    $introTextConfig = $this->config->introTextConfig();
+                    $cleaned['introText'] = $this->truncate($cleanIntroText, $introTextConfig->maxChars);
                 }
 
                 if (isset($item['datetime'])) {
@@ -92,17 +96,16 @@ class Processor
      * Truncates a teaser string to a maximum length of 120 characters.
      *
      * @param string $text The cleaned text.
-     * @return string The truncated text with "..." appended if cut.
+     * @return string The truncated text with Ellipsis "…" appended if cut.
      */
-    private function truncate(string $text): string
+    private function truncate(string $text, int $maxLength): string
     {
-        $maxLength = 120;
         if ($text === '') {
             $this->logger->warning("[Processor] Empty teaser text encountered");
             return '';
         }
         return mb_strlen($text) > $maxLength
-            ? mb_substr($text, 0, $maxLength) . '...'
+            ? mb_substr($text, 0, $maxLength) . '…'
             : $text;
     }
 }

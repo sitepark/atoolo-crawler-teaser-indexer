@@ -10,17 +10,17 @@ declare(strict_types=1);
 namespace Atoolo\Crawler\Domain\Crawler\Steps;
 
 use Atoolo\Crawler\Config\CrawlerConfig;
+use Atoolo\Crawler\Exception\ThresholdNotMetException;
 use Atoolo\Resource\ResourceLanguage;
 use Atoolo\Search\Dto\Indexer\IndexerStatus;
 use Atoolo\Search\Service\Indexer\IndexerProgressHandler;
 use Atoolo\Search\Service\Indexer\SolrIndexService;
-use DateTimeZone;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 
 class Indexer implements \Atoolo\Search\Indexer
 {
-    private string $source;
+    private string $source = '';
     public function __construct(
         private IndexerProgressHandler $progressHandler,
         private SolrIndexService $indexService,
@@ -44,7 +44,6 @@ class Indexer implements \Atoolo\Search\Indexer
         $processId = uniqid('', true);
         $successCount = 0;
         $this->source = $this->config->id();
-
         foreach ($items as $item) {
             try {
                 $document = $updater->createDocument();
@@ -77,6 +76,8 @@ class Indexer implements \Atoolo\Search\Indexer
                     }
                 }
 
+                $document->setField('sp_category', $this->config->categoriesId());
+                $document->setField('sp_category_path', $this->config->categoriesPathId());
                 $document->setField('url', $item['url']);
                 $document->setField('sp_objecttype', $this->source);
                 $document->setField('crawl_process_id', $processId);
@@ -108,22 +109,25 @@ class Indexer implements \Atoolo\Search\Indexer
                 new \Exception($result->getResponse()->getStatusMessage())
             );
         }
-        if ($successCount >= count($items)) {
-            $this->indexService->deleteExcludingProcessId(
-                $language,
-                $this->source,
-                $processId,
+
+        if ($successCount <= $this->config->cleanupThreshold()) {
+            $this->logger->critical('Cleanup threshold not met. Aborting.', [
+                'successCount' => $successCount,
+                'threshold'    => $this->config->cleanupThreshold(),
+            ]);
+            throw new ThresholdNotMetException(
+                $successCount,
+                $this->config->cleanupThreshold()
             );
         }
 
-        try {
-            $this->indexService->commit($language);
-        } catch (\Throwable $e) {
-            $this->logger->critical('Solr commit failed', [
-                'exception' => $e,
-            ]);
-            throw $e;
-        }
+        $this->indexService->deleteExcludingProcessId(
+            $language,
+            $this->source,
+            $processId,
+        );
+
+        $this->indexService->commit($language);
 
         $this->progressHandler->finish();
 

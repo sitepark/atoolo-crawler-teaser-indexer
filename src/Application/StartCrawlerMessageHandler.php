@@ -42,7 +42,7 @@ final class StartCrawlerMessageHandler
     private function isValidSite(array $site): bool
     {
         if (empty($site['sp_id'] ?? null)) {
-            $this->logger->error('Invalid site config: missing "id" field.');
+            $this->logger->error('Invalid site config: missing "sp_id" field.');
             return false;
         }
 

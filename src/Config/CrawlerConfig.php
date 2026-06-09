@@ -16,6 +16,21 @@ final class CrawlerConfig
     ) {
     }
 
+    // --- Category ---
+
+    /** @return list<int> */
+    public function categoriesId(): array
+    {
+        return $this->crawlerConfigHelper->intList('sp_categories');
+    }
+
+    /** @return list<int> */
+    public function categoriesPathId(): array
+    {
+        return $this->crawlerConfigHelper->intList('sp_categories_path');
+    }
+
+
     // --- Core / Meta ---
 
     public function id(): string
@@ -111,6 +126,11 @@ final class CrawlerConfig
         return $this->crawlerConfigHelper->int('sp_max_teaser', 100);
     }
 
+    public function cleanupThreshold(): int
+    {
+        return $this->crawlerConfigHelper->int('sp_cleanup_threshold', 50);
+    }
+
     // --- Fetcher / HTTP ---
 
     public function maxRetry(): int
@@ -120,7 +140,12 @@ final class CrawlerConfig
 
     public function delayMs(): int
     {
-        return $this->crawlerConfigHelper->int('sp_delay_ms', 0);
+        return $this->crawlerConfigHelper->int('sp_delay_ms', 150);
+    }
+
+    public function backoffMs(): int
+    {
+        return $this->crawlerConfigHelper->int('sp_backoff_ms', 500);
     }
 
     public function parallelRequests(): int
@@ -170,7 +195,7 @@ final class CrawlerConfig
         );
     }
 
-    // --- Parser: IntroText (dein introText.*) ---
+    // --- Parser: IntroText ---
 
     public function introTextPresent(): bool
     {
@@ -179,12 +204,12 @@ final class CrawlerConfig
 
     // --- Parser: Datetime ---
 
-    public function datetimePresent(): bool
+    public function dateTimePresent(): bool
     {
         return $this->crawlerConfigHelper->bool('sp_datetime_present', false);
     }
 
-    // --- Content Scoring (Bürgernutzen-Score) ---
+    // --- content Scoring (The goal is to keep only the most relevant teasers when there are too many of them.) ---
 
     public function contentScoringActive(): bool
     {
