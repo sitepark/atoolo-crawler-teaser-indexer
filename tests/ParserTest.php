@@ -535,4 +535,54 @@ HTML;
         $this->assertCount(1, $result);
         $this->assertArrayNotHasKey('datetime', $result[0]);
     }
+
+    public function testExceptionFromEvaluatorIsCaughtByOuterTryCatch(): void
+    {
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->once())->method('warning');
+
+        $evaluator = $this->createMock(TeaserRelevanceEvaluatorInterface::class);
+        $evaluator->method('relevant')->willThrowException(new \RuntimeException('evaluator error'));
+
+        $ctx = new CrawlerConfigContext(array_merge([
+            'sp_title_prefix'             => '',
+            'sp_title_opengraph'          => [],
+            'sp_title_css'                => ['h1'],
+            'sp_title_max_chars'          => 999,
+            'sp_introText_present'        => false,
+            'sp_introText_required_field' => false,
+            'sp_introText_opengraph'      => [],
+            'sp_introText_css'            => [],
+            'sp_introText_max_chars'      => 999,
+            'sp_datetime_present'         => false,
+            'sp_datetime_required_field'  => false,
+            'sp_datetime_only_date'       => true,
+            'sp_datetime_opengraph'       => [],
+            'sp_datetime_css'             => [],
+            'sp_content_scoring_active'   => true,
+        ]));
+        $helper = new CrawlerConfigHelper($ctx, $logger);
+        $config = new CrawlerConfig($helper);
+        $parser = new Parser($logger, $config, $evaluator);
+
+        $html   = '<html><body><h1>Title</h1></body></html>';
+        $result = $parser->extractTeasers([['url' => 'https://example.com/', 'html' => $html]]);
+
+        $this->assertSame([], $result);
+    }
+
+    public function testDateTimeRequiredAndUnparseableRawValueSkipsTeaser(): void
+    {
+        $parser = $this->makeParser([
+            'sp_datetime_present'        => true,
+            'sp_datetime_required_field' => true,
+            'sp_datetime_only_date'      => false,
+            'sp_datetime_css'            => ['.date'],
+        ]);
+        $html = '<html><body><h1>Title</h1><div class="date">@invalid</div></body></html>';
+
+        $result = $parser->extractTeasers([['url' => 'https://example.com/', 'html' => $html]]);
+
+        $this->assertSame([], $result);
+    }
 }
