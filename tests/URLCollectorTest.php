@@ -580,8 +580,11 @@ HTML;
      */
     public function testMultipleStartUrlsTotalExceedingMaxTeaserIsSliced(): void
     {
-        $start1Html = '<html><body id="content"><a href="https://example.com/from-start1">From Start 1</a></body></html>';
-        $start2Html = '<html><body id="content"><a href="https://example.com/from-start2">From Start 2</a></body></html>';
+        $start1Html = '<html><body id="content">
+            <a href="https://example.com/from-start1">From Start 1</a></body></html>';
+
+        $start2Html = '<html><body id="content">
+            <a href="https://example.com/from-start2">From Start 2</a></body></html>';
 
         $start1Response = $this->createStub(ResponseInterface::class);
         $start1Response->method('getContent')->willReturn($start1Html);
