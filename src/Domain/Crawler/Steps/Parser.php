@@ -35,13 +35,12 @@ class Parser
         $scoringActive = $this->config->contentScoringActive();
 
         foreach ($htmlData as $item) {
-            if (empty($item['html'])) {
+            $html = $item['html'];
+            if (empty($html)) {
                 continue;
             }
 
             try {
-                $html = $item['html'];
-
                 if (strlen($html) > 2_000_000) {
                     $this->logger->warning('Skipping huge HTML', [
                         'url' => $item['url'],
@@ -53,6 +52,10 @@ class Parser
 
                 $title = $this->extractText($crawler, $titleConfig);
                 if ($title === null || $title === '') {
+                    $this->logger->debug(
+                        'Title Not found in Processor',
+                        ['key' => 'title', 'dataFound' => $title, ]
+                    );
                     continue;
                 }
 
@@ -85,6 +88,10 @@ class Parser
                     $relevanceData["html"] = $html;
                     $keepTeaser = $this->teaserRelevanceEvaluator->relevant($relevanceData);
                     if (!$keepTeaser) {
+                        $this->logger->debug(
+                            'Teaser not Relevant',
+                            ['relevanceData' => $relevanceData, ]
+                        );
                         continue;
                     }
                 }
