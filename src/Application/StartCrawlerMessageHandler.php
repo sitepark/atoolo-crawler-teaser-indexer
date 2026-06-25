@@ -23,11 +23,16 @@ final class StartCrawlerMessageHandler
         /** @var array<string, mixed> $data */
         $data = $config->data->get();
 
+        if (empty($data)) {
+            $this->logger->warning('No crawler data configured or data not found.');
+            return;
+        }
+
         /** @var array<array<string, mixed>> $sites */
         $sites = $data["sp_crawling_sites"] ?? [];
 
         if (empty($sites)) {
-            $this->logger->warning('No crawler sites configured.');
+            $this->logger->warning('Data found but, no crawler sites configured.');
             return;
         }
         foreach ($sites as $site) {
