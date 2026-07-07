@@ -13,7 +13,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
 #[AsCommand(
-    name: 'crawler:index',
+    name: 'crawler:scheduler-atoolo-crawler-teaser-indexer',
     description: 'Run crawler for all configured sites sequentially (same logic as production handler).',
 )]
 final class Index extends Command
