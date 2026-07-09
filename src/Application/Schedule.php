@@ -11,7 +11,7 @@ use Symfony\Component\Scheduler\ScheduleProviderInterface;
 use Symfony\Contracts\Cache\CacheInterface;
 
 #[AsSchedule(
-    name: 'scheduler-atoolo-crawler-teaser-indexer',
+    name: 'atoolo-crawler-teaser-indexer',
 )]
 final class Schedule implements ScheduleProviderInterface
 {
