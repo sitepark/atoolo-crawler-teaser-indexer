@@ -94,23 +94,6 @@ final class CrawlerConfigHelper
         return $default;
     }
 
-    public function nullableString(string $key): ?string
-    {
-        $v = $this->ctx->get($key, self::MISSING);
-
-        if ($v === self::MISSING || $v === null) {
-            return null;
-        }
-
-        if (is_string($v)) {
-            $v = trim($v);
-            return $v !== '' ? $v : null;
-        }
-
-        $this->logger->error('Config invalid nullable string, returning null', ['key' => $key, 'value' => $v]);
-        return null;
-    }
-
     /** @return list<int> */
     public function intList(string $key): array
     {

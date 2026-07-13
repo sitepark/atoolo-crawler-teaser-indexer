@@ -25,7 +25,7 @@ final class RobotsTxtChecker implements RobotsTxtCheckerInterface
     public function filterAllowed(array $urls): array
     {
         $robotsUrl = $this->config->robotsUrl();
-        if ($robotsUrl === null || $robotsUrl === '') {
+        if ($robotsUrl == null || $robotsUrl === '') {
             return array_values(array_unique($urls));
         }
 
