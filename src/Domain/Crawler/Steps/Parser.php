@@ -5,9 +5,10 @@ namespace Atoolo\Crawler\Domain\Crawler\Steps;
 use Atoolo\Crawler\Config\CrawlerConfig;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DomCrawler\Crawler;
-use Atoolo\Crawler\Domain\Crawler\Services\FieldExtractConfig;
 use Atoolo\Crawler\Domain\Crawler\Services\DateTimeExtractConfig;
+use Atoolo\Crawler\Domain\Crawler\Services\IntroExtractConfig;
 use Atoolo\Crawler\Domain\Crawler\Services\TeaserRelevanceEvaluatorInterface;
+use Atoolo\Crawler\Domain\Crawler\Services\TitleExtractConfig;
 
 class Parser
 {
@@ -49,7 +50,7 @@ class Parser
                 }
                 $crawler = new Crawler($html);
 
-                $title = $this->extractText($crawler, $titleConfig);
+                $title = $this->extractTitleText($crawler, $titleConfig);
                 if ($title === null || $title === '') {
                     $this->logger->debug(
                         'Title Not found in Processor',
@@ -57,13 +58,13 @@ class Parser
                     );
                     continue;
                 }
-
+            
                 $teaserData = [
                     'url'   => $item['url'],
                     'title' => ($titleConfig->prefix ?? '') . $title,
                 ];
 
-                $introText = $this->extractText($crawler, $introConfig);
+                $introText = $this->extractIntroductionText($crawler, $introConfig);
                 if ($introText !== null) {
                     $teaserData['introText'] = $introText;
                 } else {
@@ -105,7 +106,7 @@ class Parser
         return $results;
     }
 
-    private function extractText(Crawler $crawler, FieldExtractConfig $config): ?string
+    private function extractTitleText(Crawler $crawler, TitleExtractConfig $config): ?string
     {
         if (!$config->present) {
             return null;
@@ -113,17 +114,46 @@ class Parser
 
         // OG/Meta have priority
         foreach ($config->opengraph as $property) {
-            $v = $this->findMetaTagContent($crawler, $property);
-            if ($v !== null && $v !== '') {
-                return $v;
+            $title = $this->findMetaTagContent($crawler, $property);
+            if ($title !== null && $title !== '') {
+                return $title;
             }
         }
 
         // CSS Fallbacks
         foreach ($config->css as $selector) {
-            $v = $this->findCssSelectorContent($crawler, $selector);
-            if ($v !== null && $v !== '') {
-                return $v;
+            $title = $this->findCssSelectorContent($crawler, $selector);
+            if ($title !== null && $title !== '') {
+                return $title;
+            }
+        }
+
+        $this->logger->debug(
+            'Title Not found in Processor',
+            ['key' => 'title', 'dataFound' => $title ?? "", ]
+        );
+        return null;
+    }
+
+        private function extractIntroductionText(Crawler $crawler, IntroExtractConfig $config): ?string
+    {
+        if (!$config->present) {
+            return null;
+        }
+
+        // OG/Meta have priority
+        foreach ($config->opengraph as $property) {
+            $introductionText = $this->findMetaTagContent($crawler, $property);
+            if ($introductionText !== null && $introductionText !== '') {
+                return $introductionText;
+            }
+        }
+
+        // CSS Fallbacks
+        foreach ($config->css as $selector) {
+            $introductionText = $this->findCssSelectorContent($crawler, $selector);
+            if ($introductionText !== null && $introductionText !== '') {
+                return $introductionText;
             }
         }
 
@@ -139,7 +169,7 @@ class Parser
         $raw = $this->findDateTimeRaw($crawler, $config);
 
         if ($raw === null) {
-            return null; // requiredField wird ggf. außerhalb (skip) behandelt
+            return null;
         }
 
         $raw = $this->normalizeDateTimeRaw($raw, $config);

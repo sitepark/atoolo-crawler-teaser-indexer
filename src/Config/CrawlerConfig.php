@@ -8,6 +8,8 @@ use Atoolo\Crawler\Domain\Crawler\Services\FieldExtractConfig;
 use Atoolo\Crawler\Domain\Crawler\Services\DateTimeExtractConfig;
 use Atoolo\Crawler\Config\CrawlerConfigHelper;
 use Atoolo\Crawler\Domain\Crawler\Services\ContentScoringConfig;
+use Atoolo\Crawler\Domain\Crawler\Services\IntroExtractConfig;
+use Atoolo\Crawler\Domain\Crawler\Services\TitleExtractConfig;
 
 final class CrawlerConfig
 {
@@ -160,9 +162,9 @@ final class CrawlerConfig
 
     // --- Parser: Title ---
 
-    public function titleConfig(): FieldExtractConfig
+    public function titleConfig(): TitleExtractConfig
     {
-        return new FieldExtractConfig(
+        return new TitleExtractConfig(
             present: true,
             requiredField: true,
             prefix: $this->crawlerConfigHelper->string('sp_title_prefix', ""),
@@ -172,12 +174,11 @@ final class CrawlerConfig
         );
     }
 
-    public function introTextConfig(): FieldExtractConfig
+    public function introTextConfig(): IntroExtractConfig
     {
-        return new FieldExtractConfig(
+        return new IntroExtractConfig(
             present: $this->crawlerConfigHelper->bool('sp_introText_present', false),
             requiredField: $this->crawlerConfigHelper->bool('sp_introText_required_field', false),
-            prefix: "",
             opengraph: $this->crawlerConfigHelper->stringList('sp_introText_opengraph'),
             css: $this->crawlerConfigHelper->stringList('sp_introText_css'),
             maxChars: $this->crawlerConfigHelper->int('sp_introText_max_chars', 999),
