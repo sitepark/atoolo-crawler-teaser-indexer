@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Atoolo\Crawler\Config;
 
-use Atoolo\Crawler\Domain\Crawler\Services\FieldExtractConfig;
 use Atoolo\Crawler\Domain\Crawler\Services\DateTimeExtractConfig;
 use Atoolo\Crawler\Config\CrawlerConfigHelper;
 use Atoolo\Crawler\Domain\Crawler\Services\ContentScoringConfig;
@@ -14,7 +13,7 @@ use Atoolo\Crawler\Domain\Crawler\Services\TitleExtractConfig;
 final class CrawlerConfig
 {
     public function __construct(
-        private CrawlerConfigHelper $crawlerConfigHelper,
+        private CrawlerConfigHelper $crawlerConfigHelper
     ) {
     }
 
@@ -47,7 +46,7 @@ final class CrawlerConfig
         return $this->crawlerConfigHelper->bool('sp_respect_robots_txt', false);
     }
 
-    public function robotsUrl(): ?string
+    public function robotsUrl(): string
     {
         return $this->crawlerConfigHelper->nullableString('sp_robots_url');
     }
@@ -59,7 +58,7 @@ final class CrawlerConfig
      */
     public function startUrls(): array
     {
-        $raw = $this->crawlerConfigHelper->intStringList('sp_start_urls');
+        $raw = $this->crawlerConfigHelper->startUrlsList('sp_start_urls');
 
         $out = [];
         foreach ($raw as $item) {
@@ -85,10 +84,10 @@ final class CrawlerConfig
         return $this->crawlerConfigHelper->string('sp_link_selector', '#content a[href]');
     }
 
-    /** @return list<mixed> */
+    /** @return list<string> */
     public function allowPrefixes(): array
     {
-        return $this->crawlerConfigHelper->intStringList('sp_allow_prefixes');
+        return $this->crawlerConfigHelper->stringList('sp_allow_prefixes');
     }
 
     /**
@@ -96,20 +95,20 @@ final class CrawlerConfig
      */
     public function denyPrefixes(): array
     {
-        $denyPrefixes = $this->crawlerConfigHelper->intStringList('sp_deny_prefixes');
+        $denyPrefixes = $this->crawlerConfigHelper->stringList('sp_deny_prefixes');
         return array_values(array_filter($denyPrefixes, 'is_string'));
     }
 
-    /** @return list<mixed> */
+    /** @return list<string> */
     public function denyEndings(): array
     {
-        return $this->crawlerConfigHelper->intStringList('sp_deny_endings');
+        return $this->crawlerConfigHelper->stringList('sp_deny_endings');
     }
 
-    /** @return list<mixed> */
+    /** @return list<string> */
     public function forcedArticleUrls(): array
     {
-        return $this->crawlerConfigHelper->intStringList('sp_forced_article_urls');
+        return $this->crawlerConfigHelper->stringList('sp_forced_article_urls');
     }
 
     public function stripQueryParamsActive(): bool
