@@ -13,7 +13,8 @@ final class CrawlerConfig
 {
     public function __construct(
         private CrawlerConfigHelper $crawlerConfigHelper,
-    ) {}
+    ) {
+    }
 
     // --- Category ---
 
