@@ -11,10 +11,10 @@ final class ContentScoringConfig
      * @param list<ContentScoringRule> $negative
      */
     public function __construct(
-        public readonly bool   $active   = false,
-        public readonly int    $minScore = 0,
-        public readonly array  $positive = [],
-        public readonly array  $negative = [],
+        public readonly bool $active = false,
+        public readonly int $minScore = 0,
+        public readonly array $positive = [],
+        public readonly array $negative = [],
     ) {
     }
 

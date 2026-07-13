@@ -203,7 +203,10 @@ final class CrawlerConfigHelper
         }
 
         if (!is_array($rawStartUrlsList)) {
-            $this->logger->warning('Config invalid string list, using empty list', ['key' => $key, 'value' => $rawStartUrlsList]);
+            $this->logger->warning(
+                'Config invalid string list, using empty list',
+                ['key' => $key, 'value' => $rawStartUrlsList]
+            );
             return [];
         }
 

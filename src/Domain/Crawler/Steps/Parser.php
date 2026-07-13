@@ -55,7 +55,7 @@ class Parser
                 if ($title === null || $title === '') {
                     continue;
                 }
-            
+
                 $teaserData = [
                     'url'   => $item['url'],
                     'title' => ($titleConfig->prefix ?? '') . $title,
@@ -132,7 +132,7 @@ class Parser
         return null;
     }
 
-        private function extractIntroductionText(Crawler $crawler, IntroExtractConfig $config): ?string
+    private function extractIntroductionText(Crawler $crawler, IntroExtractConfig $config): ?string
     {
         if (!$config->present) {
             return null;
