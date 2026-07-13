@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Atoolo\Crawler\Domain\Crawler\Services;
 
-final class FieldExtractConfig
+final class TitleExtractConfig
 {
     /**
      * @param list<string> $opengraph
@@ -13,10 +13,10 @@ final class FieldExtractConfig
     public function __construct(
         public readonly bool $present,
         public readonly bool $requiredField,
-        public readonly string $prefix,
+        public readonly ?string $prefix,
         public readonly array $opengraph,
         public readonly array $css,
-        public readonly int $maxChars,
+        public readonly ?int $maxChars,
     ) {
     }
 }
