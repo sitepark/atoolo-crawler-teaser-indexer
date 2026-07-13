@@ -13,10 +13,10 @@ final class TitleExtractConfig
     public function __construct(
         public readonly bool $present,
         public readonly bool $requiredField,
-        public readonly ?string $prefix,
+        public readonly string $prefix,
         public readonly array $opengraph,
         public readonly array $css,
-        public readonly ?int $maxChars,
+        public readonly int $maxChars,
     ) {
     }
 }

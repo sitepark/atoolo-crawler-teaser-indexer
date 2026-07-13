@@ -48,7 +48,7 @@ final class CrawlerConfig
 
     public function robotsUrl(): string
     {
-        return $this->crawlerConfigHelper->nullableString('sp_robots_url');
+        return $this->crawlerConfigHelper->string('sp_robots_url');
     }
 
     // --- URL Collector ---
