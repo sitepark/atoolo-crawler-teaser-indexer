@@ -11,8 +11,8 @@ use Psr\Log\LoggerInterface;
 final class CrawlerConfigHelper
 {
     public function __construct(
-    private readonly CrawlerConfigContext $ctx,
-    private LoggerInterface $logger
+        private readonly CrawlerConfigContext $ctx,
+        private LoggerInterface $logger
     ) {
     }
 
