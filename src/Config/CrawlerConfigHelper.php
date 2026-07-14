@@ -10,9 +10,7 @@ use Psr\Log\LoggerInterface;
 
 final class CrawlerConfigHelper
 {
-    public function __construct(private readonly CrawlerConfigContext $ctx, private LoggerInterface $logger)
-    {
-    }
+    public function __construct(private readonly CrawlerConfigContext $ctx, private LoggerInterface $logger) {}
 
     private const MISSING = '__MISSING__';
 
@@ -175,7 +173,7 @@ final class CrawlerConfigHelper
         return $out;
     }
 
-    /** @return list<array{url : string, extraction_depth: int}>*/
+    /** @return list<array{url: string, extraction_depth: int}> */
     public function startUrlsList(string $key): array
     {
         $rawStartUrlsList = $this->ctx->get($key, self::MISSING);
@@ -195,11 +193,9 @@ final class CrawlerConfigHelper
 
         $startUrlsList = [];
         foreach ($rawStartUrlsList as $startUrl) {
-            if (is_string($startUrl)) {
-                $out[] = ['url' => $startUrl, 'extraction_depth' => 0];
+            if ($startUrl === '') {
                 continue;
             }
-
             if (is_array($startUrl) && isset($startUrl['sp_url']) && is_string($startUrl['sp_url'])) {
                 $depth = $startUrl['sp_extraction_depth'] ?? 0;
                 $startUrlsList[] = [

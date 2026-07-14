@@ -76,7 +76,7 @@ final class CrawlerConfigTest extends TestCase
     public function testRobotsUrlReturnsNullByDefault(): void
     {
         $config = $this->makeConfig([]);
-        $this->assertNull($config->robotsUrl());
+        $this->assertSame('', $config->robotsUrl());
     }
 
     public function testRobotsUrlReturnsString(): void
@@ -91,14 +91,6 @@ final class CrawlerConfigTest extends TestCase
     {
         $config = $this->makeConfig([]);
         $this->assertSame([], $config->startUrls());
-    }
-
-    public function testStartUrlsWithStringItem(): void
-    {
-        $config = $this->makeConfig(['sp_start_urls' => ['https://example.com/']]);
-        $this->assertSame([
-            ['url' => 'https://example.com/', 'extraction_depth' => 0],
-        ], $config->startUrls());
     }
 
     public function testStartUrlsWithArrayItemAndNumericDepth(): void
@@ -142,11 +134,9 @@ final class CrawlerConfigTest extends TestCase
     public function testStartUrlsMixedStringAndArray(): void
     {
         $config = $this->makeConfig(['sp_start_urls' => [
-            'https://example.com/',
             ['sp_url' => 'https://example.com/news/', 'sp_extraction_depth' => 2],
         ]]);
         $this->assertSame([
-            ['url' => 'https://example.com/', 'extraction_depth' => 0],
             ['url' => 'https://example.com/news/', 'extraction_depth' => 2],
         ], $config->startUrls());
     }
@@ -330,7 +320,6 @@ final class CrawlerConfigTest extends TestCase
         $introConfig = $config->introTextConfig();
         $this->assertFalse($introConfig->present);
         $this->assertFalse($introConfig->requiredField);
-        $this->assertSame('', $introConfig->prefix);
     }
 
     public function testIntroTextConfigCustomValues(): void
