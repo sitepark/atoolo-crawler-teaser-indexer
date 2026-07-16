@@ -45,3 +45,7 @@ services:
         arguments:
             $indexService: "@atoolo_search.indexer.solr_index_service"
             $progressHandler: "@atoolo_search.indexer.internal_resource_progress_state"
+
+    Atoolo\Crawler\Domain\Crawler\Services\URLNormalizer:
+        arguments:
+            $denyEndings: "%atoolo.crawler.deny_endings%"
