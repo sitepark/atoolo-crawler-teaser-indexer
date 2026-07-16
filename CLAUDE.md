@@ -57,10 +57,10 @@ composer test:infection
 ### Running the Crawler
 ```bash
 # Development: Run the crawler for all configured sites
-./bin/console crawler:index -vvv
+./bin/console crawler:scheduler-atoolo-crawler-teaser-indexer -vvv
 
 # Docker example (as shown in README):
-docker compose exec -u ${UID} fpm /var/www/fillTheBlank/www bin/console crawler:index -vvv
+docker compose exec -u ${UID} fpm /var/www/fillTheBlank/www bin/console crawler:scheduler-atoolo-crawler-teaser-indexer -vvv
 ```
 
 ### Reporting
@@ -100,7 +100,7 @@ src/
 │   ├── StartCrawlerMessage      - Messenger message for async crawling
 │   └── StartCrawlerMessageHandler - Handles async crawler invocation
 ├── Command/
-│   └── Index                    - CLI command: bin/console crawler:index
+│   └── Index                    - CLI command: bin/console crawler:scheduler-atoolo-crawler-teaser-indexer
 ├── Config/
 │   ├── CrawlerConfig            - Accessor for configuration values (sp_* prefixed)
 │   ├── CrawlerConfigContext     - Thread-safe context storing current site config
@@ -124,6 +124,8 @@ src/
 │   └── Ports/
 │       └── RequestExecutor      - HTTP request execution with retries
 ```
+
+> **Note:** `src/Proposal/` is a non-wired code skeleton for the planned next major release (see `docs/review-next_major.md`). It is not registered as services and not part of the runtime — ignore it when working on the current codebase.
 
 ### Configuration System
 
@@ -173,7 +175,7 @@ The bundle uses Symfony's service autowiring (`config/services.yaml`):
 - Memory limit: 512M
 
 **Test Coverage:**
-- Tests located in `tests/` directory (6 test files)
+- Tests located in `tests/` directory (18 test files)
 - Focus areas: URL collection, fetching, parsing, processing, end-to-end crawling
 - E2E test (`CrawlerManagerE2ETest.php`) validates complete pipeline
 
@@ -271,6 +273,6 @@ This is a Symfony bundle (`symfony-bundle` type). When installed in a customer p
 
 3. Create site config at `base_dir/indexer/atooloTeaserCrawler.php`
 
-4. Run: `./bin/console crawler:index`
+4. Run: `./bin/console crawler:scheduler-atoolo-crawler-teaser-indexer`
 
 The bundle loads services from `config/services.yaml` and auto-wires all classes in `src/`.
