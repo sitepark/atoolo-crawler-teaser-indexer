@@ -69,10 +69,11 @@ class CrawlerManager
         $finalTeaserStream = iterator_to_array($teaserStream);
 
         $indexerStatus = $this->indexer->doIndex($finalTeaserStream);
+        $this->logger->info("Indexer statusLine: " . $indexerStatus->getStatusLine());
         if ($indexerStatus->errors == 0) {
-            $this->logger->info("Status Errors [{$indexerStatus->errors}]: Crawling Prozess completed successfully.");
+            $this->logger->info("No Status Error [{$indexerStatus->errors}]: Crawling Prozess completed successfully.");
         } else {
-            $this->logger->error("Status Errors [{$indexerStatus->errors}]: Crawling Prozess Stops by Indexer.");
+            $this->logger->error("Status Errors [{$indexerStatus->errors}]: Crawling Prozess Stops by Indexing.");
         }
     }
 
