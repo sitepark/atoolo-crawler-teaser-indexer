@@ -337,4 +337,53 @@ final class CrawlerManagerE2ETest extends TestCase
 
         $manager->startCrawler();
     }
+
+    /**
+     * Uses real Processor (Generator) so that storageHandlingFetcherParser's
+     * "yield $teaser" line is actually executed.
+     */
+    public function testStorageHandlingYieldsTeasersWithRealProcessor(): void
+    {
+        $logger = $this->createStub(LoggerInterface::class);
+        $config = $this->createConfig($logger);
+
+        $pages = [
+            ['url' => $this->url1, 'html' => '<h1>Title 1</h1>'],
+        ];
+
+        $urlCollector = $this->createStub(URLCollector::class);
+        $urlCollector->method('findHrefUrlsByCssSelector')->willReturn([$this->url1]);
+
+        $fetcher = $this->createStub(Fetcher::class);
+        $fetcher->method('fetchUrls')->willReturn($pages);
+
+        $parsed = [['url' => $this->url1, 'title' => 'Title 1']];
+        $parser = $this->createStub(Parser::class);
+        $parser->method('extractTeasers')->willReturn($parsed);
+
+        // Real Processor returns a Generator — this causes storageHandlingFetcherParser to yield
+        $processor = new Processor($logger, $config);
+
+        $indexer = $this->createMock(Indexer::class);
+        $indexer->expects($this->once())
+            ->method('doIndex')
+            ->with($this->callback(function (array $items) {
+                $this->assertCount(1, $items);
+                $this->assertSame('Title 1', $items[0]['title']);
+                return true;
+            }))
+            ->willReturn($this->makeIndexerStatus(0));
+
+        $manager = new CrawlerManager(
+            $urlCollector,
+            $fetcher,
+            $parser,
+            $processor,
+            $config,
+            $logger,
+            $indexer,
+        );
+
+        $manager->startCrawler();
+    }
 }

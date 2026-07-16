@@ -446,4 +446,15 @@ final class CrawlerConfigTest extends TestCase
         $this->assertCount(1, $scoringConfig->negative);
         $this->assertSame(1, $scoringConfig->negative[0]->score);
     }
+
+    public function testCrawlerConfigContextResetClearsParams(): void
+    {
+        $ctx = new CrawlerConfigContext(['sp_id' => 'my-id', 'sp_max_teaser' => 50]);
+        $this->assertSame('my-id', $ctx->get('sp_id'));
+
+        $ctx->reset();
+
+        $this->assertNull($ctx->get('sp_id'));
+        $this->assertNull($ctx->get('sp_max_teaser'));
+    }
 }
