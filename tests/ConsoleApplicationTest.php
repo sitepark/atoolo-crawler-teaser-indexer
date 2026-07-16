@@ -14,7 +14,7 @@ final class ConsoleApplicationTest extends TestCase
     public function testApplicationIsInstanceOfBaseApplication(): void
     {
         $loader = $this->createStub(CommandLoaderInterface::class);
-        $app    = new Application($loader);
+        $app = new Application($loader);
 
         $this->assertInstanceOf(BaseApplication::class, $app);
     }

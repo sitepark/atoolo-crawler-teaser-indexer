@@ -20,19 +20,19 @@ final class ParserTest extends TestCase
     {
         $this->parser = $this->makeParser([
             'sp_title_opengraph' => ['og:title'],
-            'sp_title_css'       => ['h1', '#content h1', 'h1.h1'],
+            'sp_title_css' => ['h1', '#content h1', 'h1.h1'],
             'sp_title_max_chars' => 200,
 
-            'sp_introText_present'        => true,
+            'sp_introText_present' => true,
             'sp_introText_required_field' => false,
-            'sp_introText_opengraph'      => [],
-            'sp_introText_css'            => ['.introText'],
+            'sp_introText_opengraph' => [],
+            'sp_introText_css' => ['.introText'],
 
-            'sp_datetime_present'        => true,
+            'sp_datetime_present' => true,
             'sp_datetime_required_field' => false,
-            'sp_datetime_only_date'      => true,
-            'sp_datetime_opengraph'      => [],
-            'sp_datetime_css'            => ['.date', '#content .date'],
+            'sp_datetime_only_date' => true,
+            'sp_datetime_opengraph' => [],
+            'sp_datetime_css' => ['.date', '#content .date'],
         ]);
     }
 
@@ -46,27 +46,27 @@ final class ParserTest extends TestCase
     private function makeParser(array $ctxOverrides = [], bool $evaluatorReturns = true): Parser
     {
         $defaults = [
-            'sp_title_prefix'    => '',
+            'sp_title_prefix' => '',
             'sp_title_opengraph' => [],
-            'sp_title_css'       => ['h1'],
+            'sp_title_css' => ['h1'],
             'sp_title_max_chars' => 999,
 
-            'sp_introText_present'        => false,
+            'sp_introText_present' => false,
             'sp_introText_required_field' => false,
-            'sp_introText_opengraph'      => [],
-            'sp_introText_css'            => ['.introText'],
-            'sp_introText_max_chars'      => 999,
+            'sp_introText_opengraph' => [],
+            'sp_introText_css' => ['.introText'],
+            'sp_introText_max_chars' => 999,
 
-            'sp_datetime_present'        => false,
+            'sp_datetime_present' => false,
             'sp_datetime_required_field' => false,
-            'sp_datetime_only_date'      => true,
-            'sp_datetime_opengraph'      => [],
-            'sp_datetime_css'            => ['.date'],
+            'sp_datetime_only_date' => true,
+            'sp_datetime_opengraph' => [],
+            'sp_datetime_css' => ['.date'],
 
             'sp_content_scoring_active' => false,
         ];
 
-        $ctx    = new CrawlerConfigContext(array_merge($defaults, $ctxOverrides));
+        $ctx = new CrawlerConfigContext(array_merge($defaults, $ctxOverrides));
         $logger = $this->createStub(LoggerInterface::class);
         $helper = new CrawlerConfigHelper($ctx, $logger);
         $config = new CrawlerConfig($helper);
@@ -79,6 +79,7 @@ final class ParserTest extends TestCase
 
     /**
      * @param array<int,array<string,mixed>> $result
+     *
      * @return array<int,array<string,mixed>>
      */
     private function normalizeDatetime(array $result): array
@@ -87,6 +88,7 @@ final class ParserTest extends TestCase
             if (isset($t['datetime']) && $t['datetime'] instanceof \DateTimeInterface) {
                 $t['datetime'] = $t['datetime']->format(DATE_ATOM);
             }
+
             return $t;
         }, $result);
     }
@@ -112,10 +114,10 @@ HTML;
 
         $this->assertSame([
             [
-                'url'       => 'https://example.com/page1',
-                'title'     => 'Meta Title',
+                'url' => 'https://example.com/page1',
+                'title' => 'Meta Title',
                 'introText' => 'Einleitungs Text Extrahiert',
-                'datetime'  => '2026-01-14T00:00:00+00:00',
+                'datetime' => '2026-01-14T00:00:00+00:00',
             ],
         ], $result);
     }
@@ -138,17 +140,17 @@ HTML;
 
         $this->assertSame([
             [
-                'url'       => 'https://example.com/page2',
-                'title'     => 'Main Heading',
+                'url' => 'https://example.com/page2',
+                'title' => 'Main Heading',
                 'introText' => 'Einleitungs Text Extrahiert',
-                'datetime'  => '2026-01-14T00:00:00+00:00',
+                'datetime' => '2026-01-14T00:00:00+00:00',
             ],
         ], $result);
     }
 
     public function testSkipsWhenNoTitle(): void
     {
-        $html   = '<html><body><p>No title here</p></body></html>';
+        $html = '<html><body><p>No title here</p></body></html>';
         $result = $this->parser->extractTeasers([
             ['url' => 'https://example.com/page3', 'html' => $html],
         ]);
@@ -183,7 +185,7 @@ HTML;
     public function testSkipsHugeHtml(): void
     {
         $parser = $this->makeParser();
-        $html   = '<html><body><h1>Title</h1></body>' . str_repeat('x', 2_000_001) . '</html>';
+        $html = '<html><body><h1>Title</h1></body>' . str_repeat('x', 2_000_001) . '</html>';
 
         $result = $parser->extractTeasers([
             ['url' => 'https://example.com/', 'html' => $html],
@@ -197,7 +199,7 @@ HTML;
     public function testTitlePrefixIsPrependedToTitle(): void
     {
         $parser = $this->makeParser(['sp_title_prefix' => 'PREFIX: ']);
-        $html   = '<html><body><h1>News</h1></body></html>';
+        $html = '<html><body><h1>News</h1></body></html>';
 
         $result = $parser->extractTeasers([
             ['url' => 'https://example.com/', 'html' => $html],
@@ -212,7 +214,7 @@ HTML;
     {
         // sp_introText_present defaults to false → extractText returns null, field omitted
         $parser = $this->makeParser();
-        $html   = '<html><body><h1>Title</h1><div class="introText">Ignored</div></body></html>';
+        $html = '<html><body><h1>Title</h1><div class="introText">Ignored</div></body></html>';
 
         $result = $parser->extractTeasers([
             ['url' => 'https://example.com/', 'html' => $html],
@@ -226,7 +228,7 @@ HTML;
     {
         $parser = $this->makeParser([
             'sp_introText_present' => true,
-            'sp_introText_css'     => ['.intro'],
+            'sp_introText_css' => ['.intro'],
         ]);
         $html = '<html><body><h1>Title</h1><p class="intro">Lead text</p></body></html>';
 
@@ -240,9 +242,9 @@ HTML;
     public function testIntroTextRequiredAndMissingSkipsTeaser(): void
     {
         $parser = $this->makeParser([
-            'sp_introText_present'        => true,
+            'sp_introText_present' => true,
             'sp_introText_required_field' => true,
-            'sp_introText_css'            => ['.introText'],
+            'sp_introText_css' => ['.introText'],
         ]);
         $html = '<html><body><h1>Title</h1></body></html>';
 
@@ -256,9 +258,9 @@ HTML;
     public function testIntroTextNotFoundAndNotRequiredKeepsTeaser(): void
     {
         $parser = $this->makeParser([
-            'sp_introText_present'        => true,
+            'sp_introText_present' => true,
             'sp_introText_required_field' => false,
-            'sp_introText_css'            => ['.introText'],
+            'sp_introText_css' => ['.introText'],
         ]);
         $html = '<html><body><h1>Title</h1></body></html>';
 
@@ -273,9 +275,9 @@ HTML;
     public function testIntroTextExtractedFromOgMeta(): void
     {
         $parser = $this->makeParser([
-            'sp_introText_present'   => true,
+            'sp_introText_present' => true,
             'sp_introText_opengraph' => ['og:description'],
-            'sp_introText_css'       => [],
+            'sp_introText_css' => [],
         ]);
         $html = <<<HTML
 <html>
@@ -297,7 +299,7 @@ HTML;
     {
         // sp_datetime_present defaults to false
         $parser = $this->makeParser();
-        $html   = '<html><body><h1>Title</h1><div class="date">2026-01-14</div></body></html>';
+        $html = '<html><body><h1>Title</h1><div class="date">2026-01-14</div></body></html>';
 
         $result = $parser->extractTeasers([
             ['url' => 'https://example.com/', 'html' => $html],
@@ -310,9 +312,9 @@ HTML;
     public function testDateTimeRequiredAndMissingSkipsTeaser(): void
     {
         $parser = $this->makeParser([
-            'sp_datetime_present'        => true,
+            'sp_datetime_present' => true,
             'sp_datetime_required_field' => true,
-            'sp_datetime_css'            => ['.date'],
+            'sp_datetime_css' => ['.date'],
         ]);
         $html = '<html><body><h1>Title</h1></body></html>';
 
@@ -326,9 +328,9 @@ HTML;
     public function testDateTimeNotFoundButNotRequiredKeepsTeaser(): void
     {
         $parser = $this->makeParser([
-            'sp_datetime_present'        => true,
+            'sp_datetime_present' => true,
             'sp_datetime_required_field' => false,
-            'sp_datetime_css'            => ['.date'],
+            'sp_datetime_css' => ['.date'],
         ]);
         $html = '<html><body><h1>Title</h1></body></html>';
 
@@ -343,9 +345,9 @@ HTML;
     public function testDateTimeExtractedFromOgMeta(): void
     {
         $parser = $this->makeParser([
-            'sp_datetime_present'    => true,
-            'sp_datetime_opengraph'  => ['article:published_time'],
-            'sp_datetime_only_date'  => false,
+            'sp_datetime_present' => true,
+            'sp_datetime_opengraph' => ['article:published_time'],
+            'sp_datetime_only_date' => false,
         ]);
         $html = <<<HTML
 <html>
@@ -366,8 +368,8 @@ HTML;
     public function testDateTimeExtractedFromTimeElementDatetimeAttribute(): void
     {
         $parser = $this->makeParser([
-            'sp_datetime_present'   => true,
-            'sp_datetime_css'       => ['time'],
+            'sp_datetime_present' => true,
+            'sp_datetime_css' => ['time'],
             'sp_datetime_only_date' => true,
         ]);
         $html = <<<HTML
@@ -391,8 +393,8 @@ HTML;
     public function testDateTimeFromCssTextContent(): void
     {
         $parser = $this->makeParser([
-            'sp_datetime_present'   => true,
-            'sp_datetime_css'       => ['.published'],
+            'sp_datetime_present' => true,
+            'sp_datetime_css' => ['.published'],
             'sp_datetime_only_date' => true,
         ]);
         $html = '<html><body><h1>Title</h1><span class="published">2026-07-04</span></body></html>';
@@ -409,8 +411,8 @@ HTML;
     public function testDateTimeWithOnlyDateFalsePreservesTime(): void
     {
         $parser = $this->makeParser([
-            'sp_datetime_present'   => true,
-            'sp_datetime_css'       => ['.date'],
+            'sp_datetime_present' => true,
+            'sp_datetime_css' => ['.date'],
             'sp_datetime_only_date' => false,
         ]);
         $html = '<html><body><h1>Title</h1><div class="date">2026-01-14 08:30:00</div></body></html>';
@@ -429,8 +431,8 @@ HTML;
         // "2026-01-14 12:00:00" does not match the strict Y-m-d format check,
         // so normalizeDateTimeRaw returns the raw string unchanged.
         $parser = $this->makeParser([
-            'sp_datetime_present'   => true,
-            'sp_datetime_css'       => ['.date'],
+            'sp_datetime_present' => true,
+            'sp_datetime_css' => ['.date'],
             'sp_datetime_only_date' => true,
         ]);
         $html = '<html><body><h1>Title</h1><div class="date">2026-01-14 12:00:00</div></body></html>';
@@ -485,9 +487,9 @@ HTML;
         // '[invalid' is an unclosed CSS attribute selector → CssSelector throws
         // findCssSelectorContent catches it and returns null
         $parser = $this->makeParser([
-            'sp_introText_present'        => true,
+            'sp_introText_present' => true,
             'sp_introText_required_field' => false,
-            'sp_introText_css'            => ['[invalid'],
+            'sp_introText_css' => ['[invalid'],
         ]);
         $html = '<html><body><h1>Title</h1></body></html>';
 
@@ -503,9 +505,9 @@ HTML;
     {
         // '[invalid' triggers exceptions in both findAttrByCss and findCssSelectorContent
         $parser = $this->makeParser([
-            'sp_datetime_present'        => true,
+            'sp_datetime_present' => true,
             'sp_datetime_required_field' => false,
-            'sp_datetime_css'            => ['[invalid'],
+            'sp_datetime_css' => ['[invalid'],
         ]);
         $html = '<html><body><h1>Title</h1></body></html>';
 
@@ -521,10 +523,10 @@ HTML;
     {
         // '@invalid' uses Unix timestamp syntax but is not a valid number → DateMalformedStringException
         $parser = $this->makeParser([
-            'sp_datetime_present'        => true,
+            'sp_datetime_present' => true,
             'sp_datetime_required_field' => false,
-            'sp_datetime_css'            => ['.date'],
-            'sp_datetime_only_date'      => false,
+            'sp_datetime_css' => ['.date'],
+            'sp_datetime_only_date' => false,
         ]);
         $html = '<html><body><h1>Title</h1><div class="date">@invalid</div></body></html>';
 
@@ -545,27 +547,27 @@ HTML;
         $evaluator->method('relevant')->willThrowException(new \RuntimeException('evaluator error'));
 
         $ctx = new CrawlerConfigContext(array_merge([
-            'sp_title_prefix'             => '',
-            'sp_title_opengraph'          => [],
-            'sp_title_css'                => ['h1'],
-            'sp_title_max_chars'          => 999,
-            'sp_introText_present'        => false,
+            'sp_title_prefix' => '',
+            'sp_title_opengraph' => [],
+            'sp_title_css' => ['h1'],
+            'sp_title_max_chars' => 999,
+            'sp_introText_present' => false,
             'sp_introText_required_field' => false,
-            'sp_introText_opengraph'      => [],
-            'sp_introText_css'            => [],
-            'sp_introText_max_chars'      => 999,
-            'sp_datetime_present'         => false,
-            'sp_datetime_required_field'  => false,
-            'sp_datetime_only_date'       => true,
-            'sp_datetime_opengraph'       => [],
-            'sp_datetime_css'             => [],
-            'sp_content_scoring_active'   => true,
+            'sp_introText_opengraph' => [],
+            'sp_introText_css' => [],
+            'sp_introText_max_chars' => 999,
+            'sp_datetime_present' => false,
+            'sp_datetime_required_field' => false,
+            'sp_datetime_only_date' => true,
+            'sp_datetime_opengraph' => [],
+            'sp_datetime_css' => [],
+            'sp_content_scoring_active' => true,
         ]));
         $helper = new CrawlerConfigHelper($ctx, $logger);
         $config = new CrawlerConfig($helper);
         $parser = new Parser($logger, $config, $evaluator);
 
-        $html   = '<html><body><h1>Title</h1></body></html>';
+        $html = '<html><body><h1>Title</h1></body></html>';
         $result = $parser->extractTeasers([['url' => 'https://example.com/', 'html' => $html]]);
 
         $this->assertSame([], $result);
@@ -574,10 +576,10 @@ HTML;
     public function testDateTimeRequiredAndUnparseableRawValueSkipsTeaser(): void
     {
         $parser = $this->makeParser([
-            'sp_datetime_present'        => true,
+            'sp_datetime_present' => true,
             'sp_datetime_required_field' => true,
-            'sp_datetime_only_date'      => false,
-            'sp_datetime_css'            => ['.date'],
+            'sp_datetime_only_date' => false,
+            'sp_datetime_css' => ['.date'],
         ]);
         $html = '<html><body><h1>Title</h1><div class="date">@invalid</div></body></html>';
 

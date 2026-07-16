@@ -14,6 +14,7 @@ use Psr\Log\LoggerInterface;
 final class ProcessorTest extends TestCase
 {
     private Processor $processor;
+
     /**
      * Sets up the test environment before each test.
      * Creates a mock logger and initializes the Processor instance.
@@ -30,92 +31,91 @@ final class ProcessorTest extends TestCase
         $config = new CrawlerConfig($helper);
         $this->processor = new Processor($logger, $config);
     }
+
     /**
      * Tests that the sanitizeText method correctly processes input titles.
      * Verifies that only clean, safe, and properly formatted titles remain in the output.
      */
     public function testTextLetterProcessorRemovesTagsScriptsAndWhitespace(): void
     {
-        $datetime = new \DateTimeImmutable("2012-10-12T00:00:00", new \DateTimeZone('UTC'));
+        $datetime = new \DateTimeImmutable('2012-10-12T00:00:00', new \DateTimeZone('UTC'));
         $input = [
             [
-                "url"   => "https://example.com/1",
-                "title" => "<p>Hello <b>World</b></p>",
-                "introText" => "<p>Dies ist <b>eine</b> Einleitung.</p>",
-                "datetime" => $datetime,
+                'url' => 'https://example.com/1',
+                'title' => '<p>Hello <b>World</b></p>',
+                'introText' => '<p>Dies ist <b>eine</b> Einleitung.</p>',
+                'datetime' => $datetime,
             ],
             [
-                "url"   => "https://example.com/2",
-                "title" => "<script>alert('XSS');</script>Test",
-                "introText" => "<script>alert('bad');</script>Kurztext",
-                "datetime" => $datetime,
+                'url' => 'https://example.com/2',
+                'title' => "<script>alert('XSS');</script>Test",
+                'introText' => "<script>alert('bad');</script>Kurztext",
+                'datetime' => $datetime,
             ],
             [
-                "url"   => "https://example.com/3",
-                "title" => "   &uuml;berzeugt   ",
-                "introText" => "   &auml;u&szlig;erst  <i>wichtig</i>   ",
-                "datetime" => $datetime,
+                'url' => 'https://example.com/3',
+                'title' => '   &uuml;berzeugt   ',
+                'introText' => '   &auml;u&szlig;erst  <i>wichtig</i>   ',
+                'datetime' => $datetime,
             ],
             [
-                "url"   => "https://example.com/4",
-                "title" => "",
-                "introText" => "Soll ignoriert werden (kein Titel)",
-                "datetime" => $datetime,
+                'url' => 'https://example.com/4',
+                'title' => '',
+                'introText' => 'Soll ignoriert werden (kein Titel)',
+                'datetime' => $datetime,
             ],
             [
-                "url"   => "https://example.com/5",
-                "title" => "       ",
-                "introText" => "   ",
-                "datetime" => $datetime,
+                'url' => 'https://example.com/5',
+                'title' => '       ',
+                'introText' => '   ',
+                'datetime' => $datetime,
             ],
             [
-                "url"   => "https://example.com/6",
-                "title" => str_repeat("a", 200),
-                "introText" => str_repeat("b", 300),
-                "datetime" => $datetime,
+                'url' => 'https://example.com/6',
+                'title' => str_repeat('a', 200),
+                'introText' => str_repeat('b', 300),
+                'datetime' => $datetime,
             ],
             [
-                "url"   => "https://example.com/7",
-                "title" => "<span style='color:red'>Red Text</span>",
-                "introText" => "<span style='color:red'>Roter <b>Intro</b> Text</span>",
-                "datetime" => $datetime,
+                'url' => 'https://example.com/7',
+                'title' => "<span style='color:red'>Red Text</span>",
+                'introText' => "<span style='color:red'>Roter <b>Intro</b> Text</span>",
+                'datetime' => $datetime,
             ],
         ];
-
 
         $expected = [
             [
-                "url"   => "https://example.com/1",
-                "title" => "Hello World",
-                "introText" => "Dies ist eine Einleitung.",
-                "datetime" => $datetime,
+                'url' => 'https://example.com/1',
+                'title' => 'Hello World',
+                'introText' => 'Dies ist eine Einleitung.',
+                'datetime' => $datetime,
             ],
             [
-                "url"   => "https://example.com/2",
-                "title" => "Test",
-                "introText" => "Kurztext",
-                "datetime" => $datetime,
+                'url' => 'https://example.com/2',
+                'title' => 'Test',
+                'introText' => 'Kurztext',
+                'datetime' => $datetime,
             ],
             [
-                "url"   => "https://example.com/3",
-                "title" => "überzeugt",
-                "introText" => "äußerst wichtig",
-                "datetime" => $datetime,
+                'url' => 'https://example.com/3',
+                'title' => 'überzeugt',
+                'introText' => 'äußerst wichtig',
+                'datetime' => $datetime,
             ],
             [
-                "url"   => "https://example.com/6",
-                "title" => str_repeat("a", 120) . "…",
-                "introText" => str_repeat("b", 120) . "…",
-                "datetime" => $datetime,
+                'url' => 'https://example.com/6',
+                'title' => str_repeat('a', 120) . '…',
+                'introText' => str_repeat('b', 120) . '…',
+                'datetime' => $datetime,
             ],
             [
-                "url"   => "https://example.com/7",
-                "title" => "Red Text",
-                "introText" => "Roter Intro Text",
-                "datetime" => $datetime,
+                'url' => 'https://example.com/7',
+                'title' => 'Red Text',
+                'introText' => 'Roter Intro Text',
+                'datetime' => $datetime,
             ],
         ];
-
 
         $result = $this->processor->sanitizeText($input);
         $this->assertSame($expected, iterator_to_array($result));
@@ -123,7 +123,7 @@ final class ProcessorTest extends TestCase
 
     public function testItemWithoutIntroTextKeyOmitsIntroTextField(): void
     {
-        $datetime = new \DateTimeImmutable("2024-01-01T00:00:00", new \DateTimeZone('UTC'));
+        $datetime = new \DateTimeImmutable('2024-01-01T00:00:00', new \DateTimeZone('UTC'));
         $input = [
             ['url' => 'https://example.com/page', 'title' => 'Title', 'datetime' => $datetime],
         ];
@@ -193,12 +193,12 @@ final class ProcessorTest extends TestCase
 
     public function testCatchBlockIsTriggeredWhenItemTitleIsInvalidType(): void
     {
-        $ctx    = new CrawlerConfigContext(['sp_title_max_chars' => 120, 'sp_introText_max_chars' => 120]);
+        $ctx = new CrawlerConfigContext(['sp_title_max_chars' => 120, 'sp_introText_max_chars' => 120]);
         $logger = $this->createMock(LoggerInterface::class);
         $logger->expects($this->once())->method('error');
 
-        $helper    = new CrawlerConfigHelper($ctx, $logger);
-        $config    = new CrawlerConfig($helper);
+        $helper = new CrawlerConfigHelper($ctx, $logger);
+        $config = new CrawlerConfig($helper);
         $processor = new Processor($logger, $config);
 
         // Processor.php has declare(strict_types=1), so cleanString(int) causes TypeError

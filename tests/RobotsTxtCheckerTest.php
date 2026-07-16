@@ -23,6 +23,7 @@ final class RobotsTxtCheckerTest extends TestCase
         $ctx = new CrawlerConfigContext($config);
         $helper = new CrawlerConfigHelper($ctx, $logger);
         $crawlerConfig = new CrawlerConfig($helper);
+
         return new RobotsTxtChecker($crawlerConfig, $requestExecutor, $logger);
     }
 

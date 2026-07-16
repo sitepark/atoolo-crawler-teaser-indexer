@@ -6,7 +6,6 @@ namespace Atoolo\Crawler\Application;
 
 use Atoolo\Crawler\Config\CrawlerConfigContext;
 use Atoolo\Crawler\Controller\CrawlerManager;
-use Atoolo\Crawler\Exception\SiteIdExecution;
 use Psr\Log\LoggerInterface;
 
 final class CrawlSiteRunner
@@ -15,7 +14,8 @@ final class CrawlSiteRunner
         private readonly CrawlerConfigContext $configContext,
         private readonly CrawlerManager $crawlerManager,
         private readonly LoggerInterface $logger,
-    ) {}
+    ) {
+    }
     /**
      * @param array<string, mixed> $site
      */
@@ -25,7 +25,7 @@ final class CrawlSiteRunner
         /** @var string $siteKey */
         $siteKey = $site['sp_id'] ?? null;
 
-        if (!is_string($siteKey) || $siteKey === '') {
+        if (!is_string($siteKey) || '' === $siteKey) {
             $this->logger->error('Invalid site config: missing "sp_id" field.');
             throw new \InvalidArgumentException(
                 'Site config is missing required field "sp_id".',

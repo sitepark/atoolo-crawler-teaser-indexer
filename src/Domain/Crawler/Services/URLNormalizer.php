@@ -69,7 +69,7 @@ final class URLNormalizer
         $sanitized = array_map(function (string $url): string {
             $parts = parse_url($url);
 
-            if ($parts === false || !isset($parts['scheme'], $parts['host'])) {
+            if (false === $parts || !isset($parts['scheme'], $parts['host'])) {
                 return $url;
             }
 
@@ -93,7 +93,7 @@ final class URLNormalizer
      */
     private function stripConfiguredQueryParams(array $urls): array
     {
-        if ($this->config->stripQueryParamsActive() === false) {
+        if (false === $this->config->stripQueryParamsActive()) {
             return $urls;
         }
 
@@ -102,7 +102,7 @@ final class URLNormalizer
         $stripped = array_map(function (string $url) use ($paramNamesToRemove): string {
             $parts = parse_url($url);
 
-            if ($parts === false) {
+            if (false === $parts) {
                 return $url;
             }
 
@@ -122,12 +122,13 @@ final class URLNormalizer
      * Extracts query parameters from parsed URL parts.
      *
      * @param array<string,mixed> $parts
+     *
      * @return array<int|string,mixed>
      */
     private function parseQueryParams(array $parts): array
     {
         $query = $parts['query'] ?? null;
-        if (!is_string($query) || $query === '') {
+        if (!is_string($query) || '' === $query) {
             return [];
         }
 
@@ -142,7 +143,7 @@ final class URLNormalizer
      * Ensures a consistent URL format:
      * scheme://host[:port]/path?query#fragment
      *
-     * @param array<string,mixed> $parts
+     * @param array<string,mixed>     $parts
      * @param array<int|string,mixed> $queryParams
      */
     private function rebuildUrlFromParts(array $parts, array $queryParams): string
@@ -165,12 +166,12 @@ final class URLNormalizer
             $url .= $path;
         }
 
-        if ($queryParams !== []) {
+        if ([] !== $queryParams) {
             $url .= '?' . http_build_query($queryParams);
         }
 
         $fragment = $parts['fragment'] ?? '';
-        if (is_string($fragment) && $fragment !== '') {
+        if (is_string($fragment) && '' !== $fragment) {
             $url .= '#' . $fragment;
         }
 
@@ -191,7 +192,7 @@ final class URLNormalizer
      */
     private function filterAllowedUrlPath(array $rawUrls): array
     {
-        if ($this->config->allowPrefixes() === []) {
+        if ([] === $this->config->allowPrefixes()) {
             return array_values($rawUrls);
         }
 
@@ -201,6 +202,7 @@ final class URLNormalizer
                     return true;
                 }
             }
+
             return false;
         });
 
@@ -219,7 +221,7 @@ final class URLNormalizer
      */
     private function filterUnneededUrls(array $rawUrls): array
     {
-        if ($this->config->denyPrefixes() === []) {
+        if ([] === $this->config->denyPrefixes()) {
             return array_values($rawUrls);
         }
 
@@ -229,6 +231,7 @@ final class URLNormalizer
                     return false;
                 }
             }
+
             return true;
         });
 
@@ -239,6 +242,7 @@ final class URLNormalizer
      * Filters URLs by checking their file extensions against a deny-list.
      *
      * @param array<int,string> $urls
+     *
      * @return array<int,string>
      */
     private function filterDeniedEndings(array $urls): array
@@ -251,7 +255,7 @@ final class URLNormalizer
 
         return array_values(array_filter($urls, function (string $url) use ($denyEndings): bool {
             $path = parse_url($url, PHP_URL_PATH);
-            if (!is_string($path) || $path === '') {
+            if (!is_string($path) || '' === $path) {
                 return true;
             }
 

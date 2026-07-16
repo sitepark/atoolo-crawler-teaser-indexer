@@ -24,12 +24,12 @@ final class RobotsTxtChecker implements RobotsTxtCheckerInterface
     public function filterAllowed(array $urls): array
     {
         $robotsUrl = $this->config->robotsUrl();
-        if ($robotsUrl == null || $robotsUrl == '') {
+        if (null == $robotsUrl || '' == $robotsUrl) {
             return array_values(array_unique($urls));
         }
 
         $robots = $this->getRobots($robotsUrl);
-        if ($robots === null) {
+        if (null === $robots) {
             return array_values(array_unique($urls));
         }
 
@@ -56,9 +56,9 @@ final class RobotsTxtChecker implements RobotsTxtCheckerInterface
         try {
             $response = $this->requestExecutor->request($robotsUrl);
 
-            if ($response !== null) {
+            if (null !== $response) {
                 $content = $response->getContent(false);
-                $robots  = new RobotsTxt(trim($content));
+                $robots = new RobotsTxt(trim($content));
             }
         } catch (\Throwable $e) {
             $this->logger->warning('robots.txt could not be read, defaulting to allow', [

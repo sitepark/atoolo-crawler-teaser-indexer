@@ -9,7 +9,6 @@ use Atoolo\Crawler\Config\CrawlerConfigContext;
 use Atoolo\Crawler\Config\CrawlerConfigHelper;
 use Atoolo\Crawler\Domain\Crawler\Steps\Indexer;
 use Atoolo\Crawler\Exception\ThresholdNotMetException;
-use Atoolo\Resource\ResourceLanguage;
 use Atoolo\Search\Dto\Indexer\IndexerStatus;
 use Atoolo\Search\Service\Indexer\IndexerProgressHandler;
 use Atoolo\Search\Service\Indexer\SolrIndexService;
@@ -24,13 +23,14 @@ final class IndexerTest extends TestCase
     private function makeConfig(array $overrides = []): CrawlerConfig
     {
         $ctx = new CrawlerConfigContext(array_merge([
-            'sp_id'                => 'test-source',
+            'sp_id' => 'test-source',
             'sp_cleanup_threshold' => 0,
             'sp_introText_present' => false,
-            'sp_datetime_present'  => false,
+            'sp_datetime_present' => false,
         ], $overrides));
         $logger = $this->createStub(LoggerInterface::class);
         $helper = new CrawlerConfigHelper($ctx, $logger);
+
         return new CrawlerConfig($helper);
     }
 
@@ -121,9 +121,9 @@ final class IndexerTest extends TestCase
 
         $status = $indexer->doIndex([
             [
-                'url'    => 'https://example.com/',
-                'title'  => 'Title',
-                'date'   => new \DateTimeImmutable('2026-01-01'),
+                'url' => 'https://example.com/',
+                'title' => 'Title',
+                'date' => new \DateTimeImmutable('2026-01-01'),
             ],
         ]);
 
@@ -216,10 +216,11 @@ final class IndexerTest extends TestCase
         $callCount = 0;
         $updater = $this->createMock(SolrIndexUpdater::class);
         $updater->method('createDocument')->willReturnCallback(function () use (&$callCount): Document {
-            $callCount++;
-            if ($callCount === 1) {
+            ++$callCount;
+            if (1 === $callCount) {
                 throw new \RuntimeException('document creation failed');
             }
+
             return new Document();
         });
 

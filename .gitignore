@@ -19,4 +19,3 @@ tools/phpstan
 .env*
 /phpunit.xml
 /.phpunit.cache/
-

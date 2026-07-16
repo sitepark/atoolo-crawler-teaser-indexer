@@ -40,6 +40,7 @@ final class RequestExecutor implements RequestExecutorInterface
      * For HTTP 429 (and sometimes 503), respects Retry-After (seconds) when present.
      *
      * @param string $url The URL to request
+     *
      * @return ResponseInterface|null The response or null if all retries failed due to transport errors
      */
     public function request(string $url): ?ResponseInterface
@@ -63,7 +64,7 @@ final class RequestExecutor implements RequestExecutorInterface
                     break;
                 }
 
-                $attempts++;
+                ++$attempts;
 
                 $this->logger->warning('Retryable HTTP status received', [
                     'url' => $url,
@@ -78,7 +79,7 @@ final class RequestExecutor implements RequestExecutorInterface
                     $backoffMs *= 2;
                 }
             } catch (TransportExceptionInterface $e) {
-                $attempts++;
+                ++$attempts;
 
                 $this->logger->warning(
                     sprintf(
@@ -102,26 +103,26 @@ final class RequestExecutor implements RequestExecutorInterface
             }
         }
 
-        if ($response === null) {
+        if (null === $response) {
             $this->logger->error('Request failed after all retries', ['url' => $url]);
         }
 
         return $response;
     }
 
-
     /**
      * Determines the delay (in milliseconds) before retrying a request.
      *
-     * @param ResponseInterface $response The HTTP response (used to read headers)
-     * @param int $fallbackDelayMs The fallback backoff delay in milliseconds
+     * @param ResponseInterface $response        The HTTP response (used to read headers)
+     * @param int               $fallbackDelayMs The fallback backoff delay in milliseconds
+     *
      * @return int The delay in milliseconds to wait before the next retry
      */
     private function retryDelayMsFromHeadersOrBackoff(ResponseInterface $response, int $fallbackDelayMs): int
     {
         $retryAfter = $response->getHeaders(false)['retry-after'][0] ?? null;
 
-        if ($retryAfter !== null && ctype_digit($retryAfter)) {
+        if (null !== $retryAfter && ctype_digit($retryAfter)) {
             return max(0, (int) $retryAfter * 1000);
         }
 
@@ -132,7 +133,6 @@ final class RequestExecutor implements RequestExecutorInterface
      * Enforces a minimum delay between two requests to the same host.
      *
      * @param string $url The target URL (used to extract the host for throttling)
-     * @return void
      */
     public function throttle(string $url): void
     {

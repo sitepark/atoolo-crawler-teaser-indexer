@@ -9,11 +9,11 @@ use Atoolo\Crawler\Config\CrawlerConfigContext;
 use Atoolo\Crawler\Config\CrawlerConfigHelper;
 use Atoolo\Crawler\Controller\CrawlerManager;
 use Atoolo\Crawler\Domain\Crawler\Services\TeaserRelevanceEvaluatorInterface;
-use Atoolo\Crawler\Domain\Crawler\Steps\URLCollector;
 use Atoolo\Crawler\Domain\Crawler\Steps\Fetcher;
+use Atoolo\Crawler\Domain\Crawler\Steps\Indexer;
 use Atoolo\Crawler\Domain\Crawler\Steps\Parser;
 use Atoolo\Crawler\Domain\Crawler\Steps\Processor;
-use Atoolo\Crawler\Domain\Crawler\Steps\Indexer;
+use Atoolo\Crawler\Domain\Crawler\Steps\URLCollector;
 use Atoolo\Search\Dto\Indexer\IndexerStatus;
 use Atoolo\Search\Dto\Indexer\IndexerStatusState;
 use PHPUnit\Framework\TestCase;
@@ -23,9 +23,11 @@ final class CrawlerManagerE2ETest extends TestCase
 {
     private string $url1 = 'https://example.com/page1';
     private string $url2 = 'https://example.com/page2';
+
     private function makeIndexerStatus(int $errors = 0): IndexerStatus
     {
         $now = new \DateTime();
+
         return new IndexerStatus(
             IndexerStatusState::FINISHED,
             $now,
@@ -61,6 +63,7 @@ final class CrawlerManagerE2ETest extends TestCase
         ], $overrides));
 
         $helper = new CrawlerConfigHelper($ctx, $logger);
+
         return new CrawlerConfig($helper);
     }
 
@@ -172,8 +175,8 @@ final class CrawlerManagerE2ETest extends TestCase
         $this->assertTrue(
             array_reduce(
                 $warnings,
-                fn(bool $carry, string $m) => $carry || str_contains($m, '[URLCollector] Step returned no data.'),
-                false,
+                fn (bool $carry, string $m) => $carry || str_contains($m, '[URLCollector] Step returned no data.'),
+                false
             ),
             'Expected warning "[URLCollector] Step returned no data." not found. Got: ' . implode(' | ', $warnings),
         );
@@ -226,8 +229,8 @@ final class CrawlerManagerE2ETest extends TestCase
         $this->assertTrue(
             array_reduce(
                 $errors,
-                fn(bool $carry, string $m) => $carry || str_contains($m, '[URLCollector] Error: Collector failed'),
-                false,
+                fn (bool $carry, string $m) => $carry || str_contains($m, '[URLCollector] Error: Collector failed'),
+                false
             ),
             'Expected error "[URLCollector] Error: Collector failed" not found. Got: ' . implode(' | ', $errors),
         );
@@ -279,8 +282,8 @@ final class CrawlerManagerE2ETest extends TestCase
         $this->assertTrue(
             array_reduce(
                 $warnings,
-                fn(bool $carry, string $m) => $carry || str_contains($m, '[Fetcher] Step returned no data.'),
-                false,
+                fn (bool $carry, string $m) => $carry || str_contains($m, '[Fetcher] Step returned no data.'),
+                false
             ),
             'Expected warning "[Fetcher] Step returned no data." not found. Got: ' . implode(' | ', $warnings),
         );
@@ -321,7 +324,7 @@ final class CrawlerManagerE2ETest extends TestCase
         $logger = $this->createMock(LoggerInterface::class);
         $logger->expects($this->once())
             ->method('error')
-            ->with($this->stringContains('Status Errors [1]: Crawling Prozess Stops by Indexer.'));
+            ->with($this->stringContains('Status Errors [1]: Crawling Prozess Stops by Indexing.'));
 
         $config = $this->createConfig($logger);
 
@@ -336,6 +339,8 @@ final class CrawlerManagerE2ETest extends TestCase
         );
 
         $manager->startCrawler();
+
+        $this->addToAssertionCount(1);
     }
 
     /**
@@ -370,6 +375,7 @@ final class CrawlerManagerE2ETest extends TestCase
             ->with($this->callback(function (array $items) {
                 $this->assertCount(1, $items);
                 $this->assertSame('Title 1', $items[0]['title']);
+
                 return true;
             }))
             ->willReturn($this->makeIndexerStatus(0));

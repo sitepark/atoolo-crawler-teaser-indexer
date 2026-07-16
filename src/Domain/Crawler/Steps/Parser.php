@@ -3,12 +3,12 @@
 namespace Atoolo\Crawler\Domain\Crawler\Steps;
 
 use Atoolo\Crawler\Config\CrawlerConfig;
-use Psr\Log\LoggerInterface;
-use Symfony\Component\DomCrawler\Crawler;
 use Atoolo\Crawler\Domain\Crawler\Services\DateTimeExtractConfig;
 use Atoolo\Crawler\Domain\Crawler\Services\IntroExtractConfig;
 use Atoolo\Crawler\Domain\Crawler\Services\TeaserRelevanceEvaluatorInterface;
 use Atoolo\Crawler\Domain\Crawler\Services\TitleExtractConfig;
+use Psr\Log\LoggerInterface;
+use Symfony\Component\DomCrawler\Crawler;
 
 class Parser
 {
@@ -22,6 +22,7 @@ class Parser
      * Extract teaser-data from fetched HTML.
      *
      * @param array<int, array{url: string, html: string}> $htmlData
+     *
      * @return array<int, array{url: string, title: string, introText?: string, datetime?: \DateTimeImmutable}>
      */
     public function extractTeasers(array $htmlData): array
@@ -60,12 +61,12 @@ class Parser
                 }
 
                 $teaserData = [
-                    'url'   => $item['url'],
+                    'url' => $item['url'],
                     'title' => ($titleConfig->prefix ?? '') . $title,
                 ];
 
                 $introText = $this->extractIntroductionText($crawler, $introConfig);
-                if ($introText !== null) {
+                if (null !== $introText) {
                     $teaserData['introText'] = $introText;
                 } else {
                     if ($introConfig->requiredField) {
@@ -74,7 +75,7 @@ class Parser
                 }
 
                 $dateTime = $this->extractDateTime($crawler, $dateTimeConfig);
-                if ($dateTime !== null) {
+                if (null !== $dateTime) {
                     $teaserData['datetime'] = $dateTime;
                 } else {
                     if ($dateTimeConfig->requiredField) {
@@ -82,15 +83,14 @@ class Parser
                     }
                 }
 
-
                 if ($scoringActive) {
                     $relevanceData = $teaserData;
-                    $relevanceData["html"] = $html;
+                    $relevanceData['html'] = $html;
                     $keepTeaser = $this->teaserRelevanceEvaluator->relevant($relevanceData);
                     if (!$keepTeaser) {
                         $this->logger->debug(
                             'Teaser not Relevant',
-                            ['relevanceData' => $relevanceData, ],
+                            ['relevanceData' => $relevanceData]
                         );
                         continue;
                     }
@@ -98,11 +98,12 @@ class Parser
                 $results[] = $teaserData;
             } catch (\Throwable $e) {
                 $this->logger->warning('[Parser] No Data found for URL', [
-                    'url'       => $item['url'],
+                    'url' => $item['url'],
                     'exception' => $e,
                 ]);
             }
         }
+
         return $results;
     }
 
@@ -115,7 +116,7 @@ class Parser
         // OG/Meta have priority
         foreach ($config->opengraph as $property) {
             $title = $this->findMetaTagContent($crawler, $property);
-            if ($title !== null && $title !== '') {
+            if (null !== $title && '' !== $title) {
                 return $title;
             }
         }
@@ -123,15 +124,16 @@ class Parser
         // CSS Fallbacks
         foreach ($config->css as $selector) {
             $title = $this->findCssSelectorContent($crawler, $selector);
-            if ($title !== null && $title !== '') {
+            if (null !== $title && '' !== $title) {
                 return $title;
             }
         }
 
         $this->logger->debug(
             'Title Not found in Processor',
-            ['key' => 'title', 'dataFound' => $title ?? "", ]
+            ['key' => 'title', 'dataFound' => $title ?? '']
         );
+
         return null;
     }
 
@@ -144,7 +146,7 @@ class Parser
         // OG/Meta have priority
         foreach ($config->opengraph as $property) {
             $introductionText = $this->findMetaTagContent($crawler, $property);
-            if ($introductionText !== null && $introductionText !== '') {
+            if (null !== $introductionText && '' !== $introductionText) {
                 return $introductionText;
             }
         }
@@ -152,7 +154,7 @@ class Parser
         // CSS Fallbacks
         foreach ($config->css as $selector) {
             $introductionText = $this->findCssSelectorContent($crawler, $selector);
-            if ($introductionText !== null && $introductionText !== '') {
+            if (null !== $introductionText && '' !== $introductionText) {
                 return $introductionText;
             }
         }
@@ -168,7 +170,7 @@ class Parser
 
         $raw = $this->findDateTimeRaw($crawler, $config);
 
-        if ($raw === null) {
+        if (null === $raw) {
             return null;
         }
 
@@ -176,7 +178,7 @@ class Parser
 
         $dt = $this->parseDateTime($raw);
 
-        if ($dt === null && $config->requiredField) {
+        if (null === $dt && $config->requiredField) {
             return null;
         }
 
@@ -208,7 +210,7 @@ class Parser
 
         $raw = is_string($raw) ? trim($raw) : '';
 
-        return $raw !== '' ? $raw : null;
+        return '' !== $raw ? $raw : null;
     }
 
     private function normalizeDateTimeRaw(string $raw, DateTimeExtractConfig $config): string
@@ -235,10 +237,10 @@ class Parser
                 'raw' => $raw,
                 'exception' => $e,
             ]);
+
             return null;
         }
     }
-
 
     private function findAttrByCss(Crawler $crawler, string $selector, string $attr): ?string
     {
@@ -246,23 +248,27 @@ class Parser
             $el = $crawler->filter($selector);
             if ($el->count() > 0) {
                 $v = $el->first()->attr($attr);
-                return $v !== null ? trim((string) $v) : null;
+                return null !== $v ? trim((string) $v) : null;
             }
+
             return null;
         } catch (\Throwable $e) {
-            $this->logger->error("Failed to parse CSS attr", [
+            $this->logger->error('Failed to parse CSS attr', [
                 'selector' => $selector,
                 'attr' => $attr,
                 'exception' => $e,
             ]);
+
             return null;
         }
     }
 
     /**
      * Extracts the text content of a meta tag by its property attribute.
+     *
      * @param Crawler $crawler  The DomCrawler instance containing the HTML document
      * @param string  $property The meat-tag property
+     *
      * @return string|null The text content, or `null` if not found or on error
      */
     private function findMetaTagContent(Crawler $crawler, string $property): ?string
@@ -272,19 +278,24 @@ class Parser
             if ($metaTag->count() > 0) {
                 return trim((string) $metaTag->attr('content'));
             }
+
             return null;
         } catch (\Throwable $e) {
-            $this->logger->error("Failed to parse meta tag", [
-                'property'  => $property,
+            $this->logger->error('Failed to parse meta tag', [
+                'property' => $property,
                 'exception' => $e,
             ]);
+
             return null;
         }
     }
+
     /**
-     * Extracts the text content of the first element matching a given CSS selector
+     * Extracts the text content of the first element matching a given CSS selector.
+     *
      * @param Crawler $crawler  The DomCrawler instance containing the HTML document
      * @param string  $selector The CSS selector
+     *
      * @return string|null The text content, or `null` if not found or on error
      */
     private function findCssSelectorContent(Crawler $crawler, string $selector): ?string
@@ -294,12 +305,14 @@ class Parser
             if ($element->count() > 0) {
                 return trim($element->first()->text());
             }
+
             return null;
         } catch (\Throwable $e) {
-            $this->logger->error("Failed to parse CSS selector", [
-                'selector'  => $selector,
+            $this->logger->error('Failed to parse CSS selector', [
+                'selector' => $selector,
                 'exception' => $e,
             ]);
+
             return null;
         }
     }

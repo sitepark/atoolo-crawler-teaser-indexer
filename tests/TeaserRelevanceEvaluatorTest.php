@@ -19,6 +19,7 @@ final class TeaserRelevanceEvaluatorTest extends TestCase
         $ctx = new CrawlerConfigContext($config);
         $helper = new CrawlerConfigHelper($ctx, $logger);
         $crawlerConfig = new CrawlerConfig($helper);
+
         return new TeaserRelevanceEvaluator($crawlerConfig);
     }
 

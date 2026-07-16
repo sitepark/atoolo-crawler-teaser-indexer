@@ -25,13 +25,16 @@ class Processor
     public function __construct(
         private LoggerInterface $logger,
         private readonly CrawlerConfig $config,
-    ) {}
+    ) {
+    }
+
     /**
      * @param iterable<int, array{url: string,
      * title: string,
      * introText?: string,
      * datetime?: \DateTimeImmutable
      * }> $rawTeaserData
+     *
      * @return \Generator<int, array{url: string, title: string, introText?: string, datetime?: \DateTimeImmutable}>
      */
     public function sanitizeText(iterable $rawTeaserData): iterable
@@ -42,16 +45,16 @@ class Processor
                 $titleConfig = $this->config->titleConfig();
                 $truncatedTitle = $this->truncate($cleanTitle, $titleConfig->maxChars);
 
-                if ($truncatedTitle === '') {
+                if ('' === $truncatedTitle) {
                     continue;
                 }
 
                 $cleaned = [
-                    'url'   => $item['url'],
+                    'url' => $item['url'],
                     'title' => $truncatedTitle,
                 ];
 
-                if (isset($item['introText']) && $item['introText'] !== '') {
+                if (isset($item['introText']) && '' !== $item['introText']) {
                     $cleanIntroText = $this->cleanString($item['introText']);
                     $introTextConfig = $this->config->introTextConfig();
                     $cleaned['introText'] = $this->truncate($cleanIntroText, $introTextConfig->maxChars);
@@ -65,7 +68,7 @@ class Processor
             } catch (\Throwable $e) {
                 $this->logger->error('[Processor] Failed to process teaser', [
                     'exception' => $e->getMessage(),
-                    'item'      => $item,
+                    'item' => $item,
                 ]);
             }
         }
@@ -74,8 +77,9 @@ class Processor
     /**
      * Strips HTML, scripts, styles, and normalizes whitespace in a string.
      *
-     * @param string $text The raw text input.
-     * @return string The cleaned text.
+     * @param string $text the raw text input
+     *
+     * @return string the cleaned text
      */
     private function cleanString(string $text): string
     {
@@ -87,6 +91,7 @@ class Processor
         $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
         // Collapses multiple whitespaces (tabs/newlines) into a single space
         $text = preg_replace('/\s+/', ' ', $text) ?? $text;
+
         // Removes leading and trailing whitespaces
         return trim($text);
     }
@@ -94,15 +99,18 @@ class Processor
     /**
      * Truncates a teaser string to a maximum length of 120 characters.
      *
-     * @param string $text The cleaned text.
-     * @return string The truncated text with Ellipsis "…" appended if cut.
+     * @param string $text the cleaned text
+     *
+     * @return string the truncated text with Ellipsis "…" appended if cut
      */
     private function truncate(string $text, int $maxLength): string
     {
-        if ($text === '') {
-            $this->logger->warning("[Processor] Empty teaser text encountered");
+        if ('' === $text) {
+            $this->logger->warning('[Processor] Empty teaser text encountered');
+
             return '';
         }
+
         return mb_strlen($text) > $maxLength
             ? mb_substr($text, 0, $maxLength) . '…'
             : $text;

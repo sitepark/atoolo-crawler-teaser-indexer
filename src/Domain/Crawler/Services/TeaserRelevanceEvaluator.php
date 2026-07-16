@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Atoolo\Crawler\Domain\Crawler\Services;
 
-use Symfony\Component\DomCrawler\Crawler;
 use Atoolo\Crawler\Config\CrawlerConfig;
+use Symfony\Component\DomCrawler\Crawler;
 
 final class TeaserRelevanceEvaluator implements TeaserRelevanceEvaluatorInterface
 {
@@ -24,7 +24,6 @@ final class TeaserRelevanceEvaluator implements TeaserRelevanceEvaluatorInterfac
      * html?: string,
      * datetime?: \DateTimeImmutable
      * } $relevanceData
-     * @return bool
      */
     public function relevant(array $relevanceData): bool
     {
@@ -52,6 +51,7 @@ final class TeaserRelevanceEvaluator implements TeaserRelevanceEvaluatorInterfac
      * html?: string,
      * datetime?: \DateTimeImmutable
      * } $t
+     *
      * @return array{score:int,reasons:array<int,string>}
      */
     private function evaluate(array $t, ContentScoringConfig $cfg): array
@@ -59,10 +59,10 @@ final class TeaserRelevanceEvaluator implements TeaserRelevanceEvaluatorInterfac
         $score = 0;
         $reasons = [];
 
-        $title = (string) ($t['title']);
+        $title = (string) $t['title'];
         $intro = (string) ($t['introText'] ?? '');
-        $url   = (string) ($t['url']);
-        $body  = $this->extractBodyTextFromHtml((string) ($t['html'] ?? ''));
+        $url = (string) $t['url'];
+        $body = $this->extractBodyTextFromHtml((string) ($t['html'] ?? ''));
 
         $haystack = $this->normalize($title . "\n" . $intro . "\n" . $body);
 
@@ -100,8 +100,9 @@ final class TeaserRelevanceEvaluator implements TeaserRelevanceEvaluatorInterfac
             }
         }
 
-        if ($rule->condition?->bodyTextLengthLt !== null) {
+        if (null !== $rule->condition?->bodyTextLengthLt) {
             $len = mb_strlen(trim($intro . ' ' . $body));
+
             return $len > 0 && $len < $rule->condition->bodyTextLengthLt;
         }
 
@@ -112,12 +113,13 @@ final class TeaserRelevanceEvaluator implements TeaserRelevanceEvaluatorInterfac
     {
         $s = mb_strtolower($s);
         $s = preg_replace('/\s+/u', ' ', $s) ?? $s;
+
         return trim($s);
     }
 
     private function contains(string $haystack, string $needle): bool
     {
-        return $needle !== '' && str_contains($haystack, $this->normalize($needle));
+        return '' !== $needle && str_contains($haystack, $this->normalize($needle));
     }
 
     private function extractBodyTextFromHtml(string $html): string
@@ -130,6 +132,7 @@ final class TeaserRelevanceEvaluator implements TeaserRelevanceEvaluatorInterfac
                     return trim($n->first()->text());
                 }
             }
+
             return '';
         } catch (\Throwable) {
             return '';

@@ -21,12 +21,14 @@ use Psr\Log\NullLogger;
 class Indexer implements \Atoolo\Search\Indexer
 {
     private string $source = '';
+
     public function __construct(
         private IndexerProgressHandler $progressHandler,
         private SolrIndexService $indexService,
         private readonly CrawlerConfig $config,
         private LoggerInterface $logger = new NullLogger(),
-    ) {}
+    ) {
+    }
 
     /**
      * Main indexing logic: transforms items into Solr documents.
@@ -84,7 +86,7 @@ class Indexer implements \Atoolo\Search\Indexer
 
                 $updater->addDocument($document);
                 $this->progressHandler->advance(1);
-                $successCount++;
+                ++$successCount;
             } catch (\Throwable $exception) {
                 $this->logger->error('Indexing failed', [
                     'item' => $item,
@@ -103,7 +105,7 @@ class Indexer implements \Atoolo\Search\Indexer
             throw $e;
         }
 
-        if ($result->getStatus() !== 0) {
+        if (0 !== $result->getStatus()) {
             $this->progressHandler->error(
                 new \Exception($result->getResponse()->getStatusMessage()),
             );
@@ -112,7 +114,7 @@ class Indexer implements \Atoolo\Search\Indexer
         if ($successCount <= $this->config->cleanupThreshold()) {
             $this->logger->critical('Cleanup threshold not met. Aborting.', [
                 'successCount' => $successCount,
-                'threshold'    => $this->config->cleanupThreshold(),
+                'threshold' => $this->config->cleanupThreshold(),
             ]);
             throw new ThresholdNotMetException(
                 $successCount,

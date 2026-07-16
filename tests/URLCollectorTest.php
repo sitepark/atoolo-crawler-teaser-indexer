@@ -6,14 +6,14 @@ namespace Tests;
 
 use Atoolo\Crawler\Config\CrawlerConfig;
 use Atoolo\Crawler\Config\CrawlerConfigContext;
-use Atoolo\Crawler\Domain\Crawler\Steps\URLCollector;
-use PHPUnit\Framework\TestCase;
-use Symfony\Contracts\HttpClient\ResponseInterface;
-use Atoolo\Crawler\Domain\Crawler\Services\URLNormalizer;
+use Atoolo\Crawler\Config\CrawlerConfigHelper;
 use Atoolo\Crawler\Domain\Crawler\Ports\RequestExecutorInterface;
 use Atoolo\Crawler\Domain\Crawler\Services\RobotsTxtCheckerInterface;
-use Atoolo\Crawler\Config\CrawlerConfigHelper;
+use Atoolo\Crawler\Domain\Crawler\Services\URLNormalizer;
+use Atoolo\Crawler\Domain\Crawler\Steps\URLCollector;
+use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
+use Symfony\Contracts\HttpClient\ResponseInterface;
 
 /**
  * Unit tests for the URLCollector class.
@@ -30,6 +30,20 @@ final class URLCollectorTest extends TestCase
 {
     private string $url1 = 'https://example.com/page1';
     private string $urlPrefix = 'https://example.com';
+    /**
+     * @param array<string> $denyEndings
+     */
+    private array $denyEndings = [
+            ".jpg",
+            ".jpeg",
+            ".png",
+            ".gif",
+            ".svg",
+            ".webp",
+            ".ico",
+            ".bmp",
+            ".tiff"
+        ];
 
     private function createCollector(
         RequestExecutorInterface $requestExecutor,
@@ -49,8 +63,9 @@ final class URLCollectorTest extends TestCase
 
         $helper = new CrawlerConfigHelper($ctx, $logger);
         $crawlerConfig = new CrawlerConfig($helper);
+        
 
-        $urlNormalizer = new URLNormalizer($crawlerConfig);
+        $urlNormalizer = new URLNormalizer($crawlerConfig, $this->denyEndings);
 
         return new URLCollector(
             $crawlerConfig,
@@ -268,7 +283,7 @@ HTML;
         ]);
         $helper = new CrawlerConfigHelper($ctx, $logger);
         $crawlerConfig = new CrawlerConfig($helper);
-        $urlNormalizer = new URLNormalizer($crawlerConfig);
+        $urlNormalizer = new URLNormalizer($crawlerConfig, $this->denyEndings);
         $collector = new URLCollector($crawlerConfig, $urlNormalizer, $logger, $requestExecutor, $robotsTxtChecker);
 
         $result = $collector->findHrefUrlsByCssSelector();
@@ -305,7 +320,7 @@ HTML;
         ]);
         $helper = new CrawlerConfigHelper($ctx, $logger);
         $crawlerConfig = new CrawlerConfig($helper);
-        $urlNormalizer = new URLNormalizer($crawlerConfig);
+        $urlNormalizer = new URLNormalizer($crawlerConfig, $this->denyEndings);
         $collector = new URLCollector($crawlerConfig, $urlNormalizer, $logger, $requestExecutor, $robotsTxtChecker);
 
         $result = $collector->findHrefUrlsByCssSelector();
@@ -357,7 +372,7 @@ HTML;
         ]);
         $helper = new CrawlerConfigHelper($ctx, $logger);
         $crawlerConfig = new CrawlerConfig($helper);
-        $urlNormalizer = new URLNormalizer($crawlerConfig);
+        $urlNormalizer = new URLNormalizer($crawlerConfig, $this->denyEndings);
         $collector = new URLCollector($crawlerConfig, $urlNormalizer, $logger, $requestExecutor, $robotsTxtChecker);
 
         $result = $collector->findHrefUrlsByCssSelector();
@@ -412,7 +427,7 @@ HTML;
         ]);
         $helper = new CrawlerConfigHelper($ctx, $logger);
         $crawlerConfig = new CrawlerConfig($helper);
-        $urlNormalizer = new URLNormalizer($crawlerConfig);
+        $urlNormalizer = new URLNormalizer($crawlerConfig, $this->denyEndings);
         $collector = new URLCollector($crawlerConfig, $urlNormalizer, $logger, $requestExecutor, $robotsTxtChecker);
 
         $result = $collector->findHrefUrlsByCssSelector();
@@ -447,19 +462,19 @@ HTML;
         $robotsTxtChecker = $this->createStub(RobotsTxtCheckerInterface::class);
 
         $ctx = new CrawlerConfigContext([
-            'sp_start_urls'               => [['sp_url' => $this->urlPrefix, 'sp_extraction_depth' => 0]],
-            'sp_link_selector'            => '#content a[href]',
-            'sp_forced_article_urls'      => [],
-            'sp_max_teaser'               => 999,
-            'sp_deny_prefixes'            => ['https://example.com/denied'],
-            'sp_allow_prefixes'           => [],
+            'sp_start_urls' => [['sp_url' => $this->urlPrefix, 'sp_extraction_depth' => 0]],
+            'sp_link_selector' => '#content a[href]',
+            'sp_forced_article_urls' => [],
+            'sp_max_teaser' => 999,
+            'sp_deny_prefixes' => ['https://example.com/denied'],
+            'sp_allow_prefixes' => [],
             'sp_strip_query_params_active' => false,
-            'sp_strip_query_params'       => [],
+            'sp_strip_query_params' => [],
         ]);
-        $helper       = new CrawlerConfigHelper($ctx, $logger);
+        $helper = new CrawlerConfigHelper($ctx, $logger);
         $crawlerConfig = new CrawlerConfig($helper);
-        $urlNormalizer = new URLNormalizer($crawlerConfig);
-        $collector    = new URLCollector($crawlerConfig, $urlNormalizer, $logger, $requestExecutor, $robotsTxtChecker);
+        $urlNormalizer = new URLNormalizer($crawlerConfig, $this->denyEndings);
+        $collector = new URLCollector($crawlerConfig, $urlNormalizer, $logger, $requestExecutor, $robotsTxtChecker);
 
         $result = $collector->findHrefUrlsByCssSelector();
 
@@ -489,19 +504,19 @@ HTML;
         $robotsTxtChecker = $this->createStub(RobotsTxtCheckerInterface::class);
 
         $ctx = new CrawlerConfigContext([
-            'sp_start_urls'               => [['sp_url' => $this->urlPrefix, 'sp_extraction_depth' => 0]],
-            'sp_link_selector'            => '#content a[href]',
-            'sp_forced_article_urls'      => [],
-            'sp_max_teaser'               => 999,
-            'sp_deny_prefixes'            => [],
-            'sp_allow_prefixes'           => ['https://example.com'],
+            'sp_start_urls' => [['sp_url' => $this->urlPrefix, 'sp_extraction_depth' => 0]],
+            'sp_link_selector' => '#content a[href]',
+            'sp_forced_article_urls' => [],
+            'sp_max_teaser' => 999,
+            'sp_deny_prefixes' => [],
+            'sp_allow_prefixes' => ['https://example.com'],
             'sp_strip_query_params_active' => false,
-            'sp_strip_query_params'       => [],
+            'sp_strip_query_params' => [],
         ]);
-        $helper       = new CrawlerConfigHelper($ctx, $logger);
+        $helper = new CrawlerConfigHelper($ctx, $logger);
         $crawlerConfig = new CrawlerConfig($helper);
-        $urlNormalizer = new URLNormalizer($crawlerConfig);
-        $collector    = new URLCollector($crawlerConfig, $urlNormalizer, $logger, $requestExecutor, $robotsTxtChecker);
+        $urlNormalizer = new URLNormalizer($crawlerConfig, $this->denyEndings);
+        $collector = new URLCollector($crawlerConfig, $urlNormalizer, $logger, $requestExecutor, $robotsTxtChecker);
 
         $result = $collector->findHrefUrlsByCssSelector();
 
@@ -550,19 +565,19 @@ HTML;
         $robotsTxtChecker = $this->createStub(RobotsTxtCheckerInterface::class);
 
         $ctx = new CrawlerConfigContext([
-            'sp_start_urls'               => [['sp_url' => $this->urlPrefix, 'sp_extraction_depth' => 2]],
-            'sp_link_selector'            => '#content a[href]',
-            'sp_forced_article_urls'      => [],
-            'sp_max_teaser'               => 999,
-            'sp_deny_prefixes'            => [],
-            'sp_allow_prefixes'           => [],
+            'sp_start_urls' => [['sp_url' => $this->urlPrefix, 'sp_extraction_depth' => 2]],
+            'sp_link_selector' => '#content a[href]',
+            'sp_forced_article_urls' => [],
+            'sp_max_teaser' => 999,
+            'sp_deny_prefixes' => [],
+            'sp_allow_prefixes' => [],
             'sp_strip_query_params_active' => false,
-            'sp_strip_query_params'       => [],
+            'sp_strip_query_params' => [],
         ]);
-        $helper       = new CrawlerConfigHelper($ctx, $logger);
+        $helper = new CrawlerConfigHelper($ctx, $logger);
         $crawlerConfig = new CrawlerConfig($helper);
-        $urlNormalizer = new URLNormalizer($crawlerConfig);
-        $collector    = new URLCollector($crawlerConfig, $urlNormalizer, $logger, $requestExecutor, $robotsTxtChecker);
+        $urlNormalizer = new URLNormalizer($crawlerConfig, $this->denyEndings);
+        $collector = new URLCollector($crawlerConfig, $urlNormalizer, $logger, $requestExecutor, $robotsTxtChecker);
 
         $result = $collector->findHrefUrlsByCssSelector();
 
@@ -606,18 +621,18 @@ HTML;
                 ['sp_url' => 'https://example.com/start1', 'sp_extraction_depth' => 0],
                 ['sp_url' => 'https://example.com/start2', 'sp_extraction_depth' => 0],
             ],
-            'sp_link_selector'            => '#content a[href]',
-            'sp_forced_article_urls'      => [],
-            'sp_max_teaser'               => 1,
-            'sp_deny_prefixes'            => [],
-            'sp_allow_prefixes'           => [],
+            'sp_link_selector' => '#content a[href]',
+            'sp_forced_article_urls' => [],
+            'sp_max_teaser' => 1,
+            'sp_deny_prefixes' => [],
+            'sp_allow_prefixes' => [],
             'sp_strip_query_params_active' => false,
-            'sp_strip_query_params'       => [],
+            'sp_strip_query_params' => [],
         ]);
-        $helper       = new CrawlerConfigHelper($ctx, $logger);
+        $helper = new CrawlerConfigHelper($ctx, $logger);
         $crawlerConfig = new CrawlerConfig($helper);
-        $urlNormalizer = new URLNormalizer($crawlerConfig);
-        $collector    = new URLCollector($crawlerConfig, $urlNormalizer, $logger, $requestExecutor, $robotsTxtChecker);
+        $urlNormalizer = new URLNormalizer($crawlerConfig, $this->denyEndings);
+        $collector = new URLCollector($crawlerConfig, $urlNormalizer, $logger, $requestExecutor, $robotsTxtChecker);
 
         $result = $collector->findHrefUrlsByCssSelector();
 
@@ -650,19 +665,19 @@ HTML;
         $robotsTxtChecker = $this->createStub(RobotsTxtCheckerInterface::class);
 
         $ctx = new CrawlerConfigContext([
-            'sp_start_urls'               => [['sp_url' => $this->urlPrefix, 'sp_extraction_depth' => 0]],
-            'sp_link_selector'            => '#content div[href]', // selects <div href="..."> not <a>
-            'sp_forced_article_urls'      => [],
-            'sp_max_teaser'               => 999,
-            'sp_deny_prefixes'            => [],
-            'sp_allow_prefixes'           => [],
+            'sp_start_urls' => [['sp_url' => $this->urlPrefix, 'sp_extraction_depth' => 0]],
+            'sp_link_selector' => '#content div[href]', // selects <div href="..."> not <a>
+            'sp_forced_article_urls' => [],
+            'sp_max_teaser' => 999,
+            'sp_deny_prefixes' => [],
+            'sp_allow_prefixes' => [],
             'sp_strip_query_params_active' => false,
-            'sp_strip_query_params'       => [],
+            'sp_strip_query_params' => [],
         ]);
-        $helper       = new CrawlerConfigHelper($ctx, $logger);
+        $helper = new CrawlerConfigHelper($ctx, $logger);
         $crawlerConfig = new CrawlerConfig($helper);
-        $urlNormalizer = new URLNormalizer($crawlerConfig);
-        $collector    = new URLCollector($crawlerConfig, $urlNormalizer, $logger, $requestExecutor, $robotsTxtChecker);
+        $urlNormalizer = new URLNormalizer($crawlerConfig, $this->denyEndings);
+        $collector = new URLCollector($crawlerConfig, $urlNormalizer, $logger, $requestExecutor, $robotsTxtChecker);
 
         // Link constructor throws for non-<a> elements → caught → empty result
         $result = $collector->findHrefUrlsByCssSelector();
