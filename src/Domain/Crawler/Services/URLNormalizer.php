@@ -20,8 +20,12 @@ use Atoolo\Crawler\Config\CrawlerConfig;
  */
 final class URLNormalizer
 {
+    /**
+     * @param array<string> $denyEndings
+     */
     public function __construct(
         private readonly CrawlerConfig $config,
+        private readonly array $denyEndings,
     ) {
     }
 
@@ -239,7 +243,7 @@ final class URLNormalizer
      */
     private function filterDeniedEndings(array $urls): array
     {
-        $denyEndings = $this->config->denyEndings();
+        $denyEndings = array_unique(array_merge($this->denyEndings, $this->config->denyEndings()));
 
         if (empty($denyEndings)) {
             return $urls;
