@@ -10,8 +10,10 @@ use Psr\Log\LoggerInterface;
 
 final class CrawlerConfigHelper
 {
-    public function __construct(private readonly CrawlerConfigContext $ctx, private LoggerInterface $logger)
-    {
+    public function __construct(
+        private readonly CrawlerConfigContext $ctx,
+        private LoggerInterface $logger
+    ) {
     }
 
     private const MISSING = '__MISSING__';
@@ -92,23 +94,6 @@ final class CrawlerConfigHelper
             'default' => $default
         ]);
         return $default;
-    }
-
-    public function nullableString(string $key): ?string
-    {
-        $v = $this->ctx->get($key, self::MISSING);
-
-        if ($v === self::MISSING || $v === null) {
-            return null;
-        }
-
-        if (is_string($v)) {
-            $v = trim($v);
-            return $v !== '' ? $v : null;
-        }
-
-        $this->logger->error('Config invalid nullable string, returning null', ['key' => $key, 'value' => $v]);
-        return null;
     }
 
     /** @return list<int> */
@@ -192,29 +177,39 @@ final class CrawlerConfigHelper
         return $out;
     }
 
-    /** @return list<mixed> */
-    public function intStringList(string $key): array
+    /** @return list<array{url: string, extraction_depth: int}> */
+    public function startUrlsList(string $key): array
     {
-        $v = $this->ctx->get($key, self::MISSING);
+        $rawStartUrlsList = $this->ctx->get($key, self::MISSING);
 
-        if ($v === self::MISSING) {
+        if ($rawStartUrlsList === self::MISSING) {
             $this->logger->debug('Config missing string list, using empty list', ['key' => $key]);
             return [];
         }
 
-        if (!is_array($v)) {
-            $this->logger->warning('Config invalid string list, using empty list', ['key' => $key, 'value' => $v]);
+        if (!is_array($rawStartUrlsList)) {
+            $this->logger->warning(
+                'Config invalid string list, using empty list',
+                ['key' => $key, 'value' => $rawStartUrlsList]
+            );
             return [];
         }
 
-        $out = [];
-        foreach ($v as $item) {
-            if ($item !== '') {
-                $out[] = $item;
+        $startUrlsList = [];
+        foreach ($rawStartUrlsList as $startUrl) {
+            if ($startUrl === '') {
+                continue;
+            }
+            if (is_array($startUrl) && isset($startUrl['sp_url']) && is_string($startUrl['sp_url'])) {
+                $depth = $startUrl['sp_extraction_depth'] ?? 0;
+                $startUrlsList[] = [
+                    'url' => $startUrl['sp_url'],
+                    'extraction_depth' => is_numeric($depth) ? (int) $depth : 1,
+                ];
             }
         }
 
-        return $out;
+        return $startUrlsList;
     }
 
     /**

@@ -20,6 +20,7 @@ return [
             "max_retry" => "3",
             "parallel_requests" => "3",
             "delay_ms" => "500",
+            "sp_backoff_ms" => "500",
             "user_agent" => "AtooloCrawlerBot/1.0 (+contact@example.org)",
             "start_urls" => [
                [

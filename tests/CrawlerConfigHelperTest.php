@@ -130,46 +130,6 @@ final class CrawlerConfigHelperTest extends TestCase
         $this->assertSame('fallback', $helper->string('key', 'fallback'));
     }
 
-    // --- nullableString() ---
-
-    public function testNullableStringReturnsStringValue(): void
-    {
-        $helper = $this->makeHelper(['key' => 'hello']);
-        $this->assertSame('hello', $helper->nullableString('key'));
-    }
-
-    public function testNullableStringReturnsNullForMissingKey(): void
-    {
-        $helper = $this->makeHelper([]);
-        $this->assertNull($helper->nullableString('missing'));
-    }
-
-    public function testNullableStringReturnsNullForNullValue(): void
-    {
-        $helper = $this->makeHelper(['key' => null]);
-        $this->assertNull($helper->nullableString('key'));
-    }
-
-    public function testNullableStringReturnsNullForEmptyString(): void
-    {
-        $helper = $this->makeHelper(['key' => '   ']);
-        $this->assertNull($helper->nullableString('key'));
-    }
-
-    public function testNullableStringReturnsTrimmedValue(): void
-    {
-        $helper = $this->makeHelper(['key' => '  hello  ']);
-        $this->assertSame('hello', $helper->nullableString('key'));
-    }
-
-    public function testNullableStringReturnsNullForInvalidTypeAndLogsError(): void
-    {
-        $logger = $this->createMock(LoggerInterface::class);
-        $logger->expects($this->once())->method('error');
-        $helper = $this->makeHelper(['key' => 123], $logger);
-        $this->assertNull($helper->nullableString('key'));
-    }
-
     // --- intList() ---
 
     public function testIntListReturnsEmptyForMissingKey(): void
@@ -242,27 +202,18 @@ final class CrawlerConfigHelperTest extends TestCase
 
     // --- intStringList() ---
 
-    public function testIntStringListReturnsEmptyForMissingKey(): void
+    public function testStartUrlsListReturnsEmptyForMissingKey(): void
     {
         $helper = $this->makeHelper([]);
-        $this->assertSame([], $helper->intStringList('missing'));
+        $this->assertSame([], $helper->startUrlsList('missing'));
     }
 
-    public function testIntStringListReturnsEmptyForNonArrayAndLogsWarning(): void
+    public function testStartUrlsListReturnsEmptyForNonArrayAndLogsWarning(): void
     {
         $logger = $this->createMock(LoggerInterface::class);
         $logger->expects($this->once())->method('warning');
         $helper = $this->makeHelper(['key' => 'notarray'], $logger);
-        $this->assertSame([], $helper->intStringList('key'));
-    }
-
-    public function testIntStringListFiltersOutEmptyStrings(): void
-    {
-        $helper = $this->makeHelper(['key' => ['a', '', 'b', 0]]);
-        $result = $helper->intStringList('key');
-        $this->assertNotContains('', $result);
-        $this->assertContains('a', $result);
-        $this->assertContains('b', $result);
+        $this->assertSame([], $helper->startUrlsList('key'));
     }
 
     // --- readScoreRules() ---
