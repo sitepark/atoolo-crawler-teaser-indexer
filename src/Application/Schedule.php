@@ -2,7 +2,6 @@
 
 namespace Atoolo\Crawler\Application;
 
-use Atoolo\Crawler\Application\StartCrawlerMessage;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Scheduler\Attribute\AsSchedule;
 use Symfony\Component\Scheduler\RecurringMessage;
@@ -16,7 +15,7 @@ use Symfony\Contracts\Cache\CacheInterface;
 final class Schedule implements ScheduleProviderInterface
 {
     public function __construct(
-        /** @var string[] $schedule*/
+        /** @var string[] $schedule */
         private readonly array $schedule,
         private readonly CacheInterface $cache,
         private readonly LoggerInterface $logger,
@@ -37,7 +36,7 @@ final class Schedule implements ScheduleProviderInterface
                         new StartCrawlerMessage()
                     )
                 );
-                $successCount++;
+                ++$successCount;
             }
 
             $this->logger->info(sprintf('Crawler scheduled for %d sites', $successCount));

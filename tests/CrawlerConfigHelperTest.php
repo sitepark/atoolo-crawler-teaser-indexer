@@ -13,9 +13,10 @@ use Psr\Log\LoggerInterface;
 
 final class CrawlerConfigHelperTest extends TestCase
 {
-    private function makeHelper(array $params, LoggerInterface $logger = null): CrawlerConfigHelper
+    private function makeHelper(array $params, ?LoggerInterface $logger = null): CrawlerConfigHelper
     {
         $ctx = new CrawlerConfigContext($params);
+
         return new CrawlerConfigHelper($ctx, $logger ?? $this->createStub(LoggerInterface::class));
     }
 

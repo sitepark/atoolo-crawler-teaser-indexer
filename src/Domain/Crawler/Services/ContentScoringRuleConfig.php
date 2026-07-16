@@ -28,13 +28,14 @@ final class ContentScoringConfig
 
         /** @var list<array{score: int, match_any?: list<string>, condition?: array{body_text_length?: int}}> $negative */
         $negative = $data['sp_content_scoring_negative'] ?? [];
+
         return new self(
             positive: array_map(
-                static fn(array $r) => ContentScoringRule::fromArray($r),
+                static fn (array $r) => ContentScoringRule::fromArray($r),
                 $positive,
             ),
             negative: array_map(
-                static fn(array $r) => ContentScoringRule::fromArray($r),
+                static fn (array $r) => ContentScoringRule::fromArray($r),
                 $negative,
             ),
         );

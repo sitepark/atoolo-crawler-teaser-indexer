@@ -19,7 +19,19 @@ final class URLNormalizerTest extends TestCase
         $ctx = new CrawlerConfigContext($config);
         $helper = new CrawlerConfigHelper($ctx, $logger);
         $crawlerConfig = new CrawlerConfig($helper);
-        return new URLNormalizer($crawlerConfig);
+        $denyEndings = [
+            ".jpg",
+            ".jpeg",
+            ".png",
+            ".gif",
+            ".svg",
+            ".webp",
+            ".ico",
+            ".bmp",
+            ".tiff"
+        ];
+
+        return new URLNormalizer($crawlerConfig, $denyEndings);
     }
 
     private function baseConfig(array $overrides = []): array

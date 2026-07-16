@@ -19,13 +19,14 @@ final class RequestExecutorTest extends TestCase
     private function makeConfig(array $overrides = []): CrawlerConfig
     {
         $ctx = new CrawlerConfigContext(array_merge([
-            'sp_user_agent'  => 'TestBot/1.0',
-            'sp_max_retry'   => 3,
-            'sp_delay_ms'    => 0,
-            'sp_backoff_ms'  => 100,
+            'sp_user_agent' => 'TestBot/1.0',
+            'sp_max_retry' => 3,
+            'sp_delay_ms' => 0,
+            'sp_backoff_ms' => 100,
         ], $overrides));
         $logger = $this->createStub(LoggerInterface::class);
         $helper = new CrawlerConfigHelper($ctx, $logger);
+
         return new CrawlerConfig($helper);
     }
 
@@ -34,6 +35,7 @@ final class RequestExecutorTest extends TestCase
         $httpClient = $this->createStub(HttpClientInterface::class);
         $httpClient->method('withOptions')->willReturnSelf();
         $httpClient->method('request')->willReturn($response);
+
         return $httpClient;
     }
 
@@ -43,11 +45,11 @@ final class RequestExecutorTest extends TestCase
         $response->method('getStatusCode')->willReturn(200);
 
         $httpClient = $this->makeHttpClient($response);
-        $config     = $this->makeConfig();
-        $logger     = $this->createStub(LoggerInterface::class);
+        $config = $this->makeConfig();
+        $logger = $this->createStub(LoggerInterface::class);
 
         $executor = new RequestExecutor([], $config, $httpClient, $logger);
-        $result   = $executor->request('https://example.com/');
+        $result = $executor->request('https://example.com/');
 
         $this->assertSame($response, $result);
     }
@@ -65,7 +67,7 @@ final class RequestExecutorTest extends TestCase
         $logger = $this->createStub(LoggerInterface::class);
 
         $executor = new RequestExecutor([], $config, $httpClient, $logger);
-        $result   = $executor->request('https://example.com/');
+        $result = $executor->request('https://example.com/');
 
         $this->assertNull($result);
     }
@@ -87,7 +89,7 @@ final class RequestExecutorTest extends TestCase
         $logger = $this->createStub(LoggerInterface::class);
 
         $executor = new RequestExecutor([500], $config, $httpClient, $logger);
-        $result   = $executor->request('https://example.com/');
+        $result = $executor->request('https://example.com/');
 
         $this->assertSame($successResponse, $result);
     }
@@ -98,12 +100,12 @@ final class RequestExecutorTest extends TestCase
         $response->method('getStatusCode')->willReturn(404);
 
         $httpClient = $this->makeHttpClient($response);
-        $config     = $this->makeConfig(['sp_max_retry' => 3]);
-        $logger     = $this->createStub(LoggerInterface::class);
+        $config = $this->makeConfig(['sp_max_retry' => 3]);
+        $logger = $this->createStub(LoggerInterface::class);
 
         // 404 is not in retryStatusCodes, so it should return after first attempt
         $executor = new RequestExecutor([500, 503], $config, $httpClient, $logger);
-        $result   = $executor->request('https://example.com/');
+        $result = $executor->request('https://example.com/');
 
         $this->assertSame($response, $result);
     }
@@ -113,8 +115,8 @@ final class RequestExecutorTest extends TestCase
         $httpClient = $this->createStub(HttpClientInterface::class);
         $httpClient->method('withOptions')->willReturnSelf();
 
-        $config   = $this->makeConfig(['sp_delay_ms' => 0]);
-        $logger   = $this->createStub(LoggerInterface::class);
+        $config = $this->makeConfig(['sp_delay_ms' => 0]);
+        $logger = $this->createStub(LoggerInterface::class);
         $executor = new RequestExecutor([], $config, $httpClient, $logger);
 
         // Should not throw
@@ -128,8 +130,8 @@ final class RequestExecutorTest extends TestCase
         $httpClient = $this->createStub(HttpClientInterface::class);
         $httpClient->method('withOptions')->willReturnSelf();
 
-        $config   = $this->makeConfig();
-        $logger   = $this->createStub(LoggerInterface::class);
+        $config = $this->makeConfig();
+        $logger = $this->createStub(LoggerInterface::class);
         $executor = new RequestExecutor([], $config, $httpClient, $logger);
 
         // 'not-a-url' has no host, throttle should return early without error
@@ -154,7 +156,7 @@ final class RequestExecutorTest extends TestCase
         $logger = $this->createStub(LoggerInterface::class);
 
         $executor = new RequestExecutor([429], $config, $httpClient, $logger);
-        $result   = $executor->request('https://example.com/');
+        $result = $executor->request('https://example.com/');
 
         $this->assertSame($successResponse, $result);
     }
@@ -165,8 +167,8 @@ final class RequestExecutorTest extends TestCase
         $httpClient->method('withOptions')->willReturnSelf();
 
         // 50ms delay: second call within 50ms of first → usleep is triggered
-        $config   = $this->makeConfig(['sp_delay_ms' => 50]);
-        $logger   = $this->createStub(LoggerInterface::class);
+        $config = $this->makeConfig(['sp_delay_ms' => 50]);
+        $logger = $this->createStub(LoggerInterface::class);
         $executor = new RequestExecutor([], $config, $httpClient, $logger);
 
         $start = microtime(true);

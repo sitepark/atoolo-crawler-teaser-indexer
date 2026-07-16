@@ -15,9 +15,9 @@ declare(strict_types=1);
 
 namespace Atoolo\Crawler\Domain\Crawler\Steps;
 
+use Atoolo\Crawler\Domain\Crawler\Ports\RequestExecutorInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
-use Atoolo\Crawler\Domain\Crawler\Ports\RequestExecutorInterface;
 
 class Fetcher
 {
@@ -31,11 +31,13 @@ class Fetcher
      * Fetches raw HTML for multiple URLs in batches.
      *
      * @param list<string> $urlChunk
+     *
      * @return array<int, array{url: string, html: string}>
      */
     public function fetchUrls(array $urlChunk): array
     {
         $responses = $this->startRequests($urlChunk);
+
         return $this->processResponses($responses);
     }
 
@@ -43,17 +45,19 @@ class Fetcher
      * Starts the HTTP requests for a batch of URLs with a retry mechanism.
      *
      * @param list<string> $urlChunk
-     * @return array<string, \Symfony\Contracts\HttpClient\ResponseInterface>
+     *
+     * @return array<string, ResponseInterface>
      */
     private function startRequests(array $urlChunk): array
     {
         $responses = [];
         foreach ($urlChunk as $url) {
             $response = $this->requestExecutor->request($url);
-            if ($response !== null) {
+            if (null !== $response) {
                 $responses[$url] = $response;
             }
         }
+
         return $responses;
     }
 
@@ -61,6 +65,7 @@ class Fetcher
      * Processes the collected responses and extracts the HTML content.
      *
      * @param ResponseInterface[] $responses The responses to process, keyed by URL
+     *
      * @return array<int, array{url: string, html: string}>
      */
     private function processResponses(array $responses): array
@@ -71,20 +76,21 @@ class Fetcher
                 $status = $response->getStatusCode();
                 if ($status >= 200 && $status < 300) {
                     $results[] = [
-                        'url'  => $url,
+                        'url' => $url,
                         'html' => $response->getContent(),
                     ];
                 }
             } catch (\Throwable $e) {
                 $this->logger->error(
-                    "Failed to retrieve content",
+                    'Failed to retrieve content',
                     [
-                        'baseUrl'   => $url,
-                        'exception' => $e
+                        'baseUrl' => $url,
+                        'exception' => $e,
                     ]
                 );
             }
         }
+
         return $results;
     }
 }

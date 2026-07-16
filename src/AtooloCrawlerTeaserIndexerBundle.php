@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Atoolo\Crawler;
 
-use Exception;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\Config\Loader\GlobFileLoader;
 use Symfony\Component\Config\Loader\LoaderResolver;
@@ -18,7 +17,7 @@ use Symfony\Component\HttpKernel\Bundle\Bundle;
 class AtooloCrawlerTeaserIndexerBundle extends Bundle
 {
     /**
-     * @throws Exception
+     * @throws \Exception
      */
     public function build(ContainerBuilder $container): void
     {

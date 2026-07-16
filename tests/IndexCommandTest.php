@@ -40,6 +40,7 @@ final class IndexCommandTest extends TestCase
     {
         $tester = new CommandTester($command);
         $tester->execute([]);
+
         return $tester;
     }
 
@@ -55,7 +56,7 @@ final class IndexCommandTest extends TestCase
         $logger->expects($this->once())->method('warning');
 
         $command = new Index($loader, $this->makeRunner($manager), $logger);
-        $tester  = $this->runCommand($command);
+        $tester = $this->runCommand($command);
 
         $this->assertSame(Command::SUCCESS, $tester->getStatusCode());
     }
@@ -76,7 +77,7 @@ final class IndexCommandTest extends TestCase
         $logger = $this->createStub(LoggerInterface::class);
 
         $command = new Index($loader, $this->makeRunner($manager), $logger);
-        $tester  = $this->runCommand($command);
+        $tester = $this->runCommand($command);
 
         $this->assertSame(Command::SUCCESS, $tester->getStatusCode());
     }
@@ -98,7 +99,7 @@ final class IndexCommandTest extends TestCase
         $logger->expects($this->atLeastOnce())->method('error');
 
         $command = new Index($loader, $this->makeRunner($manager), $logger);
-        $tester  = $this->runCommand($command);
+        $tester = $this->runCommand($command);
 
         $this->assertSame(Command::FAILURE, $tester->getStatusCode());
     }
@@ -117,7 +118,7 @@ final class IndexCommandTest extends TestCase
         $logger->expects($this->atLeastOnce())->method('error');
 
         $command = new Index($loader, $this->makeRunner($manager), $logger);
-        $tester  = $this->runCommand($command);
+        $tester = $this->runCommand($command);
 
         $this->assertSame(Command::FAILURE, $tester->getStatusCode());
     }
@@ -133,7 +134,7 @@ final class IndexCommandTest extends TestCase
         $logger->expects($this->once())->method('critical');
 
         $command = new Index($loader, $this->makeRunner($manager), $logger);
-        $tester  = $this->runCommand($command);
+        $tester = $this->runCommand($command);
 
         $this->assertSame(Command::FAILURE, $tester->getStatusCode());
     }

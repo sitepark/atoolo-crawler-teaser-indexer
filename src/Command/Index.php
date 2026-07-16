@@ -31,16 +31,17 @@ final class Index extends Command
         $exitCode = Command::SUCCESS;
 
         try {
-            $config = $this->indexerConfigurationLoader->load("atooloTeaserCrawler");
+            $config = $this->indexerConfigurationLoader->load('atooloTeaserCrawler');
 
             /** @var array<string, mixed> $data */
             $data = $config->data->get();
 
             /** @var array<array<string, mixed>> $sites */
-            $sites = $data["sp_crawling_sites"] ?? [];
+            $sites = $data['sp_crawling_sites'] ?? [];
 
             if (empty($sites)) {
                 $this->logger->warning('No crawler sites configured');
+
                 return Command::SUCCESS;
             }
 
@@ -87,6 +88,7 @@ final class Index extends Command
             $this->logger->critical('Fatal error in crawler command', [
                 'exception' => $e,
             ]);
+
             return Command::FAILURE;
         }
 

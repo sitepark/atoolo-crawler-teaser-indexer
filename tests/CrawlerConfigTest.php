@@ -18,6 +18,7 @@ final class CrawlerConfigTest extends TestCase
         $ctx = new CrawlerConfigContext($params);
         $logger = $this->createStub(LoggerInterface::class);
         $helper = new CrawlerConfigHelper($ctx, $logger);
+
         return new CrawlerConfig($helper);
     }
 
@@ -300,9 +301,9 @@ final class CrawlerConfigTest extends TestCase
     public function testTitleConfigCustomValues(): void
     {
         $config = $this->makeConfig([
-            'sp_title_prefix'    => 'PRE: ',
+            'sp_title_prefix' => 'PRE: ',
             'sp_title_opengraph' => ['og:title'],
-            'sp_title_css'       => ['h1', '.title'],
+            'sp_title_css' => ['h1', '.title'],
             'sp_title_max_chars' => 300,
         ]);
         $titleConfig = $config->titleConfig();
@@ -325,11 +326,11 @@ final class CrawlerConfigTest extends TestCase
     public function testIntroTextConfigCustomValues(): void
     {
         $config = $this->makeConfig([
-            'sp_introText_present'        => true,
+            'sp_introText_present' => true,
             'sp_introText_required_field' => true,
-            'sp_introText_opengraph'      => ['og:description'],
-            'sp_introText_css'            => ['.intro'],
-            'sp_introText_max_chars'      => 500,
+            'sp_introText_opengraph' => ['og:description'],
+            'sp_introText_css' => ['.intro'],
+            'sp_introText_max_chars' => 500,
         ]);
         $introConfig = $config->introTextConfig();
         $this->assertTrue($introConfig->present);
@@ -353,11 +354,11 @@ final class CrawlerConfigTest extends TestCase
     public function testDateTimeConfigCustomValues(): void
     {
         $config = $this->makeConfig([
-            'sp_datetime_present'        => true,
+            'sp_datetime_present' => true,
             'sp_datetime_required_field' => true,
-            'sp_datetime_only_date'      => false,
-            'sp_datetime_opengraph'      => ['article:published_time'],
-            'sp_datetime_css'            => ['time'],
+            'sp_datetime_only_date' => false,
+            'sp_datetime_opengraph' => ['article:published_time'],
+            'sp_datetime_css' => ['time'],
         ]);
         $dtConfig = $config->dateTimeConfig();
         $this->assertTrue($dtConfig->present);
@@ -420,10 +421,10 @@ final class CrawlerConfigTest extends TestCase
     {
         $config = $this->makeConfig([
             'sp_content_scoring_min_score' => 5,
-            'sp_content_scoring_positive'  => [
+            'sp_content_scoring_positive' => [
                 ['sp_score' => 2, 'sp_match_any' => ['news', 'sport']],
             ],
-            'sp_content_scoring_negative'  => [
+            'sp_content_scoring_negative' => [
                 ['sp_score' => 1, 'sp_match_any' => ['advertisement']],
             ],
         ]);

@@ -42,7 +42,7 @@ final class CrawlSiteRunnerTest extends TestCase
     public function testRunWithEmptySiteIdThrowsInvalidArgumentException(): void
     {
         $manager = $this->createMock(CrawlerManager::class);
-        $logger  = $this->createStub(LoggerInterface::class);
+        $logger = $this->createStub(LoggerInterface::class);
 
         $this->expectException(\InvalidArgumentException::class);
         $this->makeRunner($manager, $logger)->run(['sp_id' => '']);
@@ -54,7 +54,7 @@ final class CrawlSiteRunnerTest extends TestCase
         $manager->method('startCrawler')->willThrowException(new \RuntimeException('crawl error'));
 
         $logger = $this->createStub(LoggerInterface::class);
-        $ctx    = new CrawlerConfigContext([]);
+        $ctx = new CrawlerConfigContext([]);
         $runner = new CrawlSiteRunner($ctx, $manager, $logger);
 
         try {

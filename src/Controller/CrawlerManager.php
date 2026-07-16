@@ -21,11 +21,11 @@ declare(strict_types=1);
 namespace Atoolo\Crawler\Controller;
 
 use Atoolo\Crawler\Config\CrawlerConfig;
-use Atoolo\Crawler\Domain\Crawler\Steps\URLCollector;
-use Atoolo\Crawler\Domain\Crawler\Steps\Parser;
 use Atoolo\Crawler\Domain\Crawler\Steps\Fetcher;
-use Atoolo\Crawler\Domain\Crawler\Steps\Processor;
 use Atoolo\Crawler\Domain\Crawler\Steps\Indexer;
+use Atoolo\Crawler\Domain\Crawler\Steps\Parser;
+use Atoolo\Crawler\Domain\Crawler\Steps\Processor;
+use Atoolo\Crawler\Domain\Crawler\Steps\URLCollector;
 use Atoolo\Crawler\Exception\StepExecution;
 use Psr\Log\LoggerInterface;
 
@@ -38,7 +38,7 @@ class CrawlerManager
         private readonly Processor $processor,
         private readonly CrawlerConfig $config,
         private readonly LoggerInterface $logger,
-        private readonly Indexer $indexer
+        private readonly Indexer $indexer,
     ) {
     }
 
@@ -50,28 +50,28 @@ class CrawlerManager
         /** @var \Iterator<int, string> $urlsIterator */
         $urlsIterator = $this->executeStep(
             'URLCollector',
-            fn() => $this->urlCollector->findHrefUrlsByCssSelector()
+            fn () => $this->urlCollector->findHrefUrlsByCssSelector()
         );
 
         $urls = iterator_to_array($urlsIterator);
 
         $rawTeaserStream = $this->storageHandlingFetcherParser($urls);
 
-        //Cleans and formats the data
+        // Cleans and formats the data
         $teaserStream = $this->executeStep(
             'Processor',
-            fn($rawData) => $this->processor->sanitizeText($rawData),
+            fn ($rawData) => $this->processor->sanitizeText($rawData),
             $rawTeaserStream
         );
 
         /**
-         *  @var array<int, array<string, mixed>> $finalTeaserStream
+         * @var array<int, array<string, mixed>> $finalTeaserStream
          */
         $finalTeaserStream = iterator_to_array($teaserStream);
 
         $indexerStatus = $this->indexer->doIndex($finalTeaserStream);
-        $this->logger->info("Indexer statusLine: " . $indexerStatus->getStatusLine());
-        if ($indexerStatus->errors == 0) {
+        $this->logger->info('Indexer statusLine: ' . $indexerStatus->getStatusLine());
+        if (0 == $indexerStatus->errors) {
             $this->logger->info("No Status Error [{$indexerStatus->errors}]: Crawling Prozess completed successfully.");
         } else {
             $this->logger->error("Status Errors [{$indexerStatus->errors}]: Crawling Prozess Stops by Indexing.");
@@ -80,6 +80,7 @@ class CrawlerManager
 
     /**
      * @param list<string> $urls
+     *
      * @return \Generator<int, array<string, mixed>>
      */
     private function storageHandlingFetcherParser($urls): iterable
@@ -90,7 +91,7 @@ class CrawlerManager
         foreach ($urlChunks as $chunk) {
             $htmlDataIterator = $this->executeStep(
                 'Fetcher',
-                fn($urls) => $this->fetcher->fetchUrls($urls),
+                fn ($urls) => $this->fetcher->fetchUrls($urls),
                 $chunk
             );
 
@@ -98,7 +99,7 @@ class CrawlerManager
 
             $teaserDataIterator = $this->executeStep(
                 'Parser',
-                fn($pages) => $this->parser->extractTeasers(
+                fn ($pages) => $this->parser->extractTeasers(
                     is_array($pages) ? $pages : iterator_to_array($pages)
                 ),
                 $htmlData
@@ -131,8 +132,9 @@ class CrawlerManager
         try {
             $result = $fn($input);
 
-            if (is_array($result) && $result === []) {
+            if (is_array($result) && [] === $result) {
                 $this->logger->warning("[$name] Step returned no data.");
+
                 return new \ArrayIterator([]);
             }
 

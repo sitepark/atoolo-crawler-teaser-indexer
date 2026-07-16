@@ -4,16 +4,15 @@ declare(strict_types=1);
 
 namespace Atoolo\Crawler\Config;
 
-use Atoolo\Crawler\Domain\Crawler\Services\DateTimeExtractConfig;
-use Atoolo\Crawler\Config\CrawlerConfigHelper;
 use Atoolo\Crawler\Domain\Crawler\Services\ContentScoringConfig;
+use Atoolo\Crawler\Domain\Crawler\Services\DateTimeExtractConfig;
 use Atoolo\Crawler\Domain\Crawler\Services\IntroExtractConfig;
 use Atoolo\Crawler\Domain\Crawler\Services\TitleExtractConfig;
 
 final class CrawlerConfig
 {
     public function __construct(
-        private CrawlerConfigHelper $crawlerConfigHelper
+        private CrawlerConfigHelper $crawlerConfigHelper,
     ) {
     }
 
@@ -30,7 +29,6 @@ final class CrawlerConfig
     {
         return $this->crawlerConfigHelper->intList('sp_categories_path');
     }
-
 
     // --- Core / Meta ---
 
@@ -78,6 +76,7 @@ final class CrawlerConfig
     public function denyPrefixes(): array
     {
         $denyPrefixes = $this->crawlerConfigHelper->stringList('sp_deny_prefixes');
+
         return array_values(array_filter($denyPrefixes, 'is_string'));
     }
 
@@ -148,7 +147,7 @@ final class CrawlerConfig
         return new TitleExtractConfig(
             present: true,
             requiredField: true,
-            prefix: $this->crawlerConfigHelper->string('sp_title_prefix', ""),
+            prefix: $this->crawlerConfigHelper->string('sp_title_prefix', ''),
             opengraph: $this->crawlerConfigHelper->stringList('sp_title_opengraph'),
             css: $this->crawlerConfigHelper->stringList('sp_title_css'),
             maxChars: $this->crawlerConfigHelper->int('sp_title_max_chars', 999),

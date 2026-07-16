@@ -18,21 +18,23 @@ final class StartCrawlerMessageHandler
 
     public function __invoke(StartCrawlerMessage $message): void
     {
-        $config = $this->indexerConfigurationLoader->load("atooloTeaserCrawler");
+        $config = $this->indexerConfigurationLoader->load('atooloTeaserCrawler');
 
         /** @var array<string, mixed> $data */
         $data = $config->data->get();
 
         if (empty($data)) {
             $this->logger->warning('No crawler data configured or data not found.');
+
             return;
         }
 
         /** @var array<array<string, mixed>> $sites */
-        $sites = $data["sp_crawling_sites"] ?? [];
+        $sites = $data['sp_crawling_sites'] ?? [];
 
         if (empty($sites)) {
             $this->logger->warning('Data found but, no crawler sites configured.');
+
             return;
         }
         foreach ($sites as $site) {
@@ -41,6 +43,7 @@ final class StartCrawlerMessageHandler
             }
         }
     }
+
     /**
      * @param array<string, mixed> $site
      */
@@ -48,6 +51,7 @@ final class StartCrawlerMessageHandler
     {
         if (empty($site['sp_id'] ?? null)) {
             $this->logger->error('Invalid site config: missing "sp_id" field.');
+
             return false;
         }
 

@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace Atoolo\Crawler\Domain\Crawler\Steps;
 
+use Atoolo\Crawler\Config\CrawlerConfig;
+use Atoolo\Crawler\Domain\Crawler\Ports\RequestExecutorInterface;
+use Atoolo\Crawler\Domain\Crawler\Services\RobotsTxtCheckerInterface;
+use Atoolo\Crawler\Domain\Crawler\Services\URLNormalizer;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\DomCrawler\Link;
-use Atoolo\Crawler\Domain\Crawler\Services\URLNormalizer;
-use Atoolo\Crawler\Domain\Crawler\Ports\RequestExecutorInterface;
-use Atoolo\Crawler\Domain\Crawler\Services\RobotsTxtCheckerInterface;
-use Atoolo\Crawler\Config\CrawlerConfig;
 
 class URLCollector
 {
@@ -19,7 +19,7 @@ class URLCollector
         private readonly URLNormalizer $urlNormalizer,
         private readonly LoggerInterface $logger,
         private readonly RequestExecutorInterface $requestExecutor,
-        private RobotsTxtCheckerInterface $robotsTxtChecker
+        private RobotsTxtCheckerInterface $robotsTxtChecker,
     ) {
     }
 
@@ -50,9 +50,10 @@ class URLCollector
             $urls = array_slice($urls, 0, $this->config->maxTeaser());
         }
 
-        if ($this->config->forcedArticleUrls() !== []) {
+        if ([] !== $this->config->forcedArticleUrls()) {
             $urls = array_merge($urls, $this->config->forcedArticleUrls());
         }
+
         return array_values(array_unique(array_filter($urls, 'is_string')));
     }
 
@@ -60,6 +61,7 @@ class URLCollector
      * Loads and returns a DOM crawler instance for the given base URL.
      *
      * @param string $baseUrl The URL to fetch and parse
+     *
      * @return Crawler The initialized HTML crawler
      *
      * @throws \LogicException If the crawler could not be initialized
@@ -67,11 +69,12 @@ class URLCollector
     private function loadCrawlerForBaseUrl(string $baseUrl): Crawler
     {
         $response = $this->requestExecutor->request($baseUrl);
-        if ($response === null) {
+        if (null === $response) {
             throw new \LogicException('Request failed.');
         }
 
         $htmlContent = $response->getContent(false);
+
         return new Crawler($htmlContent, $baseUrl);
     }
 
@@ -79,6 +82,7 @@ class URLCollector
      * Crawls URLs breadth-first from a start URL up to its extraction_depth.
      *
      * @param array{url:string, extraction_depth:int} $start
+     *
      * @return array<int, string>
      */
     private function crawlByDepth(array $start): array
@@ -87,20 +91,20 @@ class URLCollector
         $maxDepth = (int) $start['extraction_depth'];
         $limit = $this->config->maxTeaser();
 
-        $queue   = [['url' => $start['url'], 'depth' => 0]];
+        $queue = [['url' => $start['url'], 'depth' => 0]];
         $visited = [];
 
         /** @var list<string> $denyPrefixes */
-        $denyPrefixes  = $this->config->denyPrefixes();
+        $denyPrefixes = $this->config->denyPrefixes();
         /** @var list<string> $allowPrefixes */
         $allowPrefixes = $this->config->allowPrefixes();
 
-        for ($i = 0; $i < count($queue); $i++) {
+        for ($i = 0; $i < count($queue); ++$i) {
             if (count($found) >= $limit) {
                 break;
             }
 
-            $url   = $queue[$i]['url'];
+            $url = $queue[$i]['url'];
             $depth = (int) $queue[$i]['depth'];
 
             if ($depth > $maxDepth || isset($visited[$url])) {
@@ -115,7 +119,7 @@ class URLCollector
                     continue;
                 }
 
-                if ($allowPrefixes !== [] && !$this->startsWithAny($link, $allowPrefixes)) {
+                if ([] !== $allowPrefixes && !$this->startsWithAny($link, $allowPrefixes)) {
                     continue;
                 }
 
@@ -144,10 +148,11 @@ class URLCollector
     private function startsWithAny(string $url, array $prefixes): bool
     {
         foreach ($prefixes as $prefix) {
-            if ($prefix !== '' && str_starts_with($url, $prefix)) {
+            if ('' !== $prefix && str_starts_with($url, $prefix)) {
                 return true;
             }
         }
+
         return false;
     }
 
@@ -159,6 +164,7 @@ class URLCollector
      *
      * @param Crawler $scope   The scoped DOM crawler
      * @param string  $baseUrl The base URL used for resolving relative links
+     *
      * @return array<int, string> A list of extracted absolute URLs
      */
     private function extractAbsoluteUrlsFromScope(Crawler $scope, string $baseUrl): array
@@ -174,13 +180,15 @@ class URLCollector
 
                 try {
                     $link = new Link($domElement, $baseUrl);
-                    $url  = $link->getUri();
+                    $url = $link->getUri();
+
                     return str_starts_with($url, 'https://') ? $url : null;
                 } catch (\Throwable $e) {
                     $this->logger->debug('Failed to parse link', [
-                        'baseUrl'   => $baseUrl,
+                        'baseUrl' => $baseUrl,
                         'exception' => $e,
                     ]);
+
                     return null;
                 }
             });

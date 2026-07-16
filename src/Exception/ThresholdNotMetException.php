@@ -8,7 +8,7 @@ class ThresholdNotMetException extends \Exception
     {
         parent::__construct(
             sprintf(
-                "Process failed: Only %d successful imports, threshold is %d",
+                'Process failed: Only %d successful imports, threshold is %d',
                 $successCount,
                 $threshold
             )

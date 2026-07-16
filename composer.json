@@ -63,17 +63,14 @@
         "analyse": [
             "@analyse:phplint",
             "@analyse:phpstan",
-            "@analyse:phpcsfixer",
+            "@analyse:php-cs-checker",
             "@analyse:compatibilitycheck"
         ],
         "analyse:compatibilitycheck": "./vendor/bin/phpcs",
-        "analyse:phpcsfixer": "./tools/php-cs-fixer check --diff --show-progress=dots",
         "analyse:phplint": "./tools/phplint",
         "analyse:phpstan": "./tools/phpstan analyse",
-        "cs-fix": [
-            "@cs-fix:php-cs-fixer"
-        ],
-        "cs-fix:php-cs-fixer": "./tools/php-cs-fixer fix",
+        "analyse:php-cs-checker": "./vendor/bin/php-cs-fixer check --diff --show-progress=dots",
+        "php-cs-fixer": "./vendor/bin/php-cs-fixer fix",
         "report": [
             "@report:phpstan"
         ],

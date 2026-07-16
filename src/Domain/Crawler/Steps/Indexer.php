@@ -21,6 +21,7 @@ use Psr\Log\NullLogger;
 class Indexer implements \Atoolo\Search\Indexer
 {
     private string $source = '';
+
     public function __construct(
         private IndexerProgressHandler $progressHandler,
         private SolrIndexService $indexService,
@@ -62,7 +63,7 @@ class Indexer implements \Atoolo\Search\Indexer
                         if ($date instanceof \DateTimeInterface) {
                             $dateValue = $date;
                         } elseif (is_scalar($date)) {
-                            $dateValue = new \DateTimeImmutable((string)$date, new \DateTimeZone('UTC'));
+                            $dateValue = new \DateTimeImmutable((string) $date, new \DateTimeZone('UTC'));
                         } else {
                             throw new \InvalidArgumentException('Invalid date type');
                         }
@@ -71,7 +72,7 @@ class Indexer implements \Atoolo\Search\Indexer
                     } catch (\Exception $e) {
                         $this->logger->warning('[Indexer] Invalid date format', [
                             'date' => $item['date'],
-                            'error' => $e->getMessage()
+                            'error' => $e->getMessage(),
                         ]);
                     }
                 }
@@ -85,7 +86,7 @@ class Indexer implements \Atoolo\Search\Indexer
 
                 $updater->addDocument($document);
                 $this->progressHandler->advance(1);
-                $successCount++;
+                ++$successCount;
             } catch (\Throwable $exception) {
                 $this->logger->error('Indexing failed', [
                     'item' => $item,
@@ -104,7 +105,7 @@ class Indexer implements \Atoolo\Search\Indexer
             throw $e;
         }
 
-        if ($result->getStatus() !== 0) {
+        if (0 !== $result->getStatus()) {
             $this->progressHandler->error(
                 new \Exception($result->getResponse()->getStatusMessage())
             );
@@ -113,12 +114,9 @@ class Indexer implements \Atoolo\Search\Indexer
         if ($successCount <= $this->config->cleanupThreshold()) {
             $this->logger->critical('Cleanup threshold not met. Aborting.', [
                 'successCount' => $successCount,
-                'threshold'    => $this->config->cleanupThreshold(),
+                'threshold' => $this->config->cleanupThreshold(),
             ]);
-            throw new ThresholdNotMetException(
-                $successCount,
-                $this->config->cleanupThreshold()
-            );
+            throw new ThresholdNotMetException($successCount, $this->config->cleanupThreshold());
         }
 
         $this->indexService->deleteExcludingProcessId(
