@@ -125,7 +125,7 @@ src/
 │       └── RequestExecutor      - HTTP request execution with retries
 ```
 
-> **Note:** `src/Proposal/` is a non-wired code skeleton for the planned next major release (see `docs/review-next_major.md`). It is not registered as services and not part of the runtime — ignore it when working on the current codebase.
+> **Note:** `src/Proposal/` is a non-wired code skeleton for the planned next major release (see `docs/proposal-next_major.md`). It is not registered as services and not part of the runtime — ignore it when working on the current codebase.
 
 ### Configuration System
 

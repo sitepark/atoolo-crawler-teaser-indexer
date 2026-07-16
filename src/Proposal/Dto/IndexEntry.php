@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Atoolo\Crawler\Proposal\Dto;
 
-/** One structured entry ready for indexing. Extensions carry optional custom data (Abschnitt 7.2 im Review). */
+/** One structured entry ready for indexing. Extensions carry optional custom data (Abschnitt 7.2 im Proposal). */
 readonly class IndexEntry
 {
     /**

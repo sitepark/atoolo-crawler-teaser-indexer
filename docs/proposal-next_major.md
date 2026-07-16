@@ -1,8 +1,8 @@
-# Review: Next Major
+# Proposal: Next Major
 
 ## Wie dieses Dokument zu lesen ist
 
-Dieses Dokument ist die **verbindliche Spezifikation** der Zielarchitektur. Unter `src/Proposal/` liegt ein **Code-Skelett**, das sie in Klassen/Signaturen skizziert — bewusst unvollständig (Stubs, keine Adapter, keine Tests). Wo Skelett und Dokument abweichen, gilt das Dokument; offene Stellen im Skelett sind mit „⚠️" markiert.
+Dieses Dokument ist die **verbindliche Spezifikation** der Zielarchitektur. Unter `src/Proposal/` liegt ein **Code-Skelett**, das sie in Klassen/Signaturen skizziert — bewusst unvollständig (Stubs, keine Adapter, keine Tests). Wo Skelett und Dokument abweichen, gilt das Dokument; offene Stellen im Skelett sind mit „⚠️" markiert. Warum überhaupt umgebaut wird — und was am Bestehenden gut ist — steht kompakt in [review.md](review.md).
 
 Zwei bereits getroffene Grundsatzentscheidungen:
 1. **Ziel-Namespace `Atoolo\CrawlerIndexer`** (statt `Atoolo\Crawler`).
@@ -86,7 +86,7 @@ public function run(PipelineConfig $config): CrawlResult
 }
 ```
 
-**Streaming:** Die Steps sind echte Generatoren — es liegt immer nur eine Seite im RAM statt aller HTMLs gleichzeitig. Heute wird der Vorteil durch `iterator_to_array()` zwischen den Steps zerstört; das darf im Neubau nicht passieren.
+**Streaming:** Die Steps sind echte Generatoren — es liegt immer nur eine Seite im RAM statt aller HTMLs gleichzeitig. Heute ist das HTML-Memory zwar schon via Chunking + `unset` begrenzt, aber die Generator-Laziness ist inkonsistent (der `Processor`-Generator wird sofort per `iterator_to_array()` ausgelesen, der `Fetcher` ist gar keiner); der Neubau macht die Laziness durchgängig.
 
 **Ein zentraler try/catch — kein Widerspruch zum gestrichenen Wrapper:** Weil alles lazy ist, läuft die Arbeit erst beim `index()`-Konsum; eine Exception aus irgendeinem Step propagiert dort nach oben. Entscheidend: es wird nicht mehr pro Step ein leeres Ergebnis geschluckt.
 ⚠️ Skelett: `CrawlerPipeline::run()` fängt die Exception selbst ab und wirft sie **nicht** weiter → `CrawlSiteRunner` hielte die Site fälschlich für erfolgreich. Muss propagieren.
