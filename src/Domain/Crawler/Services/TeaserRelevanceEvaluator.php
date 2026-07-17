@@ -11,7 +11,8 @@ final class TeaserRelevanceEvaluator implements TeaserRelevanceEvaluatorInterfac
 {
     public function __construct(
         private readonly CrawlerConfig $config,
-    ) {}
+    ) {
+    }
 
     /**
      * Evaluates whether a teaser is relevant based on its content (HTML, title, intro)
@@ -92,7 +93,7 @@ final class TeaserRelevanceEvaluator implements TeaserRelevanceEvaluatorInterfac
         ScoreRuleConfig $rule,
         string $haystack,
         string $intro,
-        string $body,
+        string $body
     ): bool {
         foreach ($rule->matchAny as $needle) {
             if ($this->contains($haystack, $needle)) {

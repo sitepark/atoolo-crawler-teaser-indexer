@@ -9,7 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Repository:** https://github.com/sitepark/atoolo-crawler-teaser-indexer  
 **Package Type:** Symfony bundle (distributed via Composer)  
 **Language:** PHP  
-**PHP Support:** 8.2, 8.3, 8.4
+**PHP Support:** 8.1, 8.2, 8.3, 8.4
 
 ## Essential Build and Development Commands
 
@@ -34,7 +34,7 @@ composer analyse
 composer analyse:phplint              # PHP syntax validation
 composer analyse:phpstan              # Static analysis (level 9)
 composer analyse:phpcsfixer           # PHP-CS-Fixer check with diff
-composer analyse:compatibilitycheck   # PHP 8.2+ compatibility check
+composer analyse:compatibilitycheck   # PHP 8.3/8.4 compatibility check
 ```
 
 ### Code Formatting
@@ -200,7 +200,7 @@ composer test:infection                  # Mutation testing
 - Tools location: `./tools/phplint`
 - Run: `composer analyse:phplint`
 
-**Compatibility Check:** PHPCodeSniffer against PHP 8.2+
+**Compatibility Check:** PHPCodeSniffer against PHP 8.3-8.4
 - Config: `phpcs.compatibilitycheck.xml`
 - Run: `composer analyse:compatibilitycheck`
 
@@ -213,7 +213,7 @@ composer test:infection                  # Mutation testing
 **GitHub Actions Workflows** (`.github/workflows/`):
 
 1. **verify.yml** - Runs on push/PR (triggered by `composer-verify.yml@release/1.x`)
-   - PHP 8.2–8.4 linting, testing, static analysis
+   - PHP 8.1 linting, testing, static analysis
    - Coverage report to Codecov
 
 2. **create-release.yml** - Manual workflow dispatch

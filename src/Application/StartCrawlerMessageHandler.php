@@ -13,7 +13,8 @@ final class StartCrawlerMessageHandler
         private readonly CrawlSiteRunner $runner,
         private readonly IndexerConfigurationLoader $indexerConfigurationLoader,
         private readonly LoggerInterface $logger,
-    ) {}
+    ) {
+    }
 
     public function __invoke(StartCrawlerMessage $message): void
     {

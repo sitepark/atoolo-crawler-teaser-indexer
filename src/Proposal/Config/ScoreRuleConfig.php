@@ -13,5 +13,6 @@ final class ScoreRuleConfig
         public readonly int $score,
         public readonly array $matchAny = [],
         public readonly ?LengthConditionConfig $condition = null,
-    ) {}
+    ) {
+    }
 }

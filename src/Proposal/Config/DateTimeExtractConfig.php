@@ -16,5 +16,6 @@ final class DateTimeExtractConfig
         public readonly bool $onlyDate,
         public readonly array $opengraph,
         public readonly array $css,
-    ) {}
+    ) {
+    }
 }

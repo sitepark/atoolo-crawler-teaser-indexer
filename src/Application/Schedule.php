@@ -20,7 +20,8 @@ final class Schedule implements ScheduleProviderInterface
         private readonly array $schedule,
         private readonly CacheInterface $cache,
         private readonly LoggerInterface $logger,
-    ) {}
+    ) {
+    }
 
     public function getSchedule(): SymfonySchedule
     {
@@ -33,8 +34,8 @@ final class Schedule implements ScheduleProviderInterface
                 $schedule->add(
                     RecurringMessage::cron(
                         $scheduleTime,
-                        new StartCrawlerMessage(),
-                    ),
+                        new StartCrawlerMessage()
+                    )
                 );
                 $successCount++;
             }

@@ -30,7 +30,7 @@ final class FetcherTest extends TestCase
 
         $this->fetcher = new Fetcher(
             $this->requestExecutorInterfaceMock,
-            $this->logger,
+            $this->logger
         );
     }
 
@@ -76,7 +76,7 @@ final class FetcherTest extends TestCase
             ->method('error')
             ->with(
                 $this->stringContains('Failed to retrieve content'),
-                $this->arrayHasKey('exception'),
+                $this->arrayHasKey('exception')
             );
 
         $result = $this->fetcher->fetchUrls([$url]);

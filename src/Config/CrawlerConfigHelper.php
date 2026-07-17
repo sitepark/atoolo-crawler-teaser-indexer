@@ -10,7 +10,9 @@ use Psr\Log\LoggerInterface;
 
 final class CrawlerConfigHelper
 {
-    public function __construct(private readonly CrawlerConfigContext $ctx, private LoggerInterface $logger) {}
+    public function __construct(private readonly CrawlerConfigContext $ctx, private LoggerInterface $logger)
+    {
+    }
 
     private const MISSING = '__MISSING__';
 
@@ -22,7 +24,7 @@ final class CrawlerConfigHelper
         if ($v === self::MISSING) {
             $this->logger->debug(
                 'Config missing boolean, using default',
-                ['key' => $key, 'default' => $default],
+                ['key' => $key, 'default' => $default]
             );
         } elseif (is_bool($v)) {
             $result = $v;
@@ -35,13 +37,13 @@ final class CrawlerConfigHelper
             } else {
                 $this->logger->error(
                     'Config invalid boolean, using default',
-                    ['key' => $key, 'value' => $v, 'default' => $default],
+                    ['key' => $key, 'value' => $v, 'default' => $default]
                 );
             }
         } else {
             $this->logger->error(
                 'Config invalid boolean, using default',
-                ['key' => $key, 'value' => $v, 'default' => $default],
+                ['key' => $key, 'value' => $v, 'default' => $default]
             );
         }
 
@@ -56,7 +58,7 @@ final class CrawlerConfigHelper
         if ($v === self::MISSING) {
             $this->logger->debug(
                 'Config missing integer, using default',
-                ['key' => $key, 'default' => $default],
+                ['key' => $key, 'default' => $default]
             );
         } elseif (is_int($v)) {
             $result = $v;
@@ -65,7 +67,7 @@ final class CrawlerConfigHelper
         } else {
             $this->logger->error(
                 'Config invalid integer, using default',
-                ['key' => $key, 'value' => $v, 'default' => $default],
+                ['key' => $key, 'value' => $v, 'default' => $default]
             );
         }
         return $result;
@@ -87,7 +89,7 @@ final class CrawlerConfigHelper
         $this->logger->error('Config invalid string, using default', [
             'key' => $key,
             'value' => $v,
-            'default' => $default,
+            'default' => $default
         ]);
         return $default;
     }
@@ -117,7 +119,7 @@ final class CrawlerConfigHelper
         if ($v === self::MISSING) {
             $this->logger->debug(
                 'Config missing int list, using empty list',
-                ['key' => $key],
+                ['key' => $key]
             );
             return [];
         }
@@ -125,7 +127,7 @@ final class CrawlerConfigHelper
         if (!is_array($v)) {
             $this->logger->warning(
                 'Config invalid int list, using empty list',
-                ['key' => $key, 'value' => $v],
+                ['key' => $key, 'value' => $v]
             );
             return [];
         }
@@ -150,7 +152,7 @@ final class CrawlerConfigHelper
 
             $this->logger->warning(
                 'Config list item ignored (not int)',
-                ['key' => $key, 'item' => $item],
+                ['key' => $key, 'item' => $item]
             );
         }
 
@@ -175,7 +177,7 @@ final class CrawlerConfigHelper
         if (!is_array($v)) {
             $this->logger->warning('Config invalid string list, using empty list', [
                 'key' => $key,
-                'value' => $v,
+                'value' => $v
             ]);
             return [];
         }
@@ -230,7 +232,7 @@ final class CrawlerConfigHelper
         if (!is_array($rules)) {
             $this->logger->warning('Config invalid score rules, using empty list', [
                 'key' => $key,
-                'value' => $rules,
+                'value' => $rules
             ]);
             return [];
         }
@@ -241,7 +243,7 @@ final class CrawlerConfigHelper
                 $this->logger->warning('Config invalid score rule entry, skipping', [
                     'key' => $key,
                     'index' => $index,
-                    'value' => $rule,
+                    'value' => $rule
                 ]);
                 continue;
             }
@@ -255,7 +257,7 @@ final class CrawlerConfigHelper
                     $this->logger->warning('Config invalid sp_score, using default', [
                         'key' => $key,
                         'index' => $index,
-                        'value' => $rule['sp_score'],
+                        'value' => $rule['sp_score']
                     ]);
                 }
             }
@@ -267,7 +269,7 @@ final class CrawlerConfigHelper
                     $this->logger->warning('Config invalid sp_match_any, must be array', [
                         'key' => $key,
                         'index' => $index,
-                        'value' => $rule['sp_match_any'],
+                        'value' => $rule['sp_match_any']
                     ]);
                 } else {
                     foreach ($rule['sp_match_any'] as $m) {
@@ -277,7 +279,7 @@ final class CrawlerConfigHelper
                             $this->logger->warning('Config invalid sp_match_any entry, skipping', [
                                 'key' => $key,
                                 'index' => $index,
-                                'value' => $m,
+                                'value' => $m
                             ]);
                         }
                     }
@@ -291,7 +293,7 @@ final class CrawlerConfigHelper
                     $this->logger->warning('Config invalid sp_condition, must be array', [
                         'key' => $key,
                         'index' => $index,
-                        'value' => $rule['sp_condition'],
+                        'value' => $rule['sp_condition']
                     ]);
                 } else {
                     $condition = $this->readCondition($rule['sp_condition'], $key, $index);
@@ -323,7 +325,7 @@ final class CrawlerConfigHelper
                 $this->logger->warning('Config invalid sp_body_text_length, skipping condition', [
                     'parentKey' => $parentKey,
                     'index' => $index,
-                    'value' => $v,
+                    'value' => $v
                 ]);
             }
         }

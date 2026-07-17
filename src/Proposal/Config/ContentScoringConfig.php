@@ -14,5 +14,6 @@ final class ContentScoringConfig
         public readonly int $minScore,
         public readonly array $positive = [],
         public readonly array $negative = [],
-    ) {}
+    ) {
+    }
 }

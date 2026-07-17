@@ -10,8 +10,8 @@ class ThresholdNotMetException extends \Exception
             sprintf(
                 "Process failed: Only %d successful imports, threshold is %d",
                 $successCount,
-                $threshold,
-            ),
+                $threshold
+            )
         );
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Atoolo\Crawler\Proposal\Config;
 
+
 final class PipelineConfigFactory
 {
     /**

@@ -110,7 +110,7 @@ final class IndexerStep implements IndexerStepInterface
 
         if ($result->getStatus() !== 0) {
             throw new \RuntimeException(
-                '[Indexer] Solr update returned non-zero status: ' . $result->getResponse()->getStatusMessage(),
+                '[Indexer] Solr update returned non-zero status: ' . $result->getResponse()->getStatusMessage()
             );
         }
 

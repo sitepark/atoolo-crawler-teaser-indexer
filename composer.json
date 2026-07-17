@@ -7,21 +7,21 @@
     "minimum-stability": "dev",
     "prefer-stable": true,
     "require": {
-        "php": ">=8.2",
+        "php": ">=8.1",
         "ext-ctype": "*",
         "ext-iconv": "*",
-        "atoolo/search-bundle": ">=1.17.0",
+        "atoolo/search-bundle": ">=1.14",
         "spatie/robots-txt": ">=2.5.4",
-        "symfony/console": ">=7.4.14",
-        "symfony/css-selector": ">=7.4.9",
-        "symfony/dom-crawler": ">=7.4.12",
-        "symfony/dotenv": ">=7.4.14",
+        "symfony/console": ">=6.4.41",
+        "symfony/css-selector": ">=6.4.34",
+        "symfony/dom-crawler": ">=6.4.40",
+        "symfony/dotenv": ">=6.4.39",
         "symfony/flex": ">=2.10",
-        "symfony/framework-bundle": ">=7.4.14",
-        "symfony/http-client": ">=7.4.14",
-        "symfony/monolog-bundle": ">=4.0.2",
-        "symfony/runtime": ">=7.4.14",
-        "symfony/yaml": ">=7.4.14"
+        "symfony/framework-bundle": ">=6.4.41",
+        "symfony/http-client": ">=6.4.41",
+        "symfony/monolog-bundle": ">=3.11.2",
+        "symfony/runtime": ">=6.4.41",
+        "symfony/yaml": ">=6.4.41"
     },
     "config": {
         "allow-plugins": {
@@ -32,7 +32,7 @@
             "symfony/runtime": true
         },
         "platform": {
-            "php": "8.2"
+            "php": "8.1"
         },
         "bump-after-update": true,
         "sort-packages": true
@@ -52,7 +52,7 @@
     },
     "require-dev": {
         "dealerdirect/phpcodesniffer-composer-installer": "^1.2.1",
-        "infection/infection": "^0.29.14",
+        "infection/infection": "^0.29.9",
         "phpcompatibility/php-compatibility": "^9.3.5",
         "phpdocumentor/type-resolver": "^2.0",
         "phpunit/phpunit": "^10.5.63",

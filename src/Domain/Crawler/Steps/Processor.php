@@ -24,8 +24,9 @@ class Processor
 {
     public function __construct(
         private LoggerInterface $logger,
-        private readonly CrawlerConfig $config,
-    ) {}
+        private readonly CrawlerConfig $config
+    ) {
+    }
     /**
      * @param iterable<int, array{url: string,
      * title: string,

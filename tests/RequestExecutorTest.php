@@ -54,7 +54,8 @@ final class RequestExecutorTest extends TestCase
 
     public function testRequestReturnsNullAfterAllRetriesOnTransportException(): void
     {
-        $transportException = new class ('timeout') extends \Exception implements TransportExceptionInterface {};
+        $transportException = new class ('timeout') extends \Exception implements TransportExceptionInterface {
+        };
 
         $httpClient = $this->createStub(HttpClientInterface::class);
         $httpClient->method('withOptions')->willReturnSelf();
