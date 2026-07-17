@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Atoolo\Crawler\Domain\Crawler\Steps;
 
 use Atoolo\Crawler\Config\CrawlerConfig;
+use Atoolo\Crawler\Domain\Crawler\Services\TeaserDataInterface;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -29,13 +30,10 @@ class Processor
     }
 
     /**
-     * @param iterable<int, array{url: string,
-     * title: string,
-     * introText?: string,
-     * datetime?: \DateTimeImmutable
+     * @param iterable<int, array{TeaserDataInterface
      * }> $rawTeaserData
      *
-     * @return \Generator<int, array{url: string, title: string, introText?: string, datetime?: \DateTimeImmutable}>
+     * @return \Generator<int, array{TeaserDataInterface}>
      */
     public function sanitizeText(iterable $rawTeaserData): iterable
     {

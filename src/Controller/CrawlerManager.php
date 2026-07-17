@@ -21,6 +21,7 @@ declare(strict_types=1);
 namespace Atoolo\Crawler\Controller;
 
 use Atoolo\Crawler\Config\CrawlerConfig;
+use Atoolo\Crawler\Domain\Crawler\Services\TeaserDataInterface;
 use Atoolo\Crawler\Domain\Crawler\Steps\Fetcher;
 use Atoolo\Crawler\Domain\Crawler\Steps\Indexer;
 use Atoolo\Crawler\Domain\Crawler\Steps\Parser;
@@ -54,22 +55,23 @@ class CrawlerManager
         );
 
         $urls = iterator_to_array($urlsIterator);
-
+         
+        /**
+         * @var iterable<int, array{TeaserDataInterface}> $rawTeaserStream
+         */
         $rawTeaserStream = $this->storageHandlingFetcherParser($urls);
 
+        /**
+         * @var TeaserDataInterface[] $finalTeaserData
+         */
         // Cleans and formats the data
-        $teaserStream = $this->executeStep(
+        $finalTeaserData = iterator_to_array($this->executeStep(
             'Processor',
             fn ($rawData) => $this->processor->sanitizeText($rawData),
-            $rawTeaserStream
+            $rawTeaserStream)
         );
 
-        /**
-         * @var array<int, array<string, mixed>> $finalTeaserStream
-         */
-        $finalTeaserStream = iterator_to_array($teaserStream);
-
-        $indexerStatus = $this->indexer->doIndex($finalTeaserStream);
+        $indexerStatus = $this->indexer->doIndex($finalTeaserData);
         $this->logger->info('Indexer statusLine: ' . $indexerStatus->getStatusLine());
         if (0 == $indexerStatus->errors) {
             $this->logger->info("No Status Error [{$indexerStatus->errors}]: Crawling Prozess completed successfully.");

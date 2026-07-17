@@ -16,7 +16,7 @@ final class RequestExecutor implements RequestExecutorInterface
     private array $lastRequestPerHost = [];
 
     /**
-     * @param array<string, mixed> $retryStatusCodes
+     * @param array<int> $retryStatusCodes
      */
     public function __construct(
         private readonly array $retryStatusCodes,
@@ -59,7 +59,6 @@ final class RequestExecutor implements RequestExecutorInterface
                 $isSuccess = ($status >= 200 && $status < 300);
                 $isRetryable = in_array($status, $this->retryStatusCodes, true);
 
-                // success OR non-retryable -> stop
                 if ($isSuccess || !$isRetryable) {
                     break;
                 }
