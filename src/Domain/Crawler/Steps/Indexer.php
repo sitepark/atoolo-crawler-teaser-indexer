@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace Atoolo\Crawler\Domain\Crawler\Steps;
 
 use Atoolo\Crawler\Config\CrawlerConfig;
+use Atoolo\Crawler\Domain\Crawler\Services\TeaserDataInterface;
 use Atoolo\Crawler\Exception\ThresholdNotMetException;
 use Atoolo\Resource\ResourceLanguage;
 use Atoolo\Search\Dto\Indexer\IndexerStatus;
@@ -33,33 +34,33 @@ class Indexer implements \Atoolo\Search\Indexer
     /**
      * Main indexing logic: transforms items into Solr documents.
      *
-     * @param array<int, array<string, mixed>> $items
+     * @param TeaserDataInterface[] $finalTeaserData
      */
-    public function doIndex(array $items): IndexerStatus
+    public function doIndex(array $finalTeaserData): IndexerStatus
     {
         $language = ResourceLanguage::default();
         $updater = $this->indexService->updater($language);
 
-        $this->progressHandler->start(count($items));
+        $this->progressHandler->start(count($finalTeaserData));
 
         $processId = uniqid('', true);
         $successCount = 0;
         $this->source = $this->config->id();
-        foreach ($items as $item) {
+        foreach ($finalTeaserData as $teaser) {
             try {
                 $document = $updater->createDocument();
 
-                $document->setField('id', $item['url']);
-                $document->setField('title', $item['title']);
+                $document->setField('id', $teaser->getUrl());
+                $document->setField('title', $teaser->getTitle());
 
-                if (!empty($item['introText']) && $this->config->introTextPresent()) {
-                    $intro = is_string($item['introText']) ? $item['introText'] : '';
+                if (!empty($teaser['introText']) && $this->config->introTextPresent()) {
+                    $intro = is_string($teaser->getIntroText()) ? $teaser->getIntroText() : '';
                     $document->setField('sp_intro', $intro);
                 }
 
-                if (!empty($item['date']) && $this->config->dateTimePresent()) {
+                if (!empty($teaser->getDate()) && $this->config->dateTimePresent()) {
                     try {
-                        $date = $item['date'];
+                        $date = $teaser->getDate();
                         if ($date instanceof \DateTimeInterface) {
                             $dateValue = $date;
                         } elseif (is_scalar($date)) {
@@ -71,7 +72,7 @@ class Indexer implements \Atoolo\Search\Indexer
                         $document->setField('sp_date', $dateValue);
                     } catch (\Exception $e) {
                         $this->logger->warning('[Indexer] Invalid date format', [
-                            'date' => $item['date'],
+                            'date' => $teaser->getDate(),
                             'error' => $e->getMessage(),
                         ]);
                     }
@@ -79,7 +80,7 @@ class Indexer implements \Atoolo\Search\Indexer
 
                 $document->setField('sp_category', $this->config->categoriesId());
                 $document->setField('sp_category_path', $this->config->categoriesPathId());
-                $document->setField('url', $item['url']);
+                $document->setField('url', $teaser->getUrl());
                 $document->setField('sp_objecttype', $this->source);
                 $document->setField('crawl_process_id', $processId);
                 $document->setField('sp_source', [$this->source]);
@@ -89,7 +90,7 @@ class Indexer implements \Atoolo\Search\Indexer
                 ++$successCount;
             } catch (\Throwable $exception) {
                 $this->logger->error('Indexing failed', [
-                    'item' => $item,
+                    'teaser' => $teaser,
                     'exception' => $exception,
                 ]);
                 $this->progressHandler->error($exception);

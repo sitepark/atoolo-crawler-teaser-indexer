@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Atoolo\Crawler\Config\CrawlingConfig;
+namespace Atoolo\Crawler\Domain\Crawler\Services;
 
-final class ContentScoringConfig
+final class ContentScoringRuleConfig
 {
     /**
      * @param list<ContentScoringRule> $positive
