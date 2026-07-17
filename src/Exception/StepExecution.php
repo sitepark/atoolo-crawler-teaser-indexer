@@ -9,7 +9,7 @@ class StepExecution extends \Exception
         parent::__construct(
             "Step [$stepName] failed: $message",
             0,
-            $previous
+            $previous,
         );
     }
 }

@@ -15,8 +15,7 @@ class Parser
         private readonly LoggerInterface $logger,
         private readonly CrawlerConfig $config,
         private readonly TeaserRelevanceEvaluatorInterface $teaserRelevanceEvaluator,
-    ) {
-    }
+    ) {}
 
     /**
      * Extract teaser-data from fetched HTML.
@@ -54,7 +53,7 @@ class Parser
                 if ($title === null || $title === '') {
                     $this->logger->debug(
                         'Title Not found in Processor',
-                        ['key' => 'title', 'dataFound' => $title, ]
+                        ['key' => 'title', 'dataFound' => $title, ],
                     );
                     continue;
                 }
@@ -90,7 +89,7 @@ class Parser
                     if (!$keepTeaser) {
                         $this->logger->debug(
                             'Teaser not Relevant',
-                            ['relevanceData' => $relevanceData, ]
+                            ['relevanceData' => $relevanceData, ],
                         );
                         continue;
                     }
@@ -217,14 +216,14 @@ class Parser
             $el = $crawler->filter($selector);
             if ($el->count() > 0) {
                 $v = $el->first()->attr($attr);
-                return $v !== null ? trim((string)$v) : null;
+                return $v !== null ? trim((string) $v) : null;
             }
             return null;
         } catch (\Throwable $e) {
             $this->logger->error("Failed to parse CSS attr", [
                 'selector' => $selector,
                 'attr' => $attr,
-                'exception' => $e
+                'exception' => $e,
             ]);
             return null;
         }
@@ -247,7 +246,7 @@ class Parser
         } catch (\Throwable $e) {
             $this->logger->error("Failed to parse meta tag", [
                 'property'  => $property,
-                'exception' => $e
+                'exception' => $e,
             ]);
             return null;
         }
@@ -269,7 +268,7 @@ class Parser
         } catch (\Throwable $e) {
             $this->logger->error("Failed to parse CSS selector", [
                 'selector'  => $selector,
-                'exception' => $e
+                'exception' => $e,
             ]);
             return null;
         }

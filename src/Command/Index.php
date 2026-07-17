@@ -64,7 +64,7 @@ final class Index extends Command
                     $this->logger->error(sprintf(
                         'Crawling failed for "%s": %s',
                         $siteKey,
-                        $e->getMessage()
+                        $e->getMessage(),
                     ), [
                         'exception' => $e,
                         'site_id' => $siteKey,
@@ -78,7 +78,7 @@ final class Index extends Command
             if (!empty($failedSites)) {
                 $this->logger->error(sprintf(
                     'Crawler failed for sites: %s',
-                    implode(', ', $failedSites)
+                    implode(', ', $failedSites),
                 ));
             } else {
                 $this->logger->info('All sites crawled successfully');

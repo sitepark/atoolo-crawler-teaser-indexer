@@ -3,3 +3,6 @@ parameters:
     tmpDir: var/cache/phpstan
     paths:
         - src
+    excludePaths:
+        # Non-wired skeleton for the next major (see docs/proposal-next_major.md).
+        - src/Proposal

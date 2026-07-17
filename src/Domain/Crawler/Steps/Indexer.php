@@ -26,8 +26,7 @@ class Indexer implements \Atoolo\Search\Indexer
         private SolrIndexService $indexService,
         private readonly CrawlerConfig $config,
         private LoggerInterface $logger = new NullLogger(),
-    ) {
-    }
+    ) {}
 
     /**
      * Main indexing logic: transforms items into Solr documents.
@@ -62,7 +61,7 @@ class Indexer implements \Atoolo\Search\Indexer
                         if ($date instanceof \DateTimeInterface) {
                             $dateValue = $date;
                         } elseif (is_scalar($date)) {
-                            $dateValue = new \DateTimeImmutable((string)$date, new \DateTimeZone('UTC'));
+                            $dateValue = new \DateTimeImmutable((string) $date, new \DateTimeZone('UTC'));
                         } else {
                             throw new \InvalidArgumentException('Invalid date type');
                         }
@@ -71,7 +70,7 @@ class Indexer implements \Atoolo\Search\Indexer
                     } catch (\Exception $e) {
                         $this->logger->warning('[Indexer] Invalid date format', [
                             'date' => $item['date'],
-                            'error' => $e->getMessage()
+                            'error' => $e->getMessage(),
                         ]);
                     }
                 }
@@ -106,7 +105,7 @@ class Indexer implements \Atoolo\Search\Indexer
 
         if ($result->getStatus() !== 0) {
             $this->progressHandler->error(
-                new \Exception($result->getResponse()->getStatusMessage())
+                new \Exception($result->getResponse()->getStatusMessage()),
             );
         }
 
@@ -117,7 +116,7 @@ class Indexer implements \Atoolo\Search\Indexer
             ]);
             throw new ThresholdNotMetException(
                 $successCount,
-                $this->config->cleanupThreshold()
+                $this->config->cleanupThreshold(),
             );
         }
 
