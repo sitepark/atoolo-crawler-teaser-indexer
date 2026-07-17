@@ -17,6 +17,7 @@ interface ProcessorStepInterface
      * Entries that cannot be sanitized may be dropped.
      *
      * @param iterable<IndexEntry> $entries
+     *
      * @return iterable<IndexEntry>
      */
     public function process(iterable $entries, PipelineConfig $config): iterable;

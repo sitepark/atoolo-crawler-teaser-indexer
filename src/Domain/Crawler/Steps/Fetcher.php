@@ -85,7 +85,7 @@ class Fetcher
                     [
                         'baseUrl' => $url,
                         'exception' => $e,
-                    ]
+                    ],
                 );
             }
         }

@@ -22,6 +22,7 @@ final class ParserStep implements ParserStepInterface
 
     /**
      * @param iterable<CrawledPage> $pages
+     *
      * @return iterable<IndexEntry>
      */
     public function parse(iterable $pages, PipelineConfig $config): iterable
@@ -32,7 +33,7 @@ final class ParserStep implements ParserStepInterface
         $scoringActive  = $config->contentScoringActive;
 
         foreach ($pages as $page) {
-            if ($page->html === '') {
+            if ('' === $page->html) {
                 continue;
             }
 
@@ -45,17 +46,17 @@ final class ParserStep implements ParserStepInterface
                 $crawler = new Crawler($page->html);
 
                 $title = $this->extractText($crawler, $titleConfig);
-                if ($title === null || $title === '') {
+                if (null === $title || '' === $title) {
                     continue;
                 }
 
                 $introText = $this->extractText($crawler, $introConfig);
-                if ($introText === null && $introConfig->present) {
+                if (null === $introText && $introConfig->present) {
                     continue;
                 }
 
                 $dateTime = $this->extractDateTime($crawler, $dateTimeConfig);
-                if ($dateTime === null && $dateTimeConfig->present) {
+                if (null === $dateTime && $dateTimeConfig->present) {
                     continue;
                 }
 
@@ -90,14 +91,14 @@ final class ParserStep implements ParserStepInterface
 
         foreach ($config->opengraph as $property) {
             $v = $this->metaContent($crawler, $property);
-            if ($v !== null && $v !== '') {
+            if (null !== $v && '' !== $v) {
                 return $this->truncate($v, $config->maxChars);
             }
         }
 
         foreach ($config->css as $selector) {
             $v = $this->cssText($crawler, $selector);
-            if ($v !== null && $v !== '') {
+            if (null !== $v && '' !== $v) {
                 return $this->truncate($v, $config->maxChars);
             }
         }
@@ -131,7 +132,7 @@ final class ParserStep implements ParserStepInterface
         }
 
         $raw = is_string($raw) ? trim($raw) : '';
-        if ($raw === '') {
+        if ('' === $raw) {
             return null;
         }
 
@@ -146,6 +147,7 @@ final class ParserStep implements ParserStepInterface
             return new \DateTimeImmutable($raw);
         } catch (\Throwable $e) {
             $this->logger->warning('[Parser] Could not parse datetime', ['raw' => $raw, 'exception' => $e]);
+
             return null;
         }
     }
@@ -154,9 +156,11 @@ final class ParserStep implements ParserStepInterface
     {
         try {
             $node = $crawler->filterXPath("//meta[@property='$property']");
+
             return $node->count() > 0 ? trim((string) $node->attr('content')) : null;
         } catch (\Throwable $e) {
             $this->logger->error('[Parser] Failed to read meta tag', ['property' => $property, 'exception' => $e]);
+
             return null;
         }
     }
@@ -165,9 +169,11 @@ final class ParserStep implements ParserStepInterface
     {
         try {
             $node = $crawler->filter($selector);
+
             return $node->count() > 0 ? trim($node->first()->text()) : null;
         } catch (\Throwable $e) {
             $this->logger->error('[Parser] Failed to read CSS selector', ['selector' => $selector, 'exception' => $e]);
+
             return null;
         }
     }
@@ -178,11 +184,14 @@ final class ParserStep implements ParserStepInterface
             $node = $crawler->filter($selector);
             if ($node->count() > 0) {
                 $v = $node->first()->attr($attr);
-                return $v !== null ? trim((string) $v) : null;
+
+                return null !== $v ? trim((string) $v) : null;
             }
+
             return null;
         } catch (\Throwable $e) {
             $this->logger->error('[Parser] Failed to read CSS attr', ['selector' => $selector, 'attr' => $attr, 'exception' => $e]);
+
             return null;
         }
     }
@@ -193,6 +202,7 @@ final class ParserStep implements ParserStepInterface
         if ($maxChars <= 0 || mb_strlen($text) <= $maxChars) {
             return $text;
         }
+
         return rtrim(mb_substr($text, 0, $maxChars - 3)) . '...';
     }
 }

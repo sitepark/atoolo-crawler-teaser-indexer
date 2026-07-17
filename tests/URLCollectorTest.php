@@ -34,16 +34,16 @@ final class URLCollectorTest extends TestCase
      * @param array<string> $denyEndings
      */
     private array $denyEndings = [
-            ".jpg",
-            ".jpeg",
-            ".png",
-            ".gif",
-            ".svg",
-            ".webp",
-            ".ico",
-            ".bmp",
-            ".tiff"
-        ];
+        '.jpg',
+        '.jpeg',
+        '.png',
+        '.gif',
+        '.svg',
+        '.webp',
+        '.ico',
+        '.bmp',
+        '.tiff',
+    ];
 
     private function createCollector(
         RequestExecutorInterface $requestExecutor,
@@ -63,7 +63,7 @@ final class URLCollectorTest extends TestCase
 
         $helper = new CrawlerConfigHelper($ctx, $logger);
         $crawlerConfig = new CrawlerConfig($helper);
-        
+
 
         $urlNormalizer = new URLNormalizer($crawlerConfig, $this->denyEndings);
 

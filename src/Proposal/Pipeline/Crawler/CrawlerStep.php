@@ -34,6 +34,7 @@ final class CrawlerStep implements CrawlerStepInterface
 
     /**
      * @param array<string, true> $yieldedUrls
+     *
      * @return \Generator<int, CrawledPage>
      */
     private function streamFromBfs(PipelineConfig $config, array &$yieldedUrls): \Generator
@@ -55,11 +56,11 @@ final class CrawlerStep implements CrawlerStepInterface
                 return;
             }
             $html = $this->fetchHtml($url, $config->httpFetcherConfig);
-            if ($html !== null) {
+            if (null !== $html) {
                 $canonicalUrl = $this->resolveCanonicalUrl(new Crawler($html, $url), $url);
                 $yieldedUrls[$url] = true;
                 $yieldedUrls[$canonicalUrl] = true;
-                $yieldCount++;
+                ++$yieldCount;
                 yield new CrawledPage($canonicalUrl, $html);
             }
         }
@@ -69,6 +70,7 @@ final class CrawlerStep implements CrawlerStepInterface
      * forcedArticleUrls bypass maxItems; bereits ausgelieferte URLs werden übersprungen.
      *
      * @param array<string, true> $yieldedUrls
+     *
      * @return \Generator<int, CrawledPage>
      */
     private function streamForcedArticles(PipelineConfig $config, array &$yieldedUrls): \Generator
@@ -78,7 +80,7 @@ final class CrawlerStep implements CrawlerStepInterface
                 continue;
             }
             $html = $this->fetchHtml($url, $config->httpFetcherConfig);
-            if ($html !== null) {
+            if (null !== $html) {
                 $canonicalUrl = $this->resolveCanonicalUrl(new Crawler($html, $url), $url);
                 $yieldedUrls[$url] = true;
                 $yieldedUrls[$canonicalUrl] = true;
@@ -89,8 +91,9 @@ final class CrawlerStep implements CrawlerStepInterface
 
     /**
      * @param array{url: string, extraction_depth: int} $start
-     * @param array<string, true> $pendingArticles
-     * @param array<string, true> $yieldedUrls
+     * @param array<string, true>                       $pendingArticles
+     * @param array<string, true>                       $yieldedUrls
+     *
      * @return \Generator<int, CrawledPage>
      */
     private function streamByDepth(
@@ -109,7 +112,7 @@ final class CrawlerStep implements CrawlerStepInterface
         $queue   = [['url' => $startUrl, 'depth' => 0]];
         $visited = [];
 
-        for ($i = 0; $i < count($queue); $i++) {
+        for ($i = 0; $i < count($queue); ++$i) {
             if ($yieldCount >= $config->maxItems) {
                 break;
             }
@@ -123,7 +126,7 @@ final class CrawlerStep implements CrawlerStepInterface
             $visited[$url] = true;
 
             $html = $this->fetchHtml($url, $config->httpFetcherConfig);
-            if ($html === null) {
+            if (null === $html) {
                 continue;
             }
 
@@ -135,7 +138,7 @@ final class CrawlerStep implements CrawlerStepInterface
                 unset($pendingArticles[$url]);
                 $yieldedUrls[$url] = true;
                 $yieldedUrls[$canonicalUrl] = true;
-                $yieldCount++;
+                ++$yieldCount;
                 yield new CrawledPage($canonicalUrl, $html);
             }
 
@@ -160,7 +163,7 @@ final class CrawlerStep implements CrawlerStepInterface
     private function fetchHtml(string $url, HttpFetcherConfig $fetcherConfig): ?string
     {
         $response = $this->httpFetcher->fetch($url, $fetcherConfig);
-        if ($response === null) {
+        if (null === $response) {
             return null;
         }
 
@@ -168,11 +171,14 @@ final class CrawlerStep implements CrawlerStepInterface
             $status = $response->getStatusCode();
             if ($status < 200 || $status >= 300) {
                 $this->logger->warning('[Crawler] Non-2xx response', ['url' => $url, 'status' => $status]);
+
                 return null;
             }
+
             return $response->getContent();
         } catch (\Throwable $e) {
             $this->logger->error('[Crawler] Failed to retrieve content', ['url' => $url, 'exception' => $e]);
+
             return null;
         }
     }
@@ -184,11 +190,12 @@ final class CrawlerStep implements CrawlerStepInterface
     private function resolveCanonicalUrl(Crawler $crawler, string $fetchedUrl): string
     {
         $node = $crawler->filter('link[rel="canonical"]');
-        if ($node->count() === 0) {
+        if (0 === $node->count()) {
             return $fetchedUrl;
         }
         $href = $node->first()->attr('href');
-        return ($href !== null && $href !== '') ? $href : $fetchedUrl;
+
+        return (null !== $href && '' !== $href) ? $href : $fetchedUrl;
     }
 
     /**
@@ -210,6 +217,7 @@ final class CrawlerStep implements CrawlerStepInterface
                     $url = (new Link($el, $baseUrl))->getUri();
                 } catch (\Throwable $e) {
                     $this->logger->debug('[Crawler] Failed to parse link', ['baseUrl' => $baseUrl, 'exception' => $e]);
+
                     return null;
                 }
 
@@ -222,7 +230,7 @@ final class CrawlerStep implements CrawlerStepInterface
                 if ($this->startsWithAny($url, $config->denyPrefixes)) {
                     return null;
                 }
-                if ($config->allowPrefixes !== [] && !$this->startsWithAny($url, $config->allowPrefixes)) {
+                if ([] !== $config->allowPrefixes && !$this->startsWithAny($url, $config->allowPrefixes)) {
                     return null;
                 }
                 if ($this->hasDeniedEnding($url, $config->denyEndings)) {
@@ -238,7 +246,7 @@ final class CrawlerStep implements CrawlerStepInterface
     private function normalizeOne(string $url, PipelineConfig $config): string
     {
         $parts = parse_url($url);
-        if ($parts === false || !isset($parts['scheme'], $parts['host'])) {
+        if (false === $parts || !isset($parts['scheme'], $parts['host'])) {
             return $url;
         }
 
@@ -251,13 +259,13 @@ final class CrawlerStep implements CrawlerStepInterface
         $query = $parts['query'] ?? '';
         parse_str(is_string($query) ? $query : '', $queryParams);
 
-        if ($config->stripQueryParams !== []) {
+        if ([] !== $config->stripQueryParams) {
             foreach ($config->stripQueryParams as $param) {
                 unset($queryParams[$param]);
             }
         }
 
-        if ($queryParams !== []) {
+        if ([] !== $queryParams) {
             $normalized .= '?' . http_build_query($queryParams);
         }
 
@@ -268,29 +276,31 @@ final class CrawlerStep implements CrawlerStepInterface
     private function startsWithAny(string $url, array $prefixes): bool
     {
         foreach ($prefixes as $prefix) {
-            if ($prefix !== '' && str_starts_with($url, $prefix)) {
+            if ('' !== $prefix && str_starts_with($url, $prefix)) {
                 return true;
             }
         }
+
         return false;
     }
 
     /** @param list<string> $endings */
     private function hasDeniedEnding(string $url, array $endings): bool
     {
-        if ($endings === []) {
+        if ([] === $endings) {
             return false;
         }
         $path = parse_url($url, PHP_URL_PATH);
-        if (!is_string($path) || $path === '') {
+        if (!is_string($path) || '' === $path) {
             return false;
         }
         $lowerPath = strtolower($path);
         foreach ($endings as $ending) {
-            if ($ending !== '' && str_ends_with($lowerPath, strtolower($ending))) {
+            if ('' !== $ending && str_ends_with($lowerPath, strtolower($ending))) {
                 return true;
             }
         }
+
         return false;
     }
 }

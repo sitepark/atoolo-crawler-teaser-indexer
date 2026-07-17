@@ -26,8 +26,7 @@ final class URLNormalizer
     public function __construct(
         private readonly CrawlerConfig $config,
         private readonly array $denyEndings,
-    ) {
-    }
+    ) {}
 
     /**
      * Applies the full URL normalization pipeline.

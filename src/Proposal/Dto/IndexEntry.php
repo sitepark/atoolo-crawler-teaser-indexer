@@ -18,7 +18,6 @@ final class IndexEntry
         private readonly array $extensions = [],
     ) {}
 
-    /** @return static */
     public function withExtension(object $extension): static
     {
         return new static(
@@ -32,16 +31,17 @@ final class IndexEntry
 
     /**
      * @template T of object
+     *
      * @param class-string<T> $type
+     *
      * @return T|null
      */
     public function extension(string $type): ?object
     {
-        /** @var T|null */
+        /* @var T|null */
         return $this->extensions[$type] ?? null;
     }
 
-    /** @return static */
     public function withTitle(string $title): static
     {
         return new static(
@@ -53,7 +53,6 @@ final class IndexEntry
         );
     }
 
-    /** @return static */
     public function withIntroText(?string $introText): static
     {
         return new static(
@@ -65,7 +64,6 @@ final class IndexEntry
         );
     }
 
-    /** @return static */
     public function withDatetime(?\DateTimeImmutable $datetime): static
     {
         return new static(

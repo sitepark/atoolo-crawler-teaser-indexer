@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Atoolo\Crawler\Domain\Crawler\Steps;
 
 use Atoolo\Crawler\Config\CrawlerConfig;
+use Atoolo\Crawler\Domain\Crawler\Services\TeaserData;
 use Atoolo\Crawler\Domain\Crawler\Services\TeaserDataInterface;
 use Psr\Log\LoggerInterface;
 
@@ -26,20 +27,18 @@ class Processor
     public function __construct(
         private LoggerInterface $logger,
         private readonly CrawlerConfig $config,
-    ) {
-    }
+    ) {}
 
     /**
-     * @param iterable<int, array{TeaserDataInterface
-     * }> $rawTeaserData
+     * @param iterable<int, TeaserDataInterface> $rawTeaserData
      *
-     * @return \Generator<int, array{TeaserDataInterface}>
+     * @return \Generator<int, TeaserDataInterface>
      */
     public function sanitizeText(iterable $rawTeaserData): iterable
     {
         foreach ($rawTeaserData as $item) {
             try {
-                $cleanTitle = $this->cleanString($item['title']);
+                $cleanTitle = $this->cleanString($item->getTitle());
                 $titleConfig = $this->config->titleConfig();
                 $truncatedTitle = $this->truncate($cleanTitle, $titleConfig->maxChars);
 
@@ -47,22 +46,19 @@ class Processor
                     continue;
                 }
 
-                $cleaned = [
-                    'url' => $item['url'],
-                    'title' => $truncatedTitle,
-                ];
-
-                if (isset($item['introText']) && '' !== $item['introText']) {
-                    $cleanIntroText = $this->cleanString($item['introText']);
+                $cleanIntroText = null;
+                $rawIntroText = $item->getIntroText();
+                if (null !== $rawIntroText && '' !== $rawIntroText) {
                     $introTextConfig = $this->config->introTextConfig();
-                    $cleaned['introText'] = $this->truncate($cleanIntroText, $introTextConfig->maxChars);
+                    $cleanIntroText = $this->truncate($this->cleanString($rawIntroText), $introTextConfig->maxChars);
                 }
 
-                if (isset($item['datetime'])) {
-                    $cleaned['datetime'] = $item['datetime'];
-                }
-
-                yield $cleaned;
+                yield new TeaserData(
+                    $item->getUrl(),
+                    $truncatedTitle,
+                    $cleanIntroText,
+                    $item->getDate(),
+                );
             } catch (\Throwable $e) {
                 $this->logger->error('[Processor] Failed to process teaser', [
                     'exception' => $e->getMessage(),

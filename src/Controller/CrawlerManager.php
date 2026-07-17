@@ -40,8 +40,7 @@ class CrawlerManager
         private readonly CrawlerConfig $config,
         private readonly LoggerInterface $logger,
         private readonly Indexer $indexer,
-    ) {
-    }
+    ) {}
 
     /**
      * Starts the full crawling workflow.
@@ -51,13 +50,13 @@ class CrawlerManager
         /** @var \Iterator<int, string> $urlsIterator */
         $urlsIterator = $this->executeStep(
             'URLCollector',
-            fn () => $this->urlCollector->findHrefUrlsByCssSelector()
+            fn() => $this->urlCollector->findHrefUrlsByCssSelector(),
         );
 
         $urls = iterator_to_array($urlsIterator);
-         
+
         /**
-         * @var iterable<int, array{TeaserDataInterface}> $rawTeaserStream
+         * @var iterable<int, TeaserDataInterface> $rawTeaserStream
          */
         $rawTeaserStream = $this->storageHandlingFetcherParser($urls);
 
@@ -65,10 +64,12 @@ class CrawlerManager
          * @var TeaserDataInterface[] $finalTeaserData
          */
         // Cleans and formats the data
-        $finalTeaserData = iterator_to_array($this->executeStep(
-            'Processor',
-            fn ($rawData) => $this->processor->sanitizeText($rawData),
-            $rawTeaserStream)
+        $finalTeaserData = iterator_to_array(
+            $this->executeStep(
+                'Processor',
+                fn($rawData) => $this->processor->sanitizeText($rawData),
+                $rawTeaserStream,
+            ),
         );
 
         $indexerStatus = $this->indexer->doIndex($finalTeaserData);
@@ -83,7 +84,7 @@ class CrawlerManager
     /**
      * @param list<string> $urls
      *
-     * @return \Generator<int, array<string, mixed>>
+     * @return iterable<int, TeaserDataInterface>
      */
     private function storageHandlingFetcherParser($urls): iterable
     {
@@ -93,25 +94,22 @@ class CrawlerManager
         foreach ($urlChunks as $chunk) {
             $htmlDataIterator = $this->executeStep(
                 'Fetcher',
-                fn ($urls) => $this->fetcher->fetchUrls($urls),
-                $chunk
+                fn($urls) => $this->fetcher->fetchUrls($urls),
+                $chunk,
             );
 
             $htmlData = iterator_to_array($htmlDataIterator);
-
             $teaserDataIterator = $this->executeStep(
                 'Parser',
-                fn ($pages) => $this->parser->extractTeasers(
-                    is_array($pages) ? $pages : iterator_to_array($pages)
+                fn($pages) => $this->parser->extractTeasers(
+                    is_array($pages) ? $pages : iterator_to_array($pages),
                 ),
                 $htmlData,
             );
 
+            /** @var TeaserDataInterface[] $teaserData */
             $teaserData = iterator_to_array($teaserDataIterator);
 
-            /**
-             * @var array<string, mixed> $teaser
-             */
             foreach ($teaserData as $teaser) {
                 yield $teaser;
             }

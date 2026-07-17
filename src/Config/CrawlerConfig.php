@@ -13,8 +13,7 @@ final class CrawlerConfig
 {
     public function __construct(
         private CrawlerConfigHelper $crawlerConfigHelper,
-    ) {
-    }
+    ) {}
 
     // --- Category ---
 
@@ -56,25 +55,7 @@ final class CrawlerConfig
      */
     public function startUrls(): array
     {
-        $raw = $this->crawlerConfigHelper->startUrlsList('sp_start_urls');
-
-        $out = [];
-        foreach ($raw as $item) {
-            if (is_string($item)) {
-                $out[] = ['url' => $item, 'extraction_depth' => 0];
-                continue;
-            }
-
-            if (is_array($item) && isset($item['sp_url']) && is_string($item['sp_url'])) {
-                $depth = $item['sp_extraction_depth'] ?? 0;
-                $out[] = [
-                    'url' => $item['sp_url'],
-                    'extraction_depth' => is_numeric($depth) ? (int) $depth : 1,
-                ];
-            }
-        }
-
-        return $out;
+        return $this->crawlerConfigHelper->startUrlsList('sp_start_urls');
     }
 
     public function linkSelector(): string

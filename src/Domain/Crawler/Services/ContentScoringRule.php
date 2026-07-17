@@ -13,8 +13,7 @@ final class ContentScoringRule
         public readonly int $score,
         public readonly ?array $matchAny = null,
         public readonly ?int $bodyTextLength = null,
-    ) {
-    }
+    ) {}
 
     /**
      * @param array{

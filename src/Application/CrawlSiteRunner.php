@@ -14,8 +14,8 @@ final class CrawlSiteRunner
         private readonly CrawlerConfigContext $configContext,
         private readonly CrawlerManager $crawlerManager,
         private readonly LoggerInterface $logger,
-    ) {
-    }
+    ) {}
+
     /**
      * @param array<string, mixed> $site
      */
@@ -27,9 +27,7 @@ final class CrawlSiteRunner
 
         if (!is_string($siteKey) || '' === $siteKey) {
             $this->logger->error('Invalid site config: missing "sp_id" field.');
-            throw new \InvalidArgumentException(
-                'Site config is missing required field "sp_id".',
-            );
+            throw new \InvalidArgumentException('Site config is missing required field "sp_id".');
         }
 
         try {

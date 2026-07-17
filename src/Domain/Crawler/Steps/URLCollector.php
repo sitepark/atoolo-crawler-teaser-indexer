@@ -20,8 +20,7 @@ class URLCollector
         private readonly LoggerInterface $logger,
         private readonly RequestExecutorInterface $requestExecutor,
         private RobotsTxtCheckerInterface $robotsTxtChecker,
-    ) {
-    }
+    ) {}
 
     /**
      * Collects and filters all discoverable href URLs from the configured start URLs.

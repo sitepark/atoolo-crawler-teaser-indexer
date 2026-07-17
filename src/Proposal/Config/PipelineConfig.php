@@ -4,20 +4,15 @@ declare(strict_types=1);
 
 namespace Atoolo\Crawler\Proposal\Config;
 
-use Atoolo\Crawler\Proposal\Config\ContentScoringConfig;
-use Atoolo\Crawler\Proposal\Config\DateTimeExtractConfig;
-use Atoolo\Crawler\Proposal\Config\FieldExtractConfig;
-use Atoolo\Crawler\Proposal\Config\HttpFetcherConfig;
-
 final class PipelineConfig
 {
     /**
      * @param list<array{url: string, extraction_depth: int}> $startUrls
-     * @param list<string> $allowPrefixes
-     * @param list<string> $denyPrefixes
-     * @param list<string> $denyEndings
-     * @param list<string> $forcedArticleUrls
-     * @param list<string> $stripQueryParams Empty list disables query param stripping.
+     * @param list<string>                                    $allowPrefixes
+     * @param list<string>                                    $denyPrefixes
+     * @param list<string>                                    $denyEndings
+     * @param list<string>                                    $forcedArticleUrls
+     * @param list<string>                                    $stripQueryParams  empty list disables query param stripping
      */
     public function __construct(
         // Core

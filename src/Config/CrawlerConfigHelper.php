@@ -13,8 +13,7 @@ final class CrawlerConfigHelper
     public function __construct(
         private readonly CrawlerConfigContext $ctx,
         private LoggerInterface $logger,
-    ) {
-    }
+    ) {}
 
     private const MISSING = '__MISSING__';
 
@@ -26,7 +25,7 @@ final class CrawlerConfigHelper
         if (self::MISSING === $v) {
             $this->logger->debug(
                 'Config missing boolean, using default',
-                ['key' => $key, 'default' => $default]
+                ['key' => $key, 'default' => $default],
             );
         } elseif (is_bool($v)) {
             $result = $v;
@@ -39,13 +38,13 @@ final class CrawlerConfigHelper
             } else {
                 $this->logger->error(
                     'Config invalid boolean, using default',
-                    ['key' => $key, 'value' => $v, 'default' => $default]
+                    ['key' => $key, 'value' => $v, 'default' => $default],
                 );
             }
         } else {
             $this->logger->error(
                 'Config invalid boolean, using default',
-                ['key' => $key, 'value' => $v, 'default' => $default]
+                ['key' => $key, 'value' => $v, 'default' => $default],
             );
         }
 
@@ -60,7 +59,7 @@ final class CrawlerConfigHelper
         if (self::MISSING === $v) {
             $this->logger->debug(
                 'Config missing integer, using default',
-                ['key' => $key, 'default' => $default]
+                ['key' => $key, 'default' => $default],
             );
         } elseif (is_int($v)) {
             $result = $v;
@@ -69,7 +68,7 @@ final class CrawlerConfigHelper
         } else {
             $this->logger->error(
                 'Config invalid integer, using default',
-                ['key' => $key, 'value' => $v, 'default' => $default]
+                ['key' => $key, 'value' => $v, 'default' => $default],
             );
         }
 
@@ -107,7 +106,7 @@ final class CrawlerConfigHelper
         if (self::MISSING === $v) {
             $this->logger->debug(
                 'Config missing int list, using empty list',
-                ['key' => $key]
+                ['key' => $key],
             );
 
             return [];
@@ -116,7 +115,7 @@ final class CrawlerConfigHelper
         if (!is_array($v)) {
             $this->logger->warning(
                 'Config invalid int list, using empty list',
-                ['key' => $key, 'value' => $v]
+                ['key' => $key, 'value' => $v],
             );
 
             return [];
@@ -142,7 +141,7 @@ final class CrawlerConfigHelper
 
             $this->logger->warning(
                 'Config list item ignored (not int)',
-                ['key' => $key, 'item' => $item]
+                ['key' => $key, 'item' => $item],
             );
         }
 
@@ -198,7 +197,7 @@ final class CrawlerConfigHelper
         if (!is_array($rawStartUrlsList)) {
             $this->logger->warning(
                 'Config invalid string list, using empty list',
-                ['key' => $key, 'value' => $rawStartUrlsList]
+                ['key' => $key, 'value' => $rawStartUrlsList],
             );
 
             return [];

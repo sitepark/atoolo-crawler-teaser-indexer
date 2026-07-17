@@ -28,8 +28,7 @@ class Indexer implements \Atoolo\Search\Indexer
         private SolrIndexService $indexService,
         private readonly CrawlerConfig $config,
         private LoggerInterface $logger = new NullLogger(),
-    ) {
-    }
+    ) {}
 
     /**
      * Main indexing logic: transforms items into Solr documents.
@@ -53,21 +52,15 @@ class Indexer implements \Atoolo\Search\Indexer
                 $document->setField('id', $teaser->getUrl());
                 $document->setField('title', $teaser->getTitle());
 
-                if (!empty($teaser['introText']) && $this->config->introTextPresent()) {
-                    $intro = is_string($teaser->getIntroText()) ? $teaser->getIntroText() : '';
+                if (!empty($teaser->getIntroText()) && $this->config->introTextPresent()) {
+                    $intro = $teaser->getIntroText();
                     $document->setField('sp_intro', $intro);
                 }
 
                 if (!empty($teaser->getDate()) && $this->config->dateTimePresent()) {
                     try {
                         $date = $teaser->getDate();
-                        if ($date instanceof \DateTimeInterface) {
-                            $dateValue = $date;
-                        } elseif (is_scalar($date)) {
-                            $dateValue = new \DateTimeImmutable((string) $date, new \DateTimeZone('UTC'));
-                        } else {
-                            throw new \InvalidArgumentException('Invalid date type');
-                        }
+                        $dateValue = $date;
 
                         $document->setField('sp_date', $dateValue);
                     } catch (\Exception $e) {
@@ -117,10 +110,7 @@ class Indexer implements \Atoolo\Search\Indexer
                 'successCount' => $successCount,
                 'threshold' => $this->config->cleanupThreshold(),
             ]);
-            throw new ThresholdNotMetException(
-                $successCount,
-                $this->config->cleanupThreshold(),
-            );
+            throw new ThresholdNotMetException($successCount, $this->config->cleanupThreshold());
         }
 
         $this->indexService->deleteExcludingProcessId(

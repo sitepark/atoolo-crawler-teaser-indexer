@@ -15,8 +15,7 @@ final class ContentScoringRuleConfig
         public readonly int $minScore = 0,
         public readonly array $positive = [],
         public readonly array $negative = [],
-    ) {
-    }
+    ) {}
 
     /**
      * @param array<string, mixed> $data
@@ -31,11 +30,11 @@ final class ContentScoringRuleConfig
 
         return new self(
             positive: array_map(
-                static fn (array $r) => ContentScoringRule::fromArray($r),
+                static fn(array $r) => ContentScoringRule::fromArray($r),
                 $positive,
             ),
             negative: array_map(
-                static fn (array $r) => ContentScoringRule::fromArray($r),
+                static fn(array $r) => ContentScoringRule::fromArray($r),
                 $negative,
             ),
         );

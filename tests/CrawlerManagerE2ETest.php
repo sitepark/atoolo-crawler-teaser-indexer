@@ -175,8 +175,8 @@ final class CrawlerManagerE2ETest extends TestCase
         $this->assertTrue(
             array_reduce(
                 $warnings,
-                fn (bool $carry, string $m) => $carry || str_contains($m, '[URLCollector] Step returned no data.'),
-                false
+                fn(bool $carry, string $m) => $carry || str_contains($m, '[URLCollector] Step returned no data.'),
+                false,
             ),
             'Expected warning "[URLCollector] Step returned no data." not found. Got: ' . implode(' | ', $warnings),
         );
@@ -229,8 +229,8 @@ final class CrawlerManagerE2ETest extends TestCase
         $this->assertTrue(
             array_reduce(
                 $errors,
-                fn (bool $carry, string $m) => $carry || str_contains($m, '[URLCollector] Error: Collector failed'),
-                false
+                fn(bool $carry, string $m) => $carry || str_contains($m, '[URLCollector] Error: Collector failed'),
+                false,
             ),
             'Expected error "[URLCollector] Error: Collector failed" not found. Got: ' . implode(' | ', $errors),
         );
@@ -282,8 +282,8 @@ final class CrawlerManagerE2ETest extends TestCase
         $this->assertTrue(
             array_reduce(
                 $warnings,
-                fn (bool $carry, string $m) => $carry || str_contains($m, '[Fetcher] Step returned no data.'),
-                false
+                fn(bool $carry, string $m) => $carry || str_contains($m, '[Fetcher] Step returned no data.'),
+                false,
             ),
             'Expected warning "[Fetcher] Step returned no data." not found. Got: ' . implode(' | ', $warnings),
         );

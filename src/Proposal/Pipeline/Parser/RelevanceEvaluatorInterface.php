@@ -10,7 +10,7 @@ use Atoolo\Crawler\Proposal\Dto\IndexEntry;
 interface RelevanceEvaluatorInterface
 {
     /**
-     * @param string $bodyText Plain text extracted from the page body — not raw HTML.
+     * @param string $bodyText plain text extracted from the page body — not raw HTML
      */
     public function relevant(IndexEntry $entry, string $bodyText, ContentScoringConfig $config): bool;
 }

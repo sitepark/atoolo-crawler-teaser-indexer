@@ -5,6 +5,8 @@ namespace Atoolo\Crawler\Domain\Crawler\Steps;
 use Atoolo\Crawler\Config\CrawlerConfig;
 use Atoolo\Crawler\Domain\Crawler\Services\DateTimeExtractConfig;
 use Atoolo\Crawler\Domain\Crawler\Services\IntroExtractConfig;
+use Atoolo\Crawler\Domain\Crawler\Services\TeaserData;
+use Atoolo\Crawler\Domain\Crawler\Services\TeaserDataInterface;
 use Atoolo\Crawler\Domain\Crawler\Services\TeaserRelevanceEvaluatorInterface;
 use Atoolo\Crawler\Domain\Crawler\Services\TitleExtractConfig;
 use Psr\Log\LoggerInterface;
@@ -23,7 +25,7 @@ class Parser
      *
      * @param array<int, array{url: string, html: string}> $htmlData
      *
-     * @return array<int, array{url: string, title: string, introText?: string, datetime?: \DateTimeImmutable}>
+     * @return TeaserDataInterface[]
      */
     public function extractTeasers(array $htmlData): array
     {
@@ -52,50 +54,44 @@ class Parser
                 $crawler = new Crawler($html);
 
                 $title = $this->extractTitleText($crawler, $titleConfig);
-                if ($title === null || $title === '') {
+                if (null === $title || '' === $title) {
                     $this->logger->debug(
                         'Title Not found in Processor',
-                        ['key' => 'title', 'dataFound' => $title, ],
+                        ['key' => 'title', 'dataFound' => $title],
                     );
                     continue;
                 }
 
-                $teaserData = [
-                    'url' => $item['url'],
-                    'title' => ($titleConfig->prefix ?? '') . $title,
-                ];
+                $url = $item['url'];
+                $teaserTitle = ($titleConfig->prefix ?? '') . $title;
 
                 $introText = $this->extractIntroductionText($crawler, $introConfig);
-                if (null !== $introText) {
-                    $teaserData['introText'] = $introText;
-                } else {
-                    if ($introConfig->requiredField) {
-                        continue;
-                    }
+                if (null === $introText && $introConfig->requiredField) {
+                    continue;
                 }
 
                 $dateTime = $this->extractDateTime($crawler, $dateTimeConfig);
-                if (null !== $dateTime) {
-                    $teaserData['datetime'] = $dateTime;
-                } else {
-                    if ($dateTimeConfig->requiredField) {
-                        continue;
-                    }
+                if (null === $dateTime && $dateTimeConfig->requiredField) {
+                    continue;
                 }
 
                 if ($scoringActive) {
-                    $relevanceData = $teaserData;
-                    $relevanceData['html'] = $html;
+                    $relevanceData = [
+                        'url' => $url,
+                        'title' => $teaserTitle,
+                        'introText' => $introText,
+                        'html' => $html,
+                    ];
                     $keepTeaser = $this->teaserRelevanceEvaluator->relevant($relevanceData);
                     if (!$keepTeaser) {
                         $this->logger->debug(
                             'Teaser not Relevant',
-                            ['relevanceData' => $relevanceData]
+                            ['relevanceData' => $relevanceData],
                         );
                         continue;
                     }
                 }
-                $results[] = $teaserData;
+                $results[] = new TeaserData($url, $teaserTitle, $introText, $dateTime);
             } catch (\Throwable $e) {
                 $this->logger->warning('[Parser] No Data found for URL', [
                     'url' => $item['url'],
@@ -131,7 +127,7 @@ class Parser
 
         $this->logger->debug(
             'Title Not found in Processor',
-            ['key' => 'title', 'dataFound' => $title ?? '']
+            ['key' => 'title', 'dataFound' => $title ?? ''],
         );
 
         return null;
@@ -198,8 +194,8 @@ class Parser
 
         if (empty($raw)) {
             foreach ($config->css as $selector) {
-                $raw =
-                    $this->findAttrByCss($crawler, $selector, 'datetime')
+                $raw
+                    = $this->findAttrByCss($crawler, $selector, 'datetime')
                     ?? $this->findCssSelectorContent($crawler, $selector);
 
                 if (!empty($raw)) {
@@ -248,6 +244,7 @@ class Parser
             $el = $crawler->filter($selector);
             if ($el->count() > 0) {
                 $v = $el->first()->attr($attr);
+
                 return null !== $v ? trim((string) $v) : null;
             }
 

@@ -14,6 +14,6 @@ return (new PhpCsFixer\Config())
             '@Symfony' => true,
             'concat_space' => ['spacing' => 'one'],
             'class_definition' => ['space_before_parenthesis' => true],
-            ['@PER-CS' => true]
+            '@PER-CS' => true,
         ]
     );

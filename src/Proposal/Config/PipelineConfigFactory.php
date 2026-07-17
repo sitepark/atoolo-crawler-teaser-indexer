@@ -12,6 +12,6 @@ final class PipelineConfigFactory
     public function create(array $siteData): ?PipelineConfig
     {
         return null;
-        //return new PipelineConfig();
+        // return new PipelineConfig();
     }
 }

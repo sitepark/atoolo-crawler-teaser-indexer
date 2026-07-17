@@ -34,15 +34,16 @@ final class IndexerStep implements IndexerStepInterface
         // count items as they flow through
         $counted = (static function () use ($entries, &$total): \Generator {
             foreach ($entries as $entry) {
-                $total++;
+                ++$total;
                 yield $entry;
             }
         })();
 
         $successCount = $this->store($counted, $processId, $source);
 
-        if ($total === 0) {
+        if (0 === $total) {
             $this->logger->error('[Indexer] No entries received. Aborting — live index unchanged.');
+
             return;
         }
 
@@ -83,16 +84,16 @@ final class IndexerStep implements IndexerStepInterface
                 $doc->setField('title', $entry->title);
                 $doc->setField('crawl_process_id', $processId);
 
-                if ($entry->introText !== null) {
+                if (null !== $entry->introText) {
                     $doc->setField('sp_intro', $entry->introText);
                 }
 
-                if ($entry->datetime !== null) {
+                if (null !== $entry->datetime) {
                     $doc->setField('sp_date', $entry->datetime);
                 }
 
                 $updater->addDocument($doc);
-                $successCount++;
+                ++$successCount;
             } catch (\Throwable $e) {
                 $this->logger->error('[Indexer] Failed to build document', [
                     'url'       => $entry->url,
@@ -108,10 +109,8 @@ final class IndexerStep implements IndexerStepInterface
             throw $e;
         }
 
-        if ($result->getStatus() !== 0) {
-            throw new \RuntimeException(
-                '[Indexer] Solr update returned non-zero status: ' . $result->getResponse()->getStatusMessage(),
-            );
+        if (0 !== $result->getStatus()) {
+            throw new \RuntimeException('[Indexer] Solr update returned non-zero status: ' . $result->getResponse()->getStatusMessage());
         }
 
         return $successCount;

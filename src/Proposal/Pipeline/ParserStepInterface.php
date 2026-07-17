@@ -18,6 +18,7 @@ interface ParserStepInterface
      * Pages that yield no extractable data are silently skipped.
      *
      * @param iterable<CrawledPage> $pages
+     *
      * @return iterable<IndexEntry>
      */
     public function parse(iterable $pages, PipelineConfig $config): iterable;
