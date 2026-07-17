@@ -7,6 +7,7 @@ namespace Tests;
 use Atoolo\Crawler\Config\CrawlerConfig;
 use Atoolo\Crawler\Config\CrawlerConfigContext;
 use Atoolo\Crawler\Config\CrawlerConfigHelper;
+use Atoolo\Crawler\Domain\Crawler\Services\TeaserDataInterface;
 use Atoolo\Crawler\Domain\Crawler\Services\TeaserRelevanceEvaluatorInterface;
 use Atoolo\Crawler\Domain\Crawler\Steps\Parser;
 use PHPUnit\Framework\TestCase;
@@ -78,18 +79,27 @@ final class ParserTest extends TestCase
     }
 
     /**
-     * @param array<int,array<string,mixed>> $result
+     * Converts TeaserDataInterface[] to a normalized array structure for comparison.
      *
-     * @return array<int,array<string,mixed>>
+     * @param TeaserDataInterface[] $result
+     *
+     * @return array<int, array<string, mixed>>
      */
     private function normalizeDatetime(array $result): array
     {
-        return array_map(static function (array $t): array {
-            if (isset($t['datetime']) && $t['datetime'] instanceof \DateTimeInterface) {
-                $t['datetime'] = $t['datetime']->format(DATE_ATOM);
+        return array_map(static function (TeaserDataInterface $t): array {
+            $normalized = [
+                'url' => $t->getUrl(),
+                'title' => $t->getTitle(),
+            ];
+            if (null !== $t->getIntroText()) {
+                $normalized['introText'] = $t->getIntroText();
+            }
+            if (null !== $t->getDate()) {
+                $normalized['datetime'] = $t->getDate()->format(DATE_ATOM);
             }
 
-            return $t;
+            return $normalized;
         }, $result);
     }
 
@@ -176,8 +186,8 @@ HTML;
         ]);
 
         $this->assertCount(2, $result);
-        $this->assertSame('First', $result[0]['title']);
-        $this->assertSame('Second', $result[1]['title']);
+        $this->assertSame('First', $result[0]->getTitle());
+        $this->assertSame('Second', $result[1]->getTitle());
     }
 
     // --- Huge HTML ---
@@ -205,14 +215,13 @@ HTML;
             ['url' => 'https://example.com/', 'html' => $html],
         ]);
 
-        $this->assertSame('PREFIX: News', $result[0]['title']);
+        $this->assertSame('PREFIX: News', $result[0]->getTitle());
     }
 
     // --- introText ---
 
     public function testIntroTextNotPresentResultsInNoIntroTextField(): void
     {
-        // sp_introText_present defaults to false → extractText returns null, field omitted
         $parser = $this->makeParser();
         $html = '<html><body><h1>Title</h1><div class="introText">Ignored</div></body></html>';
 
@@ -221,7 +230,7 @@ HTML;
         ]);
 
         $this->assertCount(1, $result);
-        $this->assertArrayNotHasKey('introText', $result[0]);
+        $this->assertNull($result[0]->getIntroText());
     }
 
     public function testIntroTextFoundIsIncludedInResult(): void
@@ -236,7 +245,7 @@ HTML;
             ['url' => 'https://example.com/', 'html' => $html],
         ]);
 
-        $this->assertSame('Lead text', $result[0]['introText']);
+        $this->assertSame('Lead text', $result[0]->getIntroText());
     }
 
     public function testIntroTextRequiredAndMissingSkipsTeaser(): void
@@ -269,7 +278,7 @@ HTML;
         ]);
 
         $this->assertCount(1, $result);
-        $this->assertArrayNotHasKey('introText', $result[0]);
+        $this->assertNull($result[0]->getIntroText());
     }
 
     public function testIntroTextExtractedFromOgMeta(): void
@@ -290,14 +299,13 @@ HTML;
             ['url' => 'https://example.com/', 'html' => $html],
         ]);
 
-        $this->assertSame('OG intro text', $result[0]['introText']);
+        $this->assertSame('OG intro text', $result[0]->getIntroText());
     }
 
     // --- datetime ---
 
     public function testDateTimeNotPresentResultsInNoDatetimeField(): void
     {
-        // sp_datetime_present defaults to false
         $parser = $this->makeParser();
         $html = '<html><body><h1>Title</h1><div class="date">2026-01-14</div></body></html>';
 
@@ -306,7 +314,7 @@ HTML;
         ]);
 
         $this->assertCount(1, $result);
-        $this->assertArrayNotHasKey('datetime', $result[0]);
+        $this->assertNull($result[0]->getDate());
     }
 
     public function testDateTimeRequiredAndMissingSkipsTeaser(): void
@@ -339,7 +347,7 @@ HTML;
         ]);
 
         $this->assertCount(1, $result);
-        $this->assertArrayNotHasKey('datetime', $result[0]);
+        $this->assertNull($result[0]->getDate());
     }
 
     public function testDateTimeExtractedFromOgMeta(): void
@@ -361,8 +369,8 @@ HTML;
         ]);
 
         $this->assertCount(1, $result);
-        $this->assertInstanceOf(\DateTimeImmutable::class, $result[0]['datetime']);
-        $this->assertSame('2026-03-15', $result[0]['datetime']->format('Y-m-d'));
+        $this->assertInstanceOf(\DateTimeImmutable::class, $result[0]->getDate());
+        $this->assertSame('2026-03-15', $result[0]->getDate()->format('Y-m-d'));
     }
 
     public function testDateTimeExtractedFromTimeElementDatetimeAttribute(): void
@@ -386,8 +394,8 @@ HTML;
         ]);
 
         $this->assertCount(1, $result);
-        $this->assertInstanceOf(\DateTimeImmutable::class, $result[0]['datetime']);
-        $this->assertSame('2026-05-20', $result[0]['datetime']->format('Y-m-d'));
+        $this->assertInstanceOf(\DateTimeImmutable::class, $result[0]->getDate());
+        $this->assertSame('2026-05-20', $result[0]->getDate()->format('Y-m-d'));
     }
 
     public function testDateTimeFromCssTextContent(): void
@@ -404,8 +412,8 @@ HTML;
         ]);
 
         $this->assertCount(1, $result);
-        $this->assertSame('2026-07-04', $result[0]['datetime']->format('Y-m-d'));
-        $this->assertSame('00:00:00', $result[0]['datetime']->format('H:i:s'));
+        $this->assertSame('2026-07-04', $result[0]->getDate()->format('Y-m-d'));
+        $this->assertSame('00:00:00', $result[0]->getDate()->format('H:i:s'));
     }
 
     public function testDateTimeWithOnlyDateFalsePreservesTime(): void
@@ -422,8 +430,8 @@ HTML;
         ]);
 
         $this->assertCount(1, $result);
-        $this->assertSame('2026-01-14', $result[0]['datetime']->format('Y-m-d'));
-        $this->assertSame('08:30:00', $result[0]['datetime']->format('H:i:s'));
+        $this->assertSame('2026-01-14', $result[0]->getDate()->format('Y-m-d'));
+        $this->assertSame('08:30:00', $result[0]->getDate()->format('H:i:s'));
     }
 
     public function testDateTimeWithOnlyDateTrueButNonDateStringPassedThrough(): void
@@ -442,9 +450,9 @@ HTML;
         ]);
 
         $this->assertCount(1, $result);
-        $this->assertSame('2026-01-14', $result[0]['datetime']->format('Y-m-d'));
+        $this->assertSame('2026-01-14', $result[0]->getDate()->format('Y-m-d'));
         // Time is preserved because the raw was not normalized to "YYYY-MM-DD 00:00:00"
-        $this->assertSame('12:00:00', $result[0]['datetime']->format('H:i:s'));
+        $this->assertSame('12:00:00', $result[0]->getDate()->format('H:i:s'));
     }
 
     // --- Content scoring ---
@@ -477,7 +485,7 @@ HTML;
         ]);
 
         $this->assertCount(1, $result);
-        $this->assertSame('Title', $result[0]['title']);
+        $this->assertSame('Title', $result[0]->getTitle());
     }
 
     // --- Exception paths (invalid selectors are caught and logged) ---
@@ -498,7 +506,7 @@ HTML;
         ]);
 
         $this->assertCount(1, $result);
-        $this->assertArrayNotHasKey('introText', $result[0]);
+        $this->assertNull($result[0]->getIntroText());
     }
 
     public function testInvalidCssInDatetimeIsCaughtAndFieldOmitted(): void
@@ -516,7 +524,7 @@ HTML;
         ]);
 
         $this->assertCount(1, $result);
-        $this->assertArrayNotHasKey('datetime', $result[0]);
+        $this->assertNull($result[0]->getDate());
     }
 
     public function testParseDateTimeExceptionLogsWarningAndOmitsField(): void
@@ -535,7 +543,7 @@ HTML;
         ]);
 
         $this->assertCount(1, $result);
-        $this->assertArrayNotHasKey('datetime', $result[0]);
+        $this->assertNull($result[0]->getDate());
     }
 
     public function testExceptionFromEvaluatorIsCaughtByOuterTryCatch(): void

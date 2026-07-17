@@ -8,6 +8,7 @@ use Atoolo\Crawler\Config\CrawlerConfig;
 use Atoolo\Crawler\Config\CrawlerConfigContext;
 use Atoolo\Crawler\Config\CrawlerConfigHelper;
 use Atoolo\Crawler\Controller\CrawlerManager;
+use Atoolo\Crawler\Domain\Crawler\Services\TeaserData;
 use Atoolo\Crawler\Domain\Crawler\Services\TeaserRelevanceEvaluatorInterface;
 use Atoolo\Crawler\Domain\Crawler\Steps\Fetcher;
 use Atoolo\Crawler\Domain\Crawler\Steps\Indexer;
@@ -362,7 +363,7 @@ final class CrawlerManagerE2ETest extends TestCase
         $fetcher = $this->createStub(Fetcher::class);
         $fetcher->method('fetchUrls')->willReturn($pages);
 
-        $parsed = [['url' => $this->url1, 'title' => 'Title 1']];
+        $parsed = [new TeaserData($this->url1, 'Title 1')];
         $parser = $this->createStub(Parser::class);
         $parser->method('extractTeasers')->willReturn($parsed);
 
@@ -374,7 +375,7 @@ final class CrawlerManagerE2ETest extends TestCase
             ->method('doIndex')
             ->with($this->callback(function (array $items) {
                 $this->assertCount(1, $items);
-                $this->assertSame('Title 1', $items[0]['title']);
+                $this->assertSame('Title 1', $items[0]->getTitle());
 
                 return true;
             }))

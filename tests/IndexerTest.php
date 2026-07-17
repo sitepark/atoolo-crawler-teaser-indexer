@@ -7,6 +7,7 @@ namespace Tests;
 use Atoolo\Crawler\Config\CrawlerConfig;
 use Atoolo\Crawler\Config\CrawlerConfigContext;
 use Atoolo\Crawler\Config\CrawlerConfigHelper;
+use Atoolo\Crawler\Domain\Crawler\Services\TeaserData;
 use Atoolo\Crawler\Domain\Crawler\Steps\Indexer;
 use Atoolo\Crawler\Exception\ThresholdNotMetException;
 use Atoolo\Search\Dto\Indexer\IndexerStatus;
@@ -66,8 +67,8 @@ final class IndexerTest extends TestCase
         $indexer = $this->makeIndexer();
 
         $status = $indexer->doIndex([
-            ['url' => 'https://example.com/page1', 'title' => 'Page 1'],
-            ['url' => 'https://example.com/page2', 'title' => 'Page 2'],
+            new TeaserData('https://example.com/page1', 'Page 1'),
+            new TeaserData('https://example.com/page2', 'Page 2'),
         ]);
 
         $this->assertInstanceOf(IndexerStatus::class, $status);
@@ -109,7 +110,7 @@ final class IndexerTest extends TestCase
         );
 
         $status = $indexer->doIndex([
-            ['url' => 'https://example.com/', 'title' => 'Title', 'introText' => 'Intro text here'],
+            new TeaserData('https://example.com/', 'Title', 'Intro text here'),
         ]);
 
         $this->assertInstanceOf(IndexerStatus::class, $status);
@@ -120,37 +121,32 @@ final class IndexerTest extends TestCase
         $indexer = $this->makeIndexer(['sp_datetime_present' => true]);
 
         $status = $indexer->doIndex([
-            [
-                'url' => 'https://example.com/',
-                'title' => 'Title',
-                'date' => new \DateTimeImmutable('2026-01-01'),
-            ],
+            new TeaserData('https://example.com/', 'Title', null, new \DateTimeImmutable('2026-01-01')),
         ]);
 
         $this->assertInstanceOf(IndexerStatus::class, $status);
     }
 
-    public function testDoIndexWithScalarDateConvertsToDateTimeImmutable(): void
+    public function testDoIndexWithDatetimeItemSetsDateField(): void
     {
         $indexer = $this->makeIndexer(['sp_datetime_present' => true]);
 
         $status = $indexer->doIndex([
-            ['url' => 'https://example.com/', 'title' => 'Title', 'date' => '2026-01-01T00:00:00Z'],
+            new TeaserData('https://example.com/', 'Title', null, new \DateTimeImmutable('2026-01-01T00:00:00Z')),
         ]);
 
         $this->assertInstanceOf(IndexerStatus::class, $status);
     }
 
-    public function testDoIndexWithInvalidDateLogsWarningAndContinues(): void
+    public function testDoIndexWithValidDateDoesNotLogWarning(): void
     {
         $logger = $this->createMock(LoggerInterface::class);
-        $logger->expects($this->once())->method('warning');
+        $logger->expects($this->never())->method('warning');
 
         $indexer = $this->makeIndexer(['sp_datetime_present' => true], logger: $logger);
 
-        // Invalid date type (object that is not DateTimeInterface) → logs warning
         $status = $indexer->doIndex([
-            ['url' => 'https://example.com/', 'title' => 'Title', 'date' => new \stdClass()],
+            new TeaserData('https://example.com/', 'Title', null, new \DateTimeImmutable('2026-01-01')),
         ]);
 
         $this->assertInstanceOf(IndexerStatus::class, $status);
@@ -183,7 +179,7 @@ final class IndexerTest extends TestCase
         );
 
         $indexer->doIndex([
-            ['url' => 'https://example.com/', 'title' => 'Title'],
+            new TeaserData('https://example.com/', 'Title'),
         ]);
     }
 
@@ -207,7 +203,7 @@ final class IndexerTest extends TestCase
         $this->expectExceptionMessage('Solr not reachable');
 
         $indexer->doIndex([
-            ['url' => 'https://example.com/', 'title' => 'Title'],
+            new TeaserData('https://example.com/', 'Title'),
         ]);
     }
 
@@ -241,8 +237,8 @@ final class IndexerTest extends TestCase
 
         // Item 1 throws, item 2 succeeds
         $status = $indexer->doIndex([
-            ['url' => 'https://example.com/bad', 'title' => 'Bad'],
-            ['url' => 'https://example.com/good', 'title' => 'Good'],
+            new TeaserData('https://example.com/bad', 'Bad'),
+            new TeaserData('https://example.com/good', 'Good'),
         ]);
 
         $this->assertInstanceOf(IndexerStatus::class, $status);
