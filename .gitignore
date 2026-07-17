@@ -1,13 +1,7 @@
-###> phpstan/phpstan ###
 phpstan.neon
-###< phpstan/phpstan ###
-
-###> squizlabs/php_codesniffer ###
+.php-cs-fixer.cache
 /.phpcs-cache
 /phpcs.xml
-###< squizlabs/php_codesniffer ###
-
-### NEW ###
 /vendor/
 /vendor.orig
 composer.lock
@@ -23,7 +17,6 @@ tools/phplint
 tools/phpstan
 .phpactor.json
 .env*
-###> phpunit/phpunit ###
 /phpunit.xml
 /.phpunit.cache/
-###< phpunit/phpunit ###
+
