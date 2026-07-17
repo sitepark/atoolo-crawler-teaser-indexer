@@ -5,17 +5,17 @@ declare(strict_types=1);
 namespace Atoolo\Crawler\Proposal\Dto;
 
 /** One structured entry ready for indexing. Extensions carry optional custom data (Abschnitt 7.2 im Proposal). */
-readonly class IndexEntry
+final class IndexEntry
 {
     /**
      * @param array<class-string, object> $extensions
      */
     public function __construct(
-        public string $url,
-        public string $title,
-        public ?string $introText,
-        public ?\DateTimeImmutable $datetime,
-        private array $extensions = [],
+        public readonly string $url,
+        public readonly string $title,
+        public readonly ?string $introText,
+        public readonly ?\DateTimeImmutable $datetime,
+        private readonly array $extensions = [],
     ) {}
 
     /** @return static */

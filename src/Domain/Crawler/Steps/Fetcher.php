@@ -24,8 +24,7 @@ class Fetcher
     public function __construct(
         private readonly RequestExecutorInterface $requestExecutor,
         private LoggerInterface $logger,
-    ) {
-    }
+    ) {}
 
     /**
      * Fetches raw HTML for multiple URLs in batches.
@@ -80,8 +79,8 @@ class Fetcher
                     "Failed to retrieve content",
                     [
                         'baseUrl'   => $url,
-                        'exception' => $e
-                    ]
+                        'exception' => $e,
+                    ],
                 );
             }
         }

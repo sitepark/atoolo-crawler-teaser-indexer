@@ -19,9 +19,8 @@ class URLCollector
         private readonly URLNormalizer $urlNormalizer,
         private readonly LoggerInterface $logger,
         private readonly RequestExecutorInterface $requestExecutor,
-        private RobotsTxtCheckerInterface $robotsTxtChecker
-    ) {
-    }
+        private RobotsTxtCheckerInterface $robotsTxtChecker,
+    ) {}
 
     /**
      * Collects and filters all discoverable href URLs from the configured start URLs.

@@ -451,7 +451,7 @@ HTML;
     {
         $parser = $this->makeParser(
             ['sp_content_scoring_active' => true],
-            false // evaluator rejects the teaser
+            false, // evaluator rejects the teaser
         );
         $html = '<html><body><h1>Title</h1></body></html>';
 
@@ -466,7 +466,7 @@ HTML;
     {
         $parser = $this->makeParser(
             ['sp_content_scoring_active' => true],
-            true // evaluator accepts the teaser
+            true, // evaluator accepts the teaser
         );
         $html = '<html><body><h1>Title</h1></body></html>';
 

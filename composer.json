@@ -10,18 +10,18 @@
         "php": ">=8.1",
         "ext-ctype": "*",
         "ext-iconv": "*",
-        "atoolo/search-bundle": ">=1.14",
+        "atoolo/search-bundle": ">=1.14.2",
         "spatie/robots-txt": ">=2.5.4",
-        "symfony/console": ">=6.4.41",
+        "symfony/console": ">=6.4.42",
         "symfony/css-selector": ">=6.4.34",
         "symfony/dom-crawler": ">=6.4.40",
-        "symfony/dotenv": ">=6.4.39",
+        "symfony/dotenv": ">=6.4.42",
         "symfony/flex": ">=2.10",
-        "symfony/framework-bundle": ">=6.4.41",
-        "symfony/http-client": ">=6.4.41",
+        "symfony/framework-bundle": ">=6.4.42",
+        "symfony/http-client": ">=6.4.42",
         "symfony/monolog-bundle": ">=3.11.2",
         "symfony/runtime": ">=6.4.41",
-        "symfony/yaml": ">=6.4.41"
+        "symfony/yaml": ">=6.4.42"
     },
     "config": {
         "allow-plugins": {

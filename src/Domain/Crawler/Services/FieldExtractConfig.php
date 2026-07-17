@@ -17,6 +17,5 @@ final class FieldExtractConfig
         public readonly array $opengraph,
         public readonly array $css,
         public readonly int $maxChars,
-    ) {
-    }
+    ) {}
 }

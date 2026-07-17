@@ -8,10 +8,10 @@ namespace Atoolo\Crawler\Proposal\Dto;
  * Output of CrawlerStepInterface, input to ParserStepInterface.
  * Holds the raw HTML of one discovered page.
  */
-final readonly class CrawledPage
+final class CrawledPage
 {
     public function __construct(
-        public string $url,
-        public string $html,
+        public readonly string $url,
+        public readonly string $html,
     ) {}
 }
