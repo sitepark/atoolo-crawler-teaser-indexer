@@ -34,9 +34,10 @@ final class URLNormalizer
      * Processing steps (in order):
      * 1. Sanitize URLs (parse + rebuild into canonical form)
      * 2. Remove configured query parameters (optional)
-     * 3. Apply allow-prefix filtering
-     * 4. Apply deny-prefix filtering
-     * 5. Remove duplicates (order preserved)
+     * 3. Strip URL fragments for configured URL prefixes (optional)
+     * 4. Apply allow-prefix filtering
+     * 5. Apply deny-prefix filtering
+     * 6. Remove duplicates (order preserved)
      *
      * @param array<int,string> $rawUrls Raw, possibly unclean URLs
      *
@@ -44,8 +45,10 @@ final class URLNormalizer
      */
     public function normalize(array $rawUrls): array
     {
-        $urls = $this->sanitizeUrls($rawUrls);
+        $urls = $this->filterDenyedAlowedUrls($rawUrls);
+        $urls = $this->canonicalizeUrls($urls);
         $urls = $this->stripConfiguredQueryParams($urls);
+        $urls = $this->stripConfiguredFragments($urls);
         $urls = $this->filterAllowedUrlPath($urls);
         $urls = $this->filterUnneededUrls($urls);
         $urls = $this->filterDeniedEndings($urls);
@@ -63,9 +66,54 @@ final class URLNormalizer
      *
      * @return array<int,string> Sanitized URLs
      */
-    private function sanitizeUrls(array $urls): array
+    private function filterDenyedAlowedUrls(array $urls): array
     {
-        $sanitized = array_map(function (string $url): string {
+        /** @var list<string> $denyPrefixes */
+        $denyPrefixes = $this->config->denyPrefixes();
+        /** @var list<string> $allowPrefixes */
+        $allowPrefixes = $this->config->allowPrefixes();
+
+        $sanitizedUrls = array_map(function (string $url) use ($denyPrefixes, $allowPrefixes): string {
+            if ($this->startsWithAny($url, $denyPrefixes)) {
+                return '';
+            }
+
+            if ([] !== $allowPrefixes && !$this->startsWithAny($url, $allowPrefixes)) {
+                return '';
+            }
+
+            return $url;
+        }, $urls);
+
+        return array_values($sanitizedUrls);
+    }
+
+    /**
+     * @param list<string> $prefixes
+     */
+    private function startsWithAny(string $url, array $prefixes): bool
+    {
+        foreach ($prefixes as $prefix) {
+            if ('' !== $prefix && str_starts_with($url, $prefix)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Sanitizes URLs by parsing and rebuilding them into a canonical structure.
+     *
+     * Invalid URLs (parse failure or missing scheme/host) are returned unchanged.
+     *
+     * @param array<int,string> $urls
+     *
+     * @return array<int,string> Sanitized URLs
+     */
+    private function canonicalizeUrls(array $urls): array
+    {
+        $normalizeUrls = array_map(function (string $url): string {
             $parts = parse_url($url);
 
             if (false === $parts || !isset($parts['scheme'], $parts['host'])) {
@@ -78,7 +126,7 @@ final class URLNormalizer
             );
         }, $urls);
 
-        return array_values($sanitized);
+        return array_values($normalizeUrls);
     }
 
     /**
@@ -115,6 +163,37 @@ final class URLNormalizer
         }, $urls);
 
         return array_values($stripped);
+    }
+
+    /**
+     * Strips the URL fragment (the part after `#`) from URLs whose prefix
+     * matches one of the configured `stripFragments` prefixes.
+     *
+     * Fragments typically only drive on-page anchors or a page's own search
+     * function, so URLs that only differ by fragment refer to the same
+     * document and would otherwise be fetched again for every fragment.
+     *
+     * @param array<int,string> $urls
+     *
+     * @return array<int,string> URLs with matching fragments removed
+     */
+    private function stripConfiguredFragments(array $urls): array
+    {
+        $prefixes = $this->config->stripFragments();
+
+        if ([] === $prefixes) {
+            return $urls;
+        }
+
+        return array_values(array_map(function (string $url) use ($prefixes): string {
+            if (!$this->startsWithAny($url, $prefixes)) {
+                return $url;
+            }
+
+            $hashPos = strpos($url, '#');
+
+            return false === $hashPos ? $url : substr($url, 0, $hashPos);
+        }, $urls));
     }
 
     /**

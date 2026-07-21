@@ -5,9 +5,13 @@ Ein paar einordnende Worte, bevor es in die Details geht. Der konkrete Umbauplan
 ## Was gut ist (oder von der Idee her richtig)
 
 - **Der Pipeline-Gedanke stimmt.** Den Ablauf als Kette von Schritten zu denken (crawlen → parsen → prozessieren → indizieren) ist genau die richtige Zerlegung. Der Umbau ändert daran nichts, er baut darauf auf.
+
 - **Die Streaming-Absicht.** An mehreren Stellen sieht man, dass du mit Generatoren arbeiten wolltest. Bei potenziell tausenden Seiten ist das speicher­technisch goldrichtig. Das Memory-Verhalten ist dabei heute schon okay (Chunking + `unset` halten nie das HTML aller Seiten gleichzeitig) — nur die Generator-Laziness ist inkonsistent: eine Stelle streamt echt, beim `Processor` wirft `iterator_to_array` sie sofort weg, der `Fetcher` ist gar keiner. Der Umbau zieht die Idee sauber durch und spart nebenbei das doppelte Laden.
+
 - **Getippte Config-Objekte.** `FieldExtractConfig`, `ContentScoringConfig` & Co. statt loser Arrays — guter Instinkt, den wir übernehmen.
+
 - **Produktionsnähe.** Retry mit Backoff, robots.txt, Content-Scoring, `cleanupThreshold`, Messenger/Scheduler — das ist zu Ende gedacht und nicht bloß ein Happy-Path-Prototyp.
+
 - **Es gibt Tests.** Eine ordentliche Suite, kein Alibi.
 
 ## Warum trotzdem umstrukturieren

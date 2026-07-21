@@ -95,6 +95,14 @@ final class CrawlerConfig
     {
         return $this->crawlerConfigHelper->bool('sp_strip_query_params_active', false);
     }
+    
+    /**
+     * @return list<string>
+     */
+    public function stripFragments(): array
+    {
+        return $this->crawlerConfigHelper->stringList('sp_strip_fragments');
+    }
 
     /** @return list<string> */
     public function stripQueryParams(): array

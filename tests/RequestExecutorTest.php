@@ -160,6 +160,104 @@ final class RequestExecutorTest extends TestCase
         $this->assertSame($successResponse, $result);
     }
 
+    public function testRequestChunkReturnsResponsesKeyedByUrl(): void
+    {
+        $response = $this->createStub(ResponseInterface::class);
+        $response->method('getStatusCode')->willReturn(200);
+
+        $httpClient = $this->makeHttpClient($response);
+        $config = $this->makeConfig(['sp_backoff_ms' => 0]);
+        $logger = $this->createStub(LoggerInterface::class);
+
+        $executor = new RequestExecutor([], $config, $httpClient, $logger);
+        $result = $executor->requestChunk([
+            'https://example.com/a',
+            'https://example.com/b',
+        ]);
+
+        $this->assertSame(
+            ['https://example.com/a', 'https://example.com/b'],
+            array_keys($result),
+        );
+        $this->assertSame($response, $result['https://example.com/a']);
+        $this->assertSame($response, $result['https://example.com/b']);
+    }
+
+    public function testRequestChunkDeduplicatesUrls(): void
+    {
+        $response = $this->createStub(ResponseInterface::class);
+        $response->method('getStatusCode')->willReturn(200);
+
+        $httpClient = $this->makeHttpClient($response);
+        $config = $this->makeConfig(['sp_backoff_ms' => 0]);
+        $logger = $this->createStub(LoggerInterface::class);
+
+        $executor = new RequestExecutor([], $config, $httpClient, $logger);
+        $result = $executor->requestChunk([
+            'https://example.com/a',
+            'https://example.com/a',
+        ]);
+
+        $this->assertCount(1, $result);
+        $this->assertArrayHasKey('https://example.com/a', $result);
+    }
+
+    public function testRequestChunkRetriesRetryableStatusInWaves(): void
+    {
+        $failResponse = $this->createStub(ResponseInterface::class);
+        $failResponse->method('getStatusCode')->willReturn(500);
+        $failResponse->method('getHeaders')->willReturn([]);
+
+        $successResponse = $this->createStub(ResponseInterface::class);
+        $successResponse->method('getStatusCode')->willReturn(200);
+
+        $httpClient = $this->createStub(HttpClientInterface::class);
+        $httpClient->method('withOptions')->willReturnSelf();
+        $httpClient->method('request')->willReturnOnConsecutiveCalls($failResponse, $successResponse);
+
+        $config = $this->makeConfig(['sp_max_retry' => 3, 'sp_backoff_ms' => 0]);
+        $logger = $this->createStub(LoggerInterface::class);
+
+        $executor = new RequestExecutor([500], $config, $httpClient, $logger);
+        $result = $executor->requestChunk(['https://example.com/']);
+
+        $this->assertSame($successResponse, $result['https://example.com/']);
+    }
+
+    public function testRequestChunkKeepsLastResponseWhenRetriesExhausted(): void
+    {
+        $failResponse = $this->createStub(ResponseInterface::class);
+        $failResponse->method('getStatusCode')->willReturn(500);
+        $failResponse->method('getHeaders')->willReturn([]);
+
+        $httpClient = $this->makeHttpClient($failResponse);
+        $config = $this->makeConfig(['sp_max_retry' => 2, 'sp_backoff_ms' => 0]);
+        $logger = $this->createStub(LoggerInterface::class);
+
+        $executor = new RequestExecutor([500], $config, $httpClient, $logger);
+        $result = $executor->requestChunk(['https://example.com/']);
+
+        // Non-2xx response is kept so the caller can decide how to handle it.
+        $this->assertSame($failResponse, $result['https://example.com/']);
+    }
+
+    public function testRequestChunkOmitsUrlAfterTransportExhaustion(): void
+    {
+        $transportException = new class ('timeout') extends \Exception implements TransportExceptionInterface {};
+
+        $httpClient = $this->createStub(HttpClientInterface::class);
+        $httpClient->method('withOptions')->willReturnSelf();
+        $httpClient->method('request')->willThrowException($transportException);
+
+        $config = $this->makeConfig(['sp_max_retry' => 2, 'sp_backoff_ms' => 0]);
+        $logger = $this->createStub(LoggerInterface::class);
+
+        $executor = new RequestExecutor([], $config, $httpClient, $logger);
+        $result = $executor->requestChunk(['https://example.com/']);
+
+        $this->assertSame([], $result);
+    }
+
     public function testThrottleSleedsWhenSecondCallIsTooFastForSameHost(): void
     {
         $httpClient = $this->createStub(HttpClientInterface::class);

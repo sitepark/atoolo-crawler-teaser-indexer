@@ -57,7 +57,11 @@ class Parser
                 if (null === $title || '' === $title) {
                     $this->logger->debug(
                         'Title Not found in Processor',
-                        ['key' => 'title', 'dataFound' => $title],
+                        [
+                            'key' => 'title',
+                            'url' => $item['url'],
+                            'dataFound' => $title
+                        ],
                     );
                     continue;
                 }

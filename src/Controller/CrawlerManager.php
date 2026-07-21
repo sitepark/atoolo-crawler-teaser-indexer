@@ -21,13 +21,13 @@ declare(strict_types=1);
 namespace Atoolo\Crawler\Controller;
 
 use Atoolo\Crawler\Config\CrawlerConfig;
+use Atoolo\Crawler\Domain\Crawler\Services\ExecuteStep;
 use Atoolo\Crawler\Domain\Crawler\Services\TeaserDataInterface;
 use Atoolo\Crawler\Domain\Crawler\Steps\Fetcher;
 use Atoolo\Crawler\Domain\Crawler\Steps\Indexer;
 use Atoolo\Crawler\Domain\Crawler\Steps\Parser;
 use Atoolo\Crawler\Domain\Crawler\Steps\Processor;
 use Atoolo\Crawler\Domain\Crawler\Steps\URLCollector;
-use Atoolo\Crawler\Exception\StepExecution;
 use Psr\Log\LoggerInterface;
 
 class CrawlerManager
@@ -38,6 +38,7 @@ class CrawlerManager
         private readonly Parser $parser,
         private readonly Processor $processor,
         private readonly CrawlerConfig $config,
+        private readonly ExecuteStep $executeStep,
         private readonly LoggerInterface $logger,
         private readonly Indexer $indexer,
     ) {}
@@ -47,28 +48,34 @@ class CrawlerManager
      */
     public function startCrawler(): void
     {
-        /** @var \Iterator<int, string> $urlsIterator */
-        $urlsIterator = $this->executeStep(
-            'URLCollector',
-            fn() => $this->urlCollector->findHrefUrlsByCssSelector(),
-        );
+        $htmlPage = $this->urlCollector->collect();
 
-        $urls = iterator_to_array($urlsIterator);
+        /** @var array<int, TeaserDataInterface> $teaser */
+        $teaser = [];
+        foreach ($htmlPage as $html) {
+            $teaserDataIterator = $this->executeStep->executeStep(
+                'Parser',
+                fn($pages) => $this->parser->extractTeasers($pages),
+                $html,
+            );
+            array_push($teaser, ...iterator_to_array($teaserDataIterator));
+        }
 
-        /**
-         * @var iterable<int, TeaserDataInterface> $rawTeaserStream
-         */
-        $rawTeaserStream = $this->storageHandlingFetcherParser($urls);
+        /** @var list<string> $collectedUrls */
+        $collectedUrls = $htmlPage->getReturn();
 
-        /**
-         * @var TeaserDataInterface[] $finalTeaserData
-         */
-        // Cleans and formats the data
+        $rawTeaserStream = $this->storageHandlingFetcherParser($collectedUrls, count($teaser));
+        /** @var array<int, TeaserDataInterface> $fetchedTeasers */
+        $fetchedTeasers = iterator_to_array($rawTeaserStream);
+        
+        $allRawTeasers = array_merge($teaser, $fetchedTeasers);
+
+        /** @var TeaserDataInterface[] $finalTeaserData */
         $finalTeaserData = iterator_to_array(
-            $this->executeStep(
+            $this->executeStep->executeStep(
                 'Processor',
                 fn($rawData) => $this->processor->sanitizeText($rawData),
-                $rawTeaserStream,
+                $allRawTeasers,
             ),
         );
 
@@ -86,68 +93,44 @@ class CrawlerManager
      *
      * @return iterable<int, TeaserDataInterface>
      */
-    private function storageHandlingFetcherParser($urls): iterable
+    private function storageHandlingFetcherParser(array $urls, int $collectedTeaserCount): iterable
     {
+        $forcedUrls = $this->config->forcedArticleUrls();
         $concurrency = max(1, $this->config->parallelRequests());
-        $urlChunks = array_chunk($urls, $concurrency);
 
-        foreach ($urlChunks as $chunk) {
-            $htmlDataIterator = $this->executeStep(
+        $taggedChunks = [
+            ...array_map(fn(array $c) => [true,  $c], [] !== $forcedUrls ? array_chunk($forcedUrls, $concurrency) : []),
+            ...array_map(fn(array $c) => [false, $c], array_chunk($urls, $concurrency)),
+        ];
+
+        foreach ($taggedChunks as [$isForced, $chunk]) {
+            if (!$isForced && $collectedTeaserCount >= $this->config->maxTeaser()) {
+                continue;
+            }
+
+            $htmlDataIterator = $this->executeStep->executeStep(
                 'Fetcher',
                 fn($urls) => $this->fetcher->fetchUrls($urls),
                 $chunk,
             );
 
             $htmlData = iterator_to_array($htmlDataIterator);
-            $teaserDataIterator = $this->executeStep(
+
+            $teaserDataIterator = $this->executeStep->executeStep(
                 'Parser',
-                fn($pages) => $this->parser->extractTeasers(
-                    is_array($pages) ? $pages : iterator_to_array($pages),
-                ),
+                fn($pages) => $this->parser->extractTeasers($pages),
                 $htmlData,
             );
 
-            /** @var TeaserDataInterface[] $teaserData */
+            /** @var array<int, TeaserDataInterface> $teaserData */
             $teaserData = iterator_to_array($teaserDataIterator);
 
-            foreach ($teaserData as $teaser) {
-                yield $teaser;
+            foreach ($teaserData as $teaserItem) {
+                yield $teaserItem;
+                ++$collectedTeaserCount;
             }
 
             unset($htmlData, $teaserData, $htmlDataIterator, $teaserDataIterator);
-        }
-    }
-
-    /**
-     * Executes a single crawling step with logging and error handling.
-     *
-     * @param string   $name  The name of the step for logging purposes
-     * @param callable $fn    The function representing the step
-     * @param mixed    $input Optional input for the step function
-     *
-     * @return \Iterator<mixed>
-     */
-    private function executeStep(string $name, callable $fn, mixed $input = null): \Iterator
-    {
-        try {
-            $result = $fn($input);
-
-            if (is_array($result) && [] === $result) {
-                $this->logger->warning("[$name] Step returned no data.");
-
-                return new \ArrayIterator([]);
-            }
-
-            $this->logger->info("[$name] Step initialized.");
-
-            if (is_array($result)) {
-                return new \ArrayIterator($result);
-            }
-
-            return $result;
-        } catch (\Throwable $e) {
-            $this->logger->error("[$name] Error: " . $e->getMessage(), ['exception' => $e]);
-            throw new StepExecution($name, $e->getMessage(), $e);
         }
     }
 }

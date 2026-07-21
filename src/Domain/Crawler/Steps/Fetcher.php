@@ -27,7 +27,11 @@ class Fetcher
     ) {}
 
     /**
-     * Fetches raw HTML for multiple URLs in batches.
+     * Fetches raw HTML for multiple URLs concurrently.
+     *
+     * The whole chunk is requested at once so the HTTP transfers run in
+     * parallel; the chunk size (`sp_parallel_requests`) therefore bounds the
+     * concurrency.
      *
      * @param list<string> $urlChunk
      *
@@ -35,29 +39,9 @@ class Fetcher
      */
     public function fetchUrls(array $urlChunk): array
     {
-        $responses = $this->startRequests($urlChunk);
+        $responses = $this->requestExecutor->requestChunk($urlChunk);
 
         return $this->processResponses($responses);
-    }
-
-    /**
-     * Starts the HTTP requests for a batch of URLs with a retry mechanism.
-     *
-     * @param list<string> $urlChunk
-     *
-     * @return array<string, ResponseInterface>
-     */
-    private function startRequests(array $urlChunk): array
-    {
-        $responses = [];
-        foreach ($urlChunk as $url) {
-            $response = $this->requestExecutor->request($url);
-            if (null !== $response) {
-                $responses[$url] = $response;
-            }
-        }
-
-        return $responses;
     }
 
     /**

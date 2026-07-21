@@ -8,6 +8,7 @@ use Atoolo\Crawler\Config\CrawlerConfig;
 use Atoolo\Crawler\Config\CrawlerConfigContext;
 use Atoolo\Crawler\Config\CrawlerConfigHelper;
 use Atoolo\Crawler\Controller\CrawlerManager;
+use Atoolo\Crawler\Domain\Crawler\Services\ExecuteStep;
 use Atoolo\Crawler\Domain\Crawler\Services\TeaserData;
 use Atoolo\Crawler\Domain\Crawler\Services\TeaserRelevanceEvaluatorInterface;
 use Atoolo\Crawler\Domain\Crawler\Steps\Fetcher;
@@ -68,9 +69,33 @@ final class CrawlerManagerE2ETest extends TestCase
         return new CrawlerConfig($helper);
     }
 
+    /**
+     * Builds a URLCollector stub whose collect() yields the given HTML
+     * chunks (pages already fetched while following links) and, once
+     * exhausted, returns the given boundary URLs - mirroring the real
+     * generator contract of URLCollector::collect().
+     *
+     * @param list<array<int, array{url: string, html: string}>> $chunks
+     * @param list<string>                                       $collectedUrls
+     */
+    private function stubUrlCollector(array $chunks, array $collectedUrls): URLCollector
+    {
+        $urlCollector = $this->createStub(URLCollector::class);
+        $urlCollector->method('collect')->willReturnCallback(
+            static function () use ($chunks, $collectedUrls): \Generator {
+                foreach ($chunks as $chunk) {
+                    yield $chunk;
+                }
+
+                return $collectedUrls;
+            },
+        );
+
+        return $urlCollector;
+    }
+
     public function testFullCrawlerWorkflow(): void
     {
-        $urls = [$this->url1, $this->url2];
         $title1 = 'Title 1 Cleaned';
         $title2 = 'Title 2 Cleaned';
         $date1 = '2026-01-14';
@@ -91,8 +116,7 @@ final class CrawlerManagerE2ETest extends TestCase
             ['url' => $this->url2, 'title' => $title2, 'date' => $date2],
         ];
 
-        $urlCollector = $this->createStub(URLCollector::class);
-        $urlCollector->method('findHrefUrlsByCssSelector')->willReturn($urls);
+        $urlCollector = $this->stubUrlCollector([], [$this->url1, $this->url2]);
 
         $fetcher = $this->createStub(Fetcher::class);
         $fetcher->method('fetchUrls')->willReturn($pages);
@@ -132,6 +156,62 @@ final class CrawlerManagerE2ETest extends TestCase
             $parser,
             $processor,
             $config,
+            new ExecuteStep($logger),
+            $logger,
+            $indexer,
+        );
+
+        $manager->startCrawler();
+    }
+
+    /**
+     * Pages that URLCollector already had to fetch while following links
+     * (streamed as chunks from collect()) must be parsed by the manager
+     * and merged with the teasers coming from the boundary-URL pipeline.
+     */
+    public function testChunksStreamedByUrlCollectorAreParsedAndMerged(): void
+    {
+        $inlineChunk = [
+            ['url' => $this->url1, 'html' => '<h1>Title 1</h1>'],
+        ];
+
+        $urlCollector = $this->stubUrlCollector([$inlineChunk], [$this->url2]);
+
+        $inlineTeaser = new TeaserData($this->url1, 'Title 1');
+        $boundaryTeaser = new TeaserData($this->url2, 'Title 2');
+
+        $parser = $this->createStub(Parser::class);
+        $parser->method('extractTeasers')->willReturnMap([
+            [$inlineChunk, [$inlineTeaser]],
+            [[['url' => $this->url2, 'html' => '<h1>Title 2</h1>']], [$boundaryTeaser]],
+        ]);
+
+        $fetcher = $this->createStub(Fetcher::class);
+        $fetcher->method('fetchUrls')->willReturn([['url' => $this->url2, 'html' => '<h1>Title 2</h1>']]);
+
+        $processor = $this->createStub(Processor::class);
+        $processor->method('sanitizeText')->willReturnArgument(0);
+
+        $indexer = $this->createMock(Indexer::class);
+        $indexer->expects($this->once())
+            ->method('doIndex')
+            ->with($this->callback(function (array $items) use ($inlineTeaser, $boundaryTeaser) {
+                $this->assertSame([$inlineTeaser, $boundaryTeaser], $items);
+
+                return true;
+            }))
+            ->willReturn($this->makeIndexerStatus(0));
+
+        $logger = $this->createStub(LoggerInterface::class);
+        $config = $this->createConfig($logger);
+
+        $manager = new CrawlerManager(
+            $urlCollector,
+            $fetcher,
+            $parser,
+            $processor,
+            $config,
+            new ExecuteStep($logger),
             $logger,
             $indexer,
         );
@@ -141,8 +221,7 @@ final class CrawlerManagerE2ETest extends TestCase
 
     public function testStopsWhenUrlCollectorReturnsEmpty(): void
     {
-        $urlCollector = $this->createStub(URLCollector::class);
-        $urlCollector->method('findHrefUrlsByCssSelector')->willReturn([]);
+        $urlCollector = $this->stubUrlCollector([], []);
 
         $fetcher = $this->createStub(Fetcher::class);
         $parser = $this->createStub(Parser::class);
@@ -154,96 +233,64 @@ final class CrawlerManagerE2ETest extends TestCase
             ->with($this->equalTo([]))
             ->willReturn($this->makeIndexerStatus(0));
 
-        $warnings = [];
-
         $logger = $this->createStub(LoggerInterface::class);
-        $logger->method('warning')
-            ->willReturnCallback(function ($message) use (&$warnings): void {
-                $warnings[] = (string) $message;
-            });
-
         $config = $this->createConfig($logger);
 
-        $manager = new CrawlerManager($urlCollector, $fetcher, $parser, $processor, $config, $logger, $indexer);
-
-        ob_start();
-        try {
-            $manager->startCrawler();
-        } finally {
-            $output = (string) ob_get_clean();
-        }
-
-        $this->assertTrue(
-            array_reduce(
-                $warnings,
-                fn(bool $carry, string $m) => $carry || str_contains($m, '[URLCollector] Step returned no data.'),
-                false,
-            ),
-            'Expected warning "[URLCollector] Step returned no data." not found. Got: ' . implode(' | ', $warnings),
+        $manager = new CrawlerManager(
+            $urlCollector,
+            $fetcher,
+            $parser,
+            $processor,
+            $config,
+            new ExecuteStep($logger),
+            $logger,
+            $indexer,
         );
 
-        $this->assertStringNotContainsString('Title', $output);
-        $this->assertStringNotContainsString('Cleaned', $output);
+        $manager->startCrawler();
     }
 
-    public function testLogsErrorWhenStepThrowsException(): void
+    public function testUrlCollectorFailurePropagatesDirectly(): void
     {
         $urlCollector = $this->createStub(URLCollector::class);
-        $urlCollector->method('findHrefUrlsByCssSelector')
-            ->willThrowException(new \RuntimeException('Collector failed'));
+        $urlCollector->method('collect')->willReturnCallback(
+            static function (): \Generator {
+                throw new \RuntimeException('Collector failed');
+
+                yield [];
+            },
+        );
 
         $fetcher = $this->createStub(Fetcher::class);
         $parser = $this->createStub(Parser::class);
         $processor = $this->createStub(Processor::class);
 
         $indexer = $this->createMock(Indexer::class);
-        $indexer->expects($this->never())
-            ->method('doIndex');
-
-        $errors = [];
+        $indexer->expects($this->never())->method('doIndex');
 
         $logger = $this->createStub(LoggerInterface::class);
-        $logger->method('error')
-            ->willReturnCallback(function ($message) use (&$errors): void {
-                $errors[] = (string) $message;
-            });
-
         $config = $this->createConfig($logger);
 
-        $manager = new CrawlerManager($urlCollector, $fetcher, $parser, $processor, $config, $logger, $indexer);
-
-        $thrownException = null;
-        ob_start();
-        try {
-            $manager->startCrawler();
-        } catch (\Atoolo\Crawler\Exception\StepExecution $e) {
-            $thrownException = $e;
-        } finally {
-            $output = (string) ob_get_clean();
-        }
-
-        $this->assertNotNull(
-            $thrownException,
-            'Expected StepExecution exception to be thrown',
+        $manager = new CrawlerManager(
+            $urlCollector,
+            $fetcher,
+            $parser,
+            $processor,
+            $config,
+            new ExecuteStep($logger),
+            $logger,
+            $indexer,
         );
 
-        $this->assertTrue(
-            array_reduce(
-                $errors,
-                fn(bool $carry, string $m) => $carry || str_contains($m, '[URLCollector] Error: Collector failed'),
-                false,
-            ),
-            'Expected error "[URLCollector] Error: Collector failed" not found. Got: ' . implode(' | ', $errors),
-        );
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Collector failed');
 
-        $this->assertStringNotContainsString('Title', $output);
-        $this->assertStringNotContainsString('Cleaned', $output);
+        $manager->startCrawler();
     }
 
     public function testStopsWhenFetcherReturnsEmpty(): void
     {
-        $urlCollector = $this->createStub(URLCollector::class);
-        $urlCollector->method('findHrefUrlsByCssSelector')->willReturn([$this->url1]);
+        $urlCollector = $this->stubUrlCollector([], [$this->url1]);
 
         $fetcher = $this->createStub(Fetcher::class);
         $fetcher->method('fetchUrls')->willReturn([]);
@@ -274,6 +321,7 @@ final class CrawlerManagerE2ETest extends TestCase
             $parser,
             $processor,
             $config,
+            new ExecuteStep($logger),
             $logger,
             $indexer,
         );
@@ -306,8 +354,7 @@ final class CrawlerManagerE2ETest extends TestCase
             ['url' => $this->url1, 'title' => 'Title Cleaned', 'date' => $date],
         ];
 
-        $urlCollector = $this->createStub(URLCollector::class);
-        $urlCollector->method('findHrefUrlsByCssSelector')->willReturn([$this->url1]);
+        $urlCollector = $this->stubUrlCollector([], [$this->url1]);
 
         $fetcher = $this->createStub(Fetcher::class);
         $fetcher->method('fetchUrls')->willReturn($pages);
@@ -335,6 +382,7 @@ final class CrawlerManagerE2ETest extends TestCase
             $parser,
             $processor,
             $config,
+            new ExecuteStep($logger),
             $logger,
             $indexer,
         );
@@ -357,8 +405,7 @@ final class CrawlerManagerE2ETest extends TestCase
             ['url' => $this->url1, 'html' => '<h1>Title 1</h1>'],
         ];
 
-        $urlCollector = $this->createStub(URLCollector::class);
-        $urlCollector->method('findHrefUrlsByCssSelector')->willReturn([$this->url1]);
+        $urlCollector = $this->stubUrlCollector([], [$this->url1]);
 
         $fetcher = $this->createStub(Fetcher::class);
         $fetcher->method('fetchUrls')->willReturn($pages);
@@ -387,6 +434,7 @@ final class CrawlerManagerE2ETest extends TestCase
             $parser,
             $processor,
             $config,
+            new ExecuteStep($logger),
             $logger,
             $indexer,
         );

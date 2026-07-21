@@ -37,15 +37,15 @@ final class FetcherTest extends TestCase
     /**
      * Test that exceptions when starting requests are logged and the retry mechanism is used.
      */
-    public function testFetchUrlsReturnsEmptyWhenExecutorReturnsNull(): void
+    public function testFetchUrlsReturnsEmptyWhenExecutorReturnsNoResponses(): void
     {
         $url = 'https://bad.example.com';
 
         $this->requestExecutorInterfaceMock
             ->expects($this->once())
-            ->method('request')
-            ->with($url)
-            ->willReturn(null);
+            ->method('requestChunk')
+            ->with([$url])
+            ->willReturn([]);
 
         $this->logger->expects($this->never())->method('error');
 
@@ -67,9 +67,9 @@ final class FetcherTest extends TestCase
 
         $this->requestExecutorInterfaceMock
             ->expects($this->once())
-            ->method('request')
-            ->with($url)
-            ->willReturn($response);
+            ->method('requestChunk')
+            ->with([$url])
+            ->willReturn([$url => $response]);
 
         $this->logger
             ->expects($this->once())
@@ -96,9 +96,9 @@ final class FetcherTest extends TestCase
 
         $this->requestExecutorInterfaceMock
             ->expects($this->once())
-            ->method('request')
-            ->with($url)
-            ->willReturn($response);
+            ->method('requestChunk')
+            ->with([$url])
+            ->willReturn([$url => $response]);
 
         $this->logger->expects($this->never())->method('error');
 

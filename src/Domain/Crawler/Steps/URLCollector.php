@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Atoolo\Crawler\Domain\Crawler\Steps;
 
 use Atoolo\Crawler\Config\CrawlerConfig;
-use Atoolo\Crawler\Domain\Crawler\Ports\RequestExecutorInterface;
 use Atoolo\Crawler\Domain\Crawler\Services\RobotsTxtCheckerInterface;
 use Atoolo\Crawler\Domain\Crawler\Services\URLNormalizer;
 use Psr\Log\LoggerInterface;
@@ -18,157 +17,110 @@ class URLCollector
         private readonly CrawlerConfig $config,
         private readonly URLNormalizer $urlNormalizer,
         private readonly LoggerInterface $logger,
-        private readonly RequestExecutorInterface $requestExecutor,
         private RobotsTxtCheckerInterface $robotsTxtChecker,
+        private readonly Fetcher $fetcher,
     ) {}
 
     /**
-     * Collects and filters all discoverable href URLs from the configured start URLs.
+     * Breadth-first crawls all configured start URLs.
      *
-     * The method loads each start page, limits link extraction to the configured
-     * DOM section, resolves absolute URLs, removes duplicates and finally applies
-     * allow/deny path filtering.
+     * URLs discovered beyond that depth are not fetched here; they are
+     * returned as the generator's return value, for the main
+     * Fetcher/Parser pipeline (orchestrated by the caller) to process.
+     *
+     * @return \Generator<int, array<int, array{url: string, html: string}>, mixed, list<string>>
+     */
+    public function collect(): \Generator
+    {
+        $maxTeaserLimit = $this->config->maxTeaser();
+
+        /** @var list<string> $collectedUrls */
+        $collectedUrls = [];
+
+        foreach ($this->config->startUrls() as $start) {
+            $maxDepth = (int) $start['extraction_depth'];
+            $visited = [];
+            $queue = [['url' => $start['url'], 'depth' => 0]];
+
+            for ($i = 0; $i < count($queue); ++$i) {
+                $url = (string) $queue[$i]['url'];
+                $depth = (int) $queue[$i]['depth'];
+
+                if ($depth > $maxDepth || isset($visited[$url])) {
+                    continue;
+                }
+
+                $visited[$url] = true;
+
+                $fetched = $this->fetcher->fetchUrls([$url]);
+                yield $fetched;
+
+                $pageUrls = array_diff(
+                    $this->findHrefUrlsByCssSelector($fetched, $url),
+                    array_keys($visited),
+                );
+
+                foreach ($pageUrls as $pageUrl) {
+                    $collectedUrls[] = $pageUrl;
+
+                    if (count($collectedUrls) >= $maxTeaserLimit) {
+                        return $collectedUrls;
+                    }
+
+                    if ($depth < $maxDepth && !isset($visited[$pageUrl])) {
+                        $queue[] = ['url' => $pageUrl, 'depth' => $depth + 1];
+                    }
+                }
+
+                if (function_exists('gc_collect_cycles')) {
+                    gc_collect_cycles();
+                }
+            }
+        }
+
+        return $collectedUrls;
+    }
+
+    /**
+     * Collects and filters all discoverable href URLs from the given fetched pages.
+     *
+     * Resolves absolute URLs, removes duplicates and applies allow/deny
+     * path filtering (via URLNormalizer) as well as robots.txt filtering.
+     *
+     * @param array<int, array{url: string, html: string}> $htmlData
      *
      * @return list<string> A list of unique, filtered absolute URLs
      */
-    public function findHrefUrlsByCssSelector(): array
+    private function findHrefUrlsByCssSelector(array $htmlData, string $baseUrl): array
     {
         $urls = [];
+        foreach ($htmlData as $html) {
+            $crawler = new Crawler($html['html'], $baseUrl);
+            $pageUrls = $this->extractAbsoluteUrlsFromScope($crawler, $baseUrl);
 
-        foreach ($this->config->startUrls() as $start) {
-            $urls = array_merge($urls, $this->crawlByDepth($start));
+            array_push($urls, ...$this->urlNormalizer->normalize($pageUrls));
+
+            if ($this->config->respectRobotsTxt()) {
+                $urls = $this->robotsTxtChecker->filterAllowed(array_values($urls));
+            }
         }
-
-        $urls = $this->urlNormalizer->normalize($urls);
-
-        if ($this->config->respectRobotsTxt()) {
-            $urls = $this->robotsTxtChecker->filterAllowed(array_values($urls));
-        }
-
-        if (count($urls) > $this->config->maxTeaser()) {
-            $urls = array_slice($urls, 0, $this->config->maxTeaser());
-        }
-
-        if ([] !== $this->config->forcedArticleUrls()) {
-            $urls = array_merge($urls, $this->config->forcedArticleUrls());
-        }
-
         return array_values(array_unique(array_filter($urls, 'is_string')));
     }
 
     /**
-     * Loads and returns a DOM crawler instance for the given base URL.
-     *
-     * @param string $baseUrl The URL to fetch and parse
-     *
-     * @return Crawler The initialized HTML crawler
-     *
-     * @throws \LogicException If the crawler could not be initialized
-     */
-    private function loadCrawlerForBaseUrl(string $baseUrl): Crawler
-    {
-        $response = $this->requestExecutor->request($baseUrl);
-        if (null === $response) {
-            throw new \LogicException('Request failed.');
-        }
-
-        $htmlContent = $response->getContent(false);
-
-        return new Crawler($htmlContent, $baseUrl);
-    }
-
-    /**
-     * Crawls URLs breadth-first from a start URL up to its extraction_depth.
-     *
-     * @param array{url:string, extraction_depth:int} $start
-     *
-     * @return array<int, string>
-     */
-    private function crawlByDepth(array $start): array
-    {
-        $found = [];
-        $maxDepth = (int) $start['extraction_depth'];
-        $limit = $this->config->maxTeaser();
-
-        $queue = [['url' => $start['url'], 'depth' => 0]];
-        $visited = [];
-
-        /** @var list<string> $denyPrefixes */
-        $denyPrefixes = $this->config->denyPrefixes();
-        /** @var list<string> $allowPrefixes */
-        $allowPrefixes = $this->config->allowPrefixes();
-
-        for ($i = 0; $i < count($queue); ++$i) {
-            if (count($found) >= $limit) {
-                break;
-            }
-
-            $url = $queue[$i]['url'];
-            $depth = (int) $queue[$i]['depth'];
-
-            if ($depth > $maxDepth || isset($visited[$url])) {
-                continue;
-            }
-            $visited[$url] = true;
-
-            $crawler = $this->loadCrawlerForBaseUrl($url);
-
-            foreach ($this->extractAbsoluteUrlsFromScope($crawler, $url) as $link) {
-                if ($this->startsWithAny($link, $denyPrefixes)) {
-                    continue;
-                }
-
-                if ([] !== $allowPrefixes && !$this->startsWithAny($link, $allowPrefixes)) {
-                    continue;
-                }
-
-                $found[] = $link;
-                if (count($found) >= $limit) {
-                    break 2; // raus aus foreach + for
-                }
-
-                if ($depth < $maxDepth && !isset($visited[$link])) {
-                    $queue[] = ['url' => $link, 'depth' => $depth + 1];
-                }
-            }
-
-            // wichtige Speicherhilfe
-            if (function_exists('gc_collect_cycles')) {
-                gc_collect_cycles();
-            }
-        }
-
-        return $found;
-    }
-
-    /**
-     * @param list<string> $prefixes
-     */
-    private function startsWithAny(string $url, array $prefixes): bool
-    {
-        foreach ($prefixes as $prefix) {
-            if ('' !== $prefix && str_starts_with($url, $prefix)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Extracts absolute HTTP(S) URLs from the given DOM scope.
+     * Extracts absolute HTTPS URLs from the given DOM scope.
      *
      * Relative URLs are resolved against the provided base URL.
-     * Invalid or non-HTTP(S) links are ignored.
+     * Invalid or non-HTTPS links are ignored.
      *
-     * @param Crawler $scope   The scoped DOM crawler
+     * @param Crawler $crawler The scoped DOM crawler
      * @param string  $baseUrl The base URL used for resolving relative links
      *
      * @return array<int, string> A list of extracted absolute URLs
      */
-    private function extractAbsoluteUrlsFromScope(Crawler $scope, string $baseUrl): array
+    private function extractAbsoluteUrlsFromScope(Crawler $crawler, string $baseUrl): array
     {
-        $found = $scope
+        $found = $crawler
             ->filter($this->config->linkSelector())
             ->each(function (Crawler $node) use ($baseUrl): ?string {
                 $domElement = $node->getNode(0);
