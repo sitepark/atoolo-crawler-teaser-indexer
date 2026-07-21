@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests;
 
-use Atoolo\Crawler\Exception\ThresholdNotMetException;
+use Atoolo\CrawlerIndexer\Exception\ThresholdNotMetException;
 use PHPUnit\Framework\TestCase;
 
 final class ThresholdNotMetExceptionTest extends TestCase

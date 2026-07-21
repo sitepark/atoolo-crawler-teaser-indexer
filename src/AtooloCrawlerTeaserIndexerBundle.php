@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Atoolo\Crawler;
+namespace Atoolo\CrawlerIndexer;
 
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\Config\Loader\GlobFileLoader;

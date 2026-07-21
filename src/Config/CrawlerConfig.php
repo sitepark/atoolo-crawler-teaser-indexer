@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Atoolo\Crawler\Config;
+namespace Atoolo\CrawlerIndexer\Config;
 
-use Atoolo\Crawler\Domain\Crawler\Services\ContentScoringConfig;
-use Atoolo\Crawler\Domain\Crawler\Services\DateTimeExtractConfig;
-use Atoolo\Crawler\Domain\Crawler\Services\IntroExtractConfig;
-use Atoolo\Crawler\Domain\Crawler\Services\TitleExtractConfig;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Services\ContentScoringConfig;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Services\DateTimeExtractConfig;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Services\IntroExtractConfig;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Services\TitleExtractConfig;
 
 final class CrawlerConfig
 {

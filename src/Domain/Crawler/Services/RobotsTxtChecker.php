@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Atoolo\Crawler\Domain\Crawler\Services;
+namespace Atoolo\CrawlerIndexer\Domain\Crawler\Services;
 
-use Atoolo\Crawler\Config\CrawlerConfig;
-use Atoolo\Crawler\Domain\Crawler\Ports\RequestExecutorInterface;
+use Atoolo\CrawlerIndexer\Config\CrawlerConfig;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Ports\RequestExecutorInterface;
 use Psr\Log\LoggerInterface;
 use Spatie\Robots\RobotsTxt;
 

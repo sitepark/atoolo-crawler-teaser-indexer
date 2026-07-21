@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Tests;
 
-use Atoolo\Crawler\Application\CrawlSiteRunner;
-use Atoolo\Crawler\Command\Index;
-use Atoolo\Crawler\Config\CrawlerConfigContext;
-use Atoolo\Crawler\Controller\CrawlerManager;
+use Atoolo\CrawlerIndexer\Application\CrawlSiteRunner;
+use Atoolo\CrawlerIndexer\Command\Index;
+use Atoolo\CrawlerIndexer\Config\CrawlerConfigContext;
+use Atoolo\CrawlerIndexer\Controller\CrawlerManager;
 use Atoolo\Resource\DataBag;
 use Atoolo\Search\Dto\Indexer\IndexerConfiguration;
 use Atoolo\Search\Service\Indexer\IndexerConfigurationLoader;

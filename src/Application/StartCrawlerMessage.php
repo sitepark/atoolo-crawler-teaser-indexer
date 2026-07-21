@@ -1,6 +1,6 @@
 <?php
 
-namespace Atoolo\Crawler\Application;
+namespace Atoolo\CrawlerIndexer\Application;
 
 /**
  * Message used by the Symfony Scheduler and Messenger

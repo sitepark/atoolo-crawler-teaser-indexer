@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Atoolo\Crawler\Proposal\Pipeline\Crawler;
+namespace Atoolo\CrawlerIndexer\Proposal\Pipeline\Crawler;
 
 interface RobotsTxtCheckerInterface
 {

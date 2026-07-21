@@ -1,6 +1,6 @@
 <?php
 
-namespace Atoolo\Crawler\Exception;
+namespace Atoolo\CrawlerIndexer\Exception;
 
 class ThresholdNotMetException extends \Exception
 {

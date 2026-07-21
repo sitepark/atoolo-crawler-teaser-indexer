@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Atoolo\Crawler\Domain\Crawler\Ports;
+namespace Atoolo\CrawlerIndexer\Domain\Crawler\Ports;
 
-use Atoolo\Crawler\Config\CrawlerConfig;
+use Atoolo\CrawlerIndexer\Config\CrawlerConfig;
 use Psr\Log\LoggerInterface;
 use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Tests;
 
-use Atoolo\Crawler\Config\CrawlerConfigContext;
-use Atoolo\Crawler\Config\CrawlerConfigHelper;
-use Atoolo\Crawler\Domain\Crawler\Services\LengthConditionConfig;
-use Atoolo\Crawler\Domain\Crawler\Services\ScoreRuleConfig;
+use Atoolo\CrawlerIndexer\Config\CrawlerConfigContext;
+use Atoolo\CrawlerIndexer\Config\CrawlerConfigHelper;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Services\LengthConditionConfig;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Services\ScoreRuleConfig;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 

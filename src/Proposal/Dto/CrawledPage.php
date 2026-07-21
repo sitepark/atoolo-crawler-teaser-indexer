@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Atoolo\Crawler\Proposal\Dto;
+namespace Atoolo\CrawlerIndexer\Proposal\Dto;
 
 /**
  * Output of CrawlerStepInterface, input to ParserStepInterface.

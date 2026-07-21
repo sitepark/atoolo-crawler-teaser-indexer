@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Atoolo\Crawler\Application;
+namespace Atoolo\CrawlerIndexer\Application;
 
-use Atoolo\Crawler\Config\CrawlerConfigContext;
-use Atoolo\Crawler\Controller\CrawlerManager;
+use Atoolo\CrawlerIndexer\Config\CrawlerConfigContext;
+use Atoolo\CrawlerIndexer\Controller\CrawlerManager;
 use Psr\Log\LoggerInterface;
 
 final class CrawlSiteRunner

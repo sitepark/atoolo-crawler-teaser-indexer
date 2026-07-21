@@ -18,16 +18,16 @@
 
 declare(strict_types=1);
 
-namespace Atoolo\Crawler\Controller;
+namespace Atoolo\CrawlerIndexer\Controller;
 
-use Atoolo\Crawler\Config\CrawlerConfig;
-use Atoolo\Crawler\Domain\Crawler\Services\ExecuteStep;
-use Atoolo\Crawler\Domain\Crawler\Services\TeaserDataInterface;
-use Atoolo\Crawler\Domain\Crawler\Steps\Fetcher;
-use Atoolo\Crawler\Domain\Crawler\Steps\Indexer;
-use Atoolo\Crawler\Domain\Crawler\Steps\Parser;
-use Atoolo\Crawler\Domain\Crawler\Steps\Processor;
-use Atoolo\Crawler\Domain\Crawler\Steps\URLCollector;
+use Atoolo\CrawlerIndexer\Config\CrawlerConfig;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Services\ExecuteStep;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Services\TeaserDataInterface;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Steps\Fetcher;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Steps\Indexer;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Steps\Parser;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Steps\Processor;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Steps\URLCollector;
 use Psr\Log\LoggerInterface;
 
 class CrawlerManager

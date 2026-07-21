@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests;
 
-use Atoolo\Crawler\Domain\Crawler\Ports\RequestExecutorInterface;
-use Atoolo\Crawler\Domain\Crawler\Steps\Fetcher;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Ports\RequestExecutorInterface;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Steps\Fetcher;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;

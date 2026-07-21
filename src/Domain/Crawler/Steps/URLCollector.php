@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Atoolo\Crawler\Domain\Crawler\Steps;
+namespace Atoolo\CrawlerIndexer\Domain\Crawler\Steps;
 
-use Atoolo\Crawler\Config\CrawlerConfig;
-use Atoolo\Crawler\Domain\Crawler\Services\RobotsTxtCheckerInterface;
-use Atoolo\Crawler\Domain\Crawler\Services\URLNormalizer;
+use Atoolo\CrawlerIndexer\Config\CrawlerConfig;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Services\RobotsTxtCheckerInterface;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Services\URLNormalizer;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\DomCrawler\Link;

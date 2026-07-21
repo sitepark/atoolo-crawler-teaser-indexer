@@ -9,43 +9,43 @@ services:
         Symfony\Component\Console\Command\Command:
             tags: ["command"]
 
-    Atoolo\Crawler\:
+    Atoolo\CrawlerIndexer\:
         resource: "../src/"
 
     # Run in Development
-    Atoolo\Crawler\Command\Index:
+    Atoolo\CrawlerIndexer\Command\Index:
         arguments:
             $indexerConfigurationLoader: '@atoolo_search.indexer.configuration_loader'
 
     # Run in Customer Projekt
-    Atoolo\Crawler\Application\Schedule:
+    Atoolo\CrawlerIndexer\Application\Schedule:
         arguments:
             $schedule: "%atoolo.crawler.schedule%"
 
-    Atoolo\Crawler\Application\StartCrawlerMessageHandler:
+    Atoolo\CrawlerIndexer\Application\StartCrawlerMessageHandler:
         arguments:
             $indexerConfigurationLoader: '@atoolo_search.indexer.configuration_loader'
 
-    Atoolo\Crawler\Domain\Crawler\Ports\RequestExecutor:
+    Atoolo\CrawlerIndexer\Domain\Crawler\Ports\RequestExecutor:
         arguments:
             $retryStatusCodes: "%atoolo.crawler.retry_status_codes%"
 
-    Atoolo\Crawler\Controller\CrawlerManager:
+    Atoolo\CrawlerIndexer\Controller\CrawlerManager:
         arguments:
-            $urlCollector: '@Atoolo\Crawler\Domain\Crawler\Steps\URLCollector'
-            $fetcher: '@Atoolo\Crawler\Domain\Crawler\Steps\Fetcher'
-            $processor: '@Atoolo\Crawler\Domain\Crawler\Steps\Processor'
+            $urlCollector: '@Atoolo\CrawlerIndexer\Domain\Crawler\Steps\URLCollector'
+            $fetcher: '@Atoolo\CrawlerIndexer\Domain\Crawler\Steps\Fetcher'
+            $processor: '@Atoolo\CrawlerIndexer\Domain\Crawler\Steps\Processor'
             $logger: "@logger"
-            $indexer: '@Atoolo\Crawler\Domain\Crawler\Steps\Indexer'
+            $indexer: '@Atoolo\CrawlerIndexer\Domain\Crawler\Steps\Indexer'
 
-    Atoolo\Crawler\Domain\Crawler\Ports\RequestExecutorInterface: '@Atoolo\Crawler\Domain\Crawler\Ports\RequestExecutor'
+    Atoolo\CrawlerIndexer\Domain\Crawler\Ports\RequestExecutorInterface: '@Atoolo\CrawlerIndexer\Domain\Crawler\Ports\RequestExecutor'
 
     # gehört eigentlich ins Kunden-FEDS bzw. Commons-FEDS
-    Atoolo\Crawler\Domain\Crawler\Steps\Indexer:
+    Atoolo\CrawlerIndexer\Domain\Crawler\Steps\Indexer:
         arguments:
             $indexService: "@atoolo_search.indexer.solr_index_service"
             $progressHandler: "@atoolo_search.indexer.internal_resource_progress_state"
 
-    Atoolo\Crawler\Domain\Crawler\Services\URLNormalizer:
+    Atoolo\CrawlerIndexer\Domain\Crawler\Services\URLNormalizer:
         arguments:
             $denyEndings: "%atoolo.crawler.deny_endings%"

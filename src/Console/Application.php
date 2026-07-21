@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Atoolo\Crawler\Console;
+namespace Atoolo\CrawlerIndexer\Console;
 
 use Symfony\Component\Console\Application as BaseApplication;
 use Symfony\Component\Console\CommandLoader\CommandLoaderInterface;

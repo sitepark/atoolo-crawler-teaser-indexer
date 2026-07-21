@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Atoolo\Crawler\Proposal\Pipeline;
+namespace Atoolo\CrawlerIndexer\Proposal\Pipeline;
 
-use Atoolo\Crawler\Proposal\Config\PipelineConfig;
+use Atoolo\CrawlerIndexer\Proposal\Config\PipelineConfig;
 use Psr\Log\LoggerInterface;
 
 /** Orchestrates the lazy step chain. Replaces Controller\CrawlerManager. */

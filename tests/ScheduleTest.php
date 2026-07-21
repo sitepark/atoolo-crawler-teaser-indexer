@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests;
 
-use Atoolo\Crawler\Application\Schedule;
+use Atoolo\CrawlerIndexer\Application\Schedule;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use Symfony\Contracts\Cache\CacheInterface;

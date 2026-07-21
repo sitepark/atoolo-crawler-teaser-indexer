@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Atoolo\Crawler\Config;
+namespace Atoolo\CrawlerIndexer\Config;
 
 use Symfony\Contracts\Service\ResetInterface;
 

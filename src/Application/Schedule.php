@@ -1,6 +1,6 @@
 <?php
 
-namespace Atoolo\Crawler\Application;
+namespace Atoolo\CrawlerIndexer\Application;
 
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Scheduler\Attribute\AsSchedule;

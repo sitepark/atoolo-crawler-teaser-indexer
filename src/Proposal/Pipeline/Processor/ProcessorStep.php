@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Atoolo\Crawler\Proposal\Pipeline\Processor;
+namespace Atoolo\CrawlerIndexer\Proposal\Pipeline\Processor;
 
-use Atoolo\Crawler\Proposal\Config\PipelineConfig;
-use Atoolo\Crawler\Proposal\Dto\IndexEntry;
-use Atoolo\Crawler\Proposal\Pipeline\ProcessorStepInterface;
+use Atoolo\CrawlerIndexer\Proposal\Config\PipelineConfig;
+use Atoolo\CrawlerIndexer\Proposal\Dto\IndexEntry;
+use Atoolo\CrawlerIndexer\Proposal\Pipeline\ProcessorStepInterface;
 
 final class ProcessorStep implements ProcessorStepInterface
 {

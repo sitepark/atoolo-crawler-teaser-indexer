@@ -39,12 +39,12 @@
     },
     "autoload": {
         "psr-4": {
-            "Atoolo\\Crawler\\": "src/"
+            "Atoolo\\CrawlerIndexer\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Atoolo\\Cralwer\\Tests\\": "tests/"
+            "Atoolo\\CrawlerIndexer\\Tests\\": "tests/"
         }
     },
     "conflict": {

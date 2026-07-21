@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests;
 
-use Atoolo\Crawler\Console\Application;
+use Atoolo\CrawlerIndexer\Console\Application;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Application as BaseApplication;
 use Symfony\Component\Console\CommandLoader\CommandLoaderInterface;

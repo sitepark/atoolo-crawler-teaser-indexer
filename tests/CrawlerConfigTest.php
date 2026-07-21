@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Tests;
 
-use Atoolo\Crawler\Config\CrawlerConfig;
-use Atoolo\Crawler\Config\CrawlerConfigContext;
-use Atoolo\Crawler\Config\CrawlerConfigHelper;
+use Atoolo\CrawlerIndexer\Config\CrawlerConfig;
+use Atoolo\CrawlerIndexer\Config\CrawlerConfigContext;
+use Atoolo\CrawlerIndexer\Config\CrawlerConfigHelper;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 

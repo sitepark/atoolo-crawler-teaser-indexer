@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Atoolo\Crawler\Proposal\Pipeline\Parser;
+namespace Atoolo\CrawlerIndexer\Proposal\Pipeline\Parser;
 
-use Atoolo\Crawler\Proposal\Config\ContentScoringConfig;
-use Atoolo\Crawler\Proposal\Dto\IndexEntry;
+use Atoolo\CrawlerIndexer\Proposal\Config\ContentScoringConfig;
+use Atoolo\CrawlerIndexer\Proposal\Dto\IndexEntry;
 
 interface RelevanceEvaluatorInterface
 {

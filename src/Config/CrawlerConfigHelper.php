@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Atoolo\Crawler\Config;
+namespace Atoolo\CrawlerIndexer\Config;
 
-use Atoolo\Crawler\Domain\Crawler\Services\LengthConditionConfig;
-use Atoolo\Crawler\Domain\Crawler\Services\ScoreRuleConfig;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Services\LengthConditionConfig;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Services\ScoreRuleConfig;
 use Psr\Log\LoggerInterface;
 
 final class CrawlerConfigHelper

@@ -1,14 +1,14 @@
 <?php
 
-namespace Atoolo\Crawler\Domain\Crawler\Steps;
+namespace Atoolo\CrawlerIndexer\Domain\Crawler\Steps;
 
-use Atoolo\Crawler\Config\CrawlerConfig;
-use Atoolo\Crawler\Domain\Crawler\Services\DateTimeExtractConfig;
-use Atoolo\Crawler\Domain\Crawler\Services\IntroExtractConfig;
-use Atoolo\Crawler\Domain\Crawler\Services\TeaserData;
-use Atoolo\Crawler\Domain\Crawler\Services\TeaserDataInterface;
-use Atoolo\Crawler\Domain\Crawler\Services\TeaserRelevanceEvaluatorInterface;
-use Atoolo\Crawler\Domain\Crawler\Services\TitleExtractConfig;
+use Atoolo\CrawlerIndexer\Config\CrawlerConfig;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Services\DateTimeExtractConfig;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Services\IntroExtractConfig;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Services\TeaserData;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Services\TeaserDataInterface;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Services\TeaserRelevanceEvaluatorInterface;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Services\TitleExtractConfig;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DomCrawler\Crawler;
 

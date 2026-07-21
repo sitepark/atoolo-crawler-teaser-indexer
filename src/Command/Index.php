@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Atoolo\Crawler\Command;
+namespace Atoolo\CrawlerIndexer\Command;
 
-use Atoolo\Crawler\Application\CrawlSiteRunner;
+use Atoolo\CrawlerIndexer\Application\CrawlSiteRunner;
 use Atoolo\Search\Service\Indexer\IndexerConfigurationLoader;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;

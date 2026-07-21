@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace Tests;
 
-use Atoolo\Crawler\Config\CrawlerConfig;
-use Atoolo\Crawler\Config\CrawlerConfigContext;
-use Atoolo\Crawler\Config\CrawlerConfigHelper;
-use Atoolo\Crawler\Domain\Crawler\Services\RobotsTxtCheckerInterface;
-use Atoolo\Crawler\Domain\Crawler\Services\URLNormalizer;
-use Atoolo\Crawler\Domain\Crawler\Steps\Fetcher;
-use Atoolo\Crawler\Domain\Crawler\Steps\URLCollector;
+use Atoolo\CrawlerIndexer\Config\CrawlerConfig;
+use Atoolo\CrawlerIndexer\Config\CrawlerConfigContext;
+use Atoolo\CrawlerIndexer\Config\CrawlerConfigHelper;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Services\RobotsTxtCheckerInterface;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Services\URLNormalizer;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Steps\Fetcher;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Steps\URLCollector;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 

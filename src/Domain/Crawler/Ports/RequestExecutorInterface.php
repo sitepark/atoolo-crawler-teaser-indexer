@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Atoolo\Crawler\Domain\Crawler\Ports;
+namespace Atoolo\CrawlerIndexer\Domain\Crawler\Ports;
 
 use Symfony\Contracts\HttpClient\ResponseInterface;
 

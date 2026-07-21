@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Atoolo\Crawler\Domain\Crawler\Steps;
+namespace Atoolo\CrawlerIndexer\Domain\Crawler\Steps;
 
-use Atoolo\Crawler\Config\CrawlerConfig;
-use Atoolo\Crawler\Domain\Crawler\Services\TeaserData;
-use Atoolo\Crawler\Domain\Crawler\Services\TeaserDataInterface;
+use Atoolo\CrawlerIndexer\Config\CrawlerConfig;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Services\TeaserData;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Services\TeaserDataInterface;
 use Psr\Log\LoggerInterface;
 
 /**

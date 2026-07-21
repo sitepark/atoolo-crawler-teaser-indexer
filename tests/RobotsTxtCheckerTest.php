@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Tests;
 
-use Atoolo\Crawler\Config\CrawlerConfig;
-use Atoolo\Crawler\Config\CrawlerConfigContext;
-use Atoolo\Crawler\Config\CrawlerConfigHelper;
-use Atoolo\Crawler\Domain\Crawler\Ports\RequestExecutorInterface;
-use Atoolo\Crawler\Domain\Crawler\Services\RobotsTxtChecker;
+use Atoolo\CrawlerIndexer\Config\CrawlerConfig;
+use Atoolo\CrawlerIndexer\Config\CrawlerConfigContext;
+use Atoolo\CrawlerIndexer\Config\CrawlerConfigHelper;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Ports\RequestExecutorInterface;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Services\RobotsTxtChecker;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;

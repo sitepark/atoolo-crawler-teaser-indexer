@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Atoolo\Crawler\Proposal\Pipeline\Parser;
+namespace Atoolo\CrawlerIndexer\Proposal\Pipeline\Parser;
 
-use Atoolo\Crawler\Proposal\Config\DateTimeExtractConfig;
-use Atoolo\Crawler\Proposal\Config\FieldExtractConfig;
-use Atoolo\Crawler\Proposal\Config\PipelineConfig;
-use Atoolo\Crawler\Proposal\Dto\CrawledPage;
-use Atoolo\Crawler\Proposal\Dto\IndexEntry;
-use Atoolo\Crawler\Proposal\Pipeline\ParserStepInterface;
+use Atoolo\CrawlerIndexer\Proposal\Config\DateTimeExtractConfig;
+use Atoolo\CrawlerIndexer\Proposal\Config\FieldExtractConfig;
+use Atoolo\CrawlerIndexer\Proposal\Config\PipelineConfig;
+use Atoolo\CrawlerIndexer\Proposal\Dto\CrawledPage;
+use Atoolo\CrawlerIndexer\Proposal\Dto\IndexEntry;
+use Atoolo\CrawlerIndexer\Proposal\Pipeline\ParserStepInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DomCrawler\Crawler;
 

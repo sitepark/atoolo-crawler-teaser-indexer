@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Atoolo\Crawler\Proposal\Pipeline\Crawler;
+namespace Atoolo\CrawlerIndexer\Proposal\Pipeline\Crawler;
 
-use Atoolo\Crawler\Proposal\Config\HttpFetcherConfig;
-use Atoolo\Crawler\Proposal\Config\PipelineConfig;
-use Atoolo\Crawler\Proposal\Dto\CrawledPage;
-use Atoolo\Crawler\Proposal\Pipeline\CrawlerStepInterface;
+use Atoolo\CrawlerIndexer\Proposal\Config\HttpFetcherConfig;
+use Atoolo\CrawlerIndexer\Proposal\Config\PipelineConfig;
+use Atoolo\CrawlerIndexer\Proposal\Dto\CrawledPage;
+use Atoolo\CrawlerIndexer\Proposal\Pipeline\CrawlerStepInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\DomCrawler\Link;

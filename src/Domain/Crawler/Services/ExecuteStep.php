@@ -1,9 +1,9 @@
 <?php
 declare(strict_types=1);
 
-namespace Atoolo\Crawler\Domain\Crawler\Services;
+namespace Atoolo\CrawlerIndexer\Domain\Crawler\Services;
 
-use Atoolo\Crawler\Exception\StepExecution;
+use Atoolo\CrawlerIndexer\Exception\StepExecution;
 use Psr\Log\LoggerInterface;
 
 class ExecuteStep

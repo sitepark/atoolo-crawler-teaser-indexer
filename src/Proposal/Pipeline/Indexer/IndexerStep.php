@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Atoolo\Crawler\Proposal\Pipeline\Indexer;
+namespace Atoolo\CrawlerIndexer\Proposal\Pipeline\Indexer;
 
-use Atoolo\Crawler\Proposal\Config\PipelineConfig;
-use Atoolo\Crawler\Proposal\Dto\IndexEntry;
-use Atoolo\Crawler\Proposal\Pipeline\IndexerStepInterface;
+use Atoolo\CrawlerIndexer\Proposal\Config\PipelineConfig;
+use Atoolo\CrawlerIndexer\Proposal\Dto\IndexEntry;
+use Atoolo\CrawlerIndexer\Proposal\Pipeline\IndexerStepInterface;
 use Atoolo\Resource\ResourceLanguage;
 use Atoolo\Search\Service\Indexer\SolrIndexService;
 use Psr\Log\LoggerInterface;

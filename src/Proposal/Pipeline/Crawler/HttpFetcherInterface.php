@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Atoolo\Crawler\Proposal\Pipeline\Crawler;
+namespace Atoolo\CrawlerIndexer\Proposal\Pipeline\Crawler;
 
-use Atoolo\Crawler\Proposal\Config\HttpFetcherConfig;
+use Atoolo\CrawlerIndexer\Proposal\Config\HttpFetcherConfig;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
 interface HttpFetcherInterface

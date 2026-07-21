@@ -1,6 +1,6 @@
 <?php
 
-namespace Atoolo\Crawler\Application;
+namespace Atoolo\CrawlerIndexer\Application;
 
 use Atoolo\Search\Service\Indexer\IndexerConfigurationLoader;
 use Psr\Log\LoggerInterface;

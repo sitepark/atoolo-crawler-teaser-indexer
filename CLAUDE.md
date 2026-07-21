@@ -266,7 +266,7 @@ This is a Symfony bundle (`symfony-bundle` type). When installed in a customer p
 
 1. Register in `config/bundles.php`:
    ```php
-   Atoolo\Crawler\AtooloCrawlerTeaserIndexerBundle::class => ['all' => true],
+   Atoolo\CrawlerIndexer\AtooloCrawlerTeaserIndexerBundle::class => ['all' => true],
    ```
 
 2. Create master config at `config/packages/atoolo_crawler_master.yaml`

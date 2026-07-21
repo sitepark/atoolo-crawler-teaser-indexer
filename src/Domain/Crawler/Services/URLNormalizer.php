@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Atoolo\Crawler\Domain\Crawler\Services;
+namespace Atoolo\CrawlerIndexer\Domain\Crawler\Services;
 
-use Atoolo\Crawler\Config\CrawlerConfig;
+use Atoolo\CrawlerIndexer\Config\CrawlerConfig;
 
 /**
  * Normalizes and filters URLs according to configurable rules.

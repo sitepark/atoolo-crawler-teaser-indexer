@@ -7,11 +7,11 @@
 
 declare(strict_types=1);
 
-namespace Atoolo\Crawler\Domain\Crawler\Steps;
+namespace Atoolo\CrawlerIndexer\Domain\Crawler\Steps;
 
-use Atoolo\Crawler\Config\CrawlerConfig;
-use Atoolo\Crawler\Domain\Crawler\Services\TeaserDataInterface;
-use Atoolo\Crawler\Exception\ThresholdNotMetException;
+use Atoolo\CrawlerIndexer\Config\CrawlerConfig;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Services\TeaserDataInterface;
+use Atoolo\CrawlerIndexer\Exception\ThresholdNotMetException;
 use Atoolo\Resource\ResourceLanguage;
 use Atoolo\Search\Dto\Indexer\IndexerStatus;
 use Atoolo\Search\Service\Indexer\IndexerProgressHandler;

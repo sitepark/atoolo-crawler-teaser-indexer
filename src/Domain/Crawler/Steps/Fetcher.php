@@ -13,9 +13,9 @@
 
 declare(strict_types=1);
 
-namespace Atoolo\Crawler\Domain\Crawler\Steps;
+namespace Atoolo\CrawlerIndexer\Domain\Crawler\Steps;
 
-use Atoolo\Crawler\Domain\Crawler\Ports\RequestExecutorInterface;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Ports\RequestExecutorInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 

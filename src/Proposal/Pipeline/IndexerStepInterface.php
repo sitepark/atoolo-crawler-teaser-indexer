@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Atoolo\Crawler\Proposal\Pipeline;
+namespace Atoolo\CrawlerIndexer\Proposal\Pipeline;
 
-use Atoolo\Crawler\Proposal\Config\PipelineConfig;
-use Atoolo\Crawler\Proposal\Dto\IndexEntry;
+use Atoolo\CrawlerIndexer\Proposal\Config\PipelineConfig;
+use Atoolo\CrawlerIndexer\Proposal\Dto\IndexEntry;
 
 /**
  * @throws \Throwable
