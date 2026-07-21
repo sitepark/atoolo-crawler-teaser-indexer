@@ -6,6 +6,6 @@
 
 # Crawler Teaser Indexer Bundle
 
-This bundle provides a simple crawler designed to generate teasers from external sources and indexing them into the Apache Solr search platform. This ensures that the teasers are discoverable via the website's search function. The process utilizes a PHP array containing the data that the crawler need to extract. You can extract the Title, Introtext, Date and DateTime.
+This bundle provides a simple crawler designed to generate documents from external sources and indexing them into the Apache Solr search platform. This ensures that the documents are discoverable via the website's search function. The process utilizes a PHP array containing the data that the crawler need to extract. You can extract the Title, Introtext, Date and DateTime.
 
 [Documentation](https://github.com/sitepark/atoolo-docs/blob/main/docs/develop/bundles/crawler-teaser-indexer.md)

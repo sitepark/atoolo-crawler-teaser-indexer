@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Atoolo\CrawlerIndexer\Domain\Crawler\Services;
 
-interface TeaserDataInterface
+interface ExtractedDataInterface
 {
     public function getUrl(): string;
 
@@ -15,7 +15,7 @@ interface TeaserDataInterface
     public function getDate(): ?\DateTimeInterface;
 }
 
-final class TeaserData implements TeaserDataInterface
+final class ExtractedData implements ExtractedDataInterface
 {
     public function __construct(
         private readonly string $url,

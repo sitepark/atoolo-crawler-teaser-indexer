@@ -7,8 +7,8 @@ namespace Tests;
 use Atoolo\CrawlerIndexer\Config\CrawlerConfig;
 use Atoolo\CrawlerIndexer\Config\CrawlerConfigContext;
 use Atoolo\CrawlerIndexer\Config\CrawlerConfigHelper;
-use Atoolo\CrawlerIndexer\Domain\Crawler\Services\TeaserDataInterface;
-use Atoolo\CrawlerIndexer\Domain\Crawler\Services\TeaserRelevanceEvaluatorInterface;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Services\ExtractedDataInterface;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Services\RelevanceEvaluatorInterface;
 use Atoolo\CrawlerIndexer\Domain\Crawler\Steps\Parser;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
@@ -72,22 +72,22 @@ final class ParserTest extends TestCase
         $helper = new CrawlerConfigHelper($ctx, $logger);
         $config = new CrawlerConfig($helper);
 
-        $evaluator = $this->createStub(TeaserRelevanceEvaluatorInterface::class);
+        $evaluator = $this->createStub(RelevanceEvaluatorInterface::class);
         $evaluator->method('relevant')->willReturn($evaluatorReturns);
 
         return new Parser($logger, $config, $evaluator);
     }
 
     /**
-     * Converts TeaserDataInterface[] to a normalized array structure for comparison.
+     * Converts ExtractedDataInterface[] to a normalized array structure for comparison.
      *
-     * @param TeaserDataInterface[] $result
+     * @param ExtractedDataInterface[] $result
      *
      * @return array<int, array<string, mixed>>
      */
     private function normalizeDatetime(array $result): array
     {
-        return array_map(static function (TeaserDataInterface $t): array {
+        return array_map(static function (ExtractedDataInterface $t): array {
             $normalized = [
                 'url' => $t->getUrl(),
                 'title' => $t->getTitle(),
@@ -118,7 +118,7 @@ final class ParserTest extends TestCase
 </html>
 HTML;
 
-        $result = $this->normalizeDatetime($this->parser->extractTeasers([
+        $result = $this->normalizeDatetime($this->parser->extractData([
             ['url' => 'https://example.com/page1', 'html' => $html],
         ]));
 
@@ -144,7 +144,7 @@ HTML;
 </html>
 HTML;
 
-        $result = $this->normalizeDatetime($this->parser->extractTeasers([
+        $result = $this->normalizeDatetime($this->parser->extractData([
             ['url' => 'https://example.com/page2', 'html' => $html],
         ]));
 
@@ -161,7 +161,7 @@ HTML;
     public function testSkipsWhenNoTitle(): void
     {
         $html = '<html><body><p>No title here</p></body></html>';
-        $result = $this->parser->extractTeasers([
+        $result = $this->parser->extractData([
             ['url' => 'https://example.com/page3', 'html' => $html],
         ]);
         $this->assertSame([], $result);
@@ -169,7 +169,7 @@ HTML;
 
     public function testSkipsEmptyHtml(): void
     {
-        $result = $this->parser->extractTeasers([
+        $result = $this->parser->extractData([
             ['url' => 'https://example.com/empty', 'html' => ''],
         ]);
         $this->assertSame([], $result);
@@ -180,7 +180,7 @@ HTML;
         $html1 = '<html><body><h1>First</h1></body></html>';
         $html2 = '<html><body><h1>Second</h1></body></html>';
 
-        $result = $this->parser->extractTeasers([
+        $result = $this->parser->extractData([
             ['url' => 'https://example.com/1', 'html' => $html1],
             ['url' => 'https://example.com/2', 'html' => $html2],
         ]);
@@ -197,7 +197,7 @@ HTML;
         $parser = $this->makeParser();
         $html = '<html><body><h1>Title</h1></body>' . str_repeat('x', 2_000_001) . '</html>';
 
-        $result = $parser->extractTeasers([
+        $result = $parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
         ]);
 
@@ -211,7 +211,7 @@ HTML;
         $parser = $this->makeParser(['sp_title_prefix' => 'PREFIX: ']);
         $html = '<html><body><h1>News</h1></body></html>';
 
-        $result = $parser->extractTeasers([
+        $result = $parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
         ]);
 
@@ -225,7 +225,7 @@ HTML;
         $parser = $this->makeParser();
         $html = '<html><body><h1>Title</h1><div class="introText">Ignored</div></body></html>';
 
-        $result = $parser->extractTeasers([
+        $result = $parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
         ]);
 
@@ -241,14 +241,14 @@ HTML;
         ]);
         $html = '<html><body><h1>Title</h1><p class="intro">Lead text</p></body></html>';
 
-        $result = $parser->extractTeasers([
+        $result = $parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
         ]);
 
         $this->assertSame('Lead text', $result[0]->getIntroText());
     }
 
-    public function testIntroTextRequiredAndMissingSkipsTeaser(): void
+    public function testIntroTextRequiredAndMissingSkipsDocument(): void
     {
         $parser = $this->makeParser([
             'sp_introText_present' => true,
@@ -257,14 +257,14 @@ HTML;
         ]);
         $html = '<html><body><h1>Title</h1></body></html>';
 
-        $result = $parser->extractTeasers([
+        $result = $parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
         ]);
 
         $this->assertSame([], $result);
     }
 
-    public function testIntroTextNotFoundAndNotRequiredKeepsTeaser(): void
+    public function testIntroTextNotFoundAndNotRequiredKeepsDocument(): void
     {
         $parser = $this->makeParser([
             'sp_introText_present' => true,
@@ -273,7 +273,7 @@ HTML;
         ]);
         $html = '<html><body><h1>Title</h1></body></html>';
 
-        $result = $parser->extractTeasers([
+        $result = $parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
         ]);
 
@@ -295,7 +295,7 @@ HTML;
 </html>
 HTML;
 
-        $result = $parser->extractTeasers([
+        $result = $parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
         ]);
 
@@ -309,7 +309,7 @@ HTML;
         $parser = $this->makeParser();
         $html = '<html><body><h1>Title</h1><div class="date">2026-01-14</div></body></html>';
 
-        $result = $parser->extractTeasers([
+        $result = $parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
         ]);
 
@@ -317,7 +317,7 @@ HTML;
         $this->assertNull($result[0]->getDate());
     }
 
-    public function testDateTimeRequiredAndMissingSkipsTeaser(): void
+    public function testDateTimeRequiredAndMissingSkipsDocument(): void
     {
         $parser = $this->makeParser([
             'sp_datetime_present' => true,
@@ -326,14 +326,14 @@ HTML;
         ]);
         $html = '<html><body><h1>Title</h1></body></html>';
 
-        $result = $parser->extractTeasers([
+        $result = $parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
         ]);
 
         $this->assertSame([], $result);
     }
 
-    public function testDateTimeNotFoundButNotRequiredKeepsTeaser(): void
+    public function testDateTimeNotFoundButNotRequiredKeepsDocument(): void
     {
         $parser = $this->makeParser([
             'sp_datetime_present' => true,
@@ -342,7 +342,7 @@ HTML;
         ]);
         $html = '<html><body><h1>Title</h1></body></html>';
 
-        $result = $parser->extractTeasers([
+        $result = $parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
         ]);
 
@@ -364,7 +364,7 @@ HTML;
 </html>
 HTML;
 
-        $result = $parser->extractTeasers([
+        $result = $parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
         ]);
 
@@ -389,7 +389,7 @@ HTML;
 </html>
 HTML;
 
-        $result = $parser->extractTeasers([
+        $result = $parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
         ]);
 
@@ -407,7 +407,7 @@ HTML;
         ]);
         $html = '<html><body><h1>Title</h1><span class="published">2026-07-04</span></body></html>';
 
-        $result = $parser->extractTeasers([
+        $result = $parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
         ]);
 
@@ -425,7 +425,7 @@ HTML;
         ]);
         $html = '<html><body><h1>Title</h1><div class="date">2026-01-14 08:30:00</div></body></html>';
 
-        $result = $parser->extractTeasers([
+        $result = $parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
         ]);
 
@@ -445,7 +445,7 @@ HTML;
         ]);
         $html = '<html><body><h1>Title</h1><div class="date">2026-01-14 12:00:00</div></body></html>';
 
-        $result = $parser->extractTeasers([
+        $result = $parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
         ]);
 
@@ -457,30 +457,30 @@ HTML;
 
     // --- Content scoring ---
 
-    public function testContentScoringFiltersOutTeaser(): void
+    public function testContentScoringFiltersOutDocument(): void
     {
         $parser = $this->makeParser(
             ['sp_content_scoring_active' => true],
-            false, // evaluator rejects the teaser
+            false, // evaluator rejects the document
         );
         $html = '<html><body><h1>Title</h1></body></html>';
 
-        $result = $parser->extractTeasers([
+        $result = $parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
         ]);
 
         $this->assertSame([], $result);
     }
 
-    public function testContentScoringKeepsTeaser(): void
+    public function testContentScoringKeepsDocument(): void
     {
         $parser = $this->makeParser(
             ['sp_content_scoring_active' => true],
-            true, // evaluator accepts the teaser
+            true, // evaluator accepts the Document
         );
         $html = '<html><body><h1>Title</h1></body></html>';
 
-        $result = $parser->extractTeasers([
+        $result = $parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
         ]);
 
@@ -501,7 +501,7 @@ HTML;
         ]);
         $html = '<html><body><h1>Title</h1></body></html>';
 
-        $result = $parser->extractTeasers([
+        $result = $parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
         ]);
 
@@ -519,7 +519,7 @@ HTML;
         ]);
         $html = '<html><body><h1>Title</h1></body></html>';
 
-        $result = $parser->extractTeasers([
+        $result = $parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
         ]);
 
@@ -538,7 +538,7 @@ HTML;
         ]);
         $html = '<html><body><h1>Title</h1><div class="date">@invalid</div></body></html>';
 
-        $result = $parser->extractTeasers([
+        $result = $parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
         ]);
 
@@ -551,7 +551,7 @@ HTML;
         $logger = $this->createMock(LoggerInterface::class);
         $logger->expects($this->once())->method('warning');
 
-        $evaluator = $this->createMock(TeaserRelevanceEvaluatorInterface::class);
+        $evaluator = $this->createMock(RelevanceEvaluatorInterface::class);
         $evaluator->method('relevant')->willThrowException(new \RuntimeException('evaluator error'));
 
         $ctx = new CrawlerConfigContext(array_merge([
@@ -576,12 +576,12 @@ HTML;
         $parser = new Parser($logger, $config, $evaluator);
 
         $html = '<html><body><h1>Title</h1></body></html>';
-        $result = $parser->extractTeasers([['url' => 'https://example.com/', 'html' => $html]]);
+        $result = $parser->extractData([['url' => 'https://example.com/', 'html' => $html]]);
 
         $this->assertSame([], $result);
     }
 
-    public function testDateTimeRequiredAndUnparseableRawValueSkipsTeaser(): void
+    public function testDateTimeRequiredAndUnparseableRawValueSkipsDocument(): void
     {
         $parser = $this->makeParser([
             'sp_datetime_present' => true,
@@ -591,7 +591,7 @@ HTML;
         ]);
         $html = '<html><body><h1>Title</h1><div class="date">@invalid</div></body></html>';
 
-        $result = $parser->extractTeasers([['url' => 'https://example.com/', 'html' => $html]]);
+        $result = $parser->extractData([['url' => 'https://example.com/', 'html' => $html]]);
 
         $this->assertSame([], $result);
     }

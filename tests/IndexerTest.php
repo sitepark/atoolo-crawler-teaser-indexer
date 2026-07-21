@@ -7,7 +7,7 @@ namespace Tests;
 use Atoolo\CrawlerIndexer\Config\CrawlerConfig;
 use Atoolo\CrawlerIndexer\Config\CrawlerConfigContext;
 use Atoolo\CrawlerIndexer\Config\CrawlerConfigHelper;
-use Atoolo\CrawlerIndexer\Domain\Crawler\Services\TeaserData;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Services\ExtractedData;
 use Atoolo\CrawlerIndexer\Domain\Crawler\Steps\Indexer;
 use Atoolo\CrawlerIndexer\Exception\ThresholdNotMetException;
 use Atoolo\Search\Dto\Indexer\IndexerStatus;
@@ -67,8 +67,8 @@ final class IndexerTest extends TestCase
         $indexer = $this->makeIndexer();
 
         $status = $indexer->doIndex([
-            new TeaserData('https://example.com/page1', 'Page 1'),
-            new TeaserData('https://example.com/page2', 'Page 2'),
+            new ExtractedData('https://example.com/page1', 'Page 1'),
+            new ExtractedData('https://example.com/page2', 'Page 2'),
         ]);
 
         $this->assertInstanceOf(IndexerStatus::class, $status);
@@ -110,7 +110,7 @@ final class IndexerTest extends TestCase
         );
 
         $status = $indexer->doIndex([
-            new TeaserData('https://example.com/', 'Title', 'Intro text here'),
+            new ExtractedData('https://example.com/', 'Title', 'Intro text here'),
         ]);
 
         $this->assertInstanceOf(IndexerStatus::class, $status);
@@ -121,7 +121,7 @@ final class IndexerTest extends TestCase
         $indexer = $this->makeIndexer(['sp_datetime_present' => true]);
 
         $status = $indexer->doIndex([
-            new TeaserData('https://example.com/', 'Title', null, new \DateTimeImmutable('2026-01-01')),
+            new ExtractedData('https://example.com/', 'Title', null, new \DateTimeImmutable('2026-01-01')),
         ]);
 
         $this->assertInstanceOf(IndexerStatus::class, $status);
@@ -132,7 +132,7 @@ final class IndexerTest extends TestCase
         $indexer = $this->makeIndexer(['sp_datetime_present' => true]);
 
         $status = $indexer->doIndex([
-            new TeaserData('https://example.com/', 'Title', null, new \DateTimeImmutable('2026-01-01T00:00:00Z')),
+            new ExtractedData('https://example.com/', 'Title', null, new \DateTimeImmutable('2026-01-01T00:00:00Z')),
         ]);
 
         $this->assertInstanceOf(IndexerStatus::class, $status);
@@ -146,7 +146,7 @@ final class IndexerTest extends TestCase
         $indexer = $this->makeIndexer(['sp_datetime_present' => true], logger: $logger);
 
         $status = $indexer->doIndex([
-            new TeaserData('https://example.com/', 'Title', null, new \DateTimeImmutable('2026-01-01')),
+            new ExtractedData('https://example.com/', 'Title', null, new \DateTimeImmutable('2026-01-01')),
         ]);
 
         $this->assertInstanceOf(IndexerStatus::class, $status);
@@ -179,7 +179,7 @@ final class IndexerTest extends TestCase
         );
 
         $indexer->doIndex([
-            new TeaserData('https://example.com/', 'Title'),
+            new ExtractedData('https://example.com/', 'Title'),
         ]);
     }
 
@@ -203,7 +203,7 @@ final class IndexerTest extends TestCase
         $this->expectExceptionMessage('Solr not reachable');
 
         $indexer->doIndex([
-            new TeaserData('https://example.com/', 'Title'),
+            new ExtractedData('https://example.com/', 'Title'),
         ]);
     }
 
@@ -237,8 +237,8 @@ final class IndexerTest extends TestCase
 
         // Item 1 throws, item 2 succeeds
         $status = $indexer->doIndex([
-            new TeaserData('https://example.com/bad', 'Bad'),
-            new TeaserData('https://example.com/good', 'Good'),
+            new ExtractedData('https://example.com/bad', 'Bad'),
+            new ExtractedData('https://example.com/good', 'Good'),
         ]);
 
         $this->assertInstanceOf(IndexerStatus::class, $status);

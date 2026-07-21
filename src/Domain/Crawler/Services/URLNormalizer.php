@@ -58,13 +58,15 @@ final class URLNormalizer
     }
 
     /**
-     * Sanitizes URLs by parsing and rebuilding them into a canonical structure.
+     * Removes URLs that match a deny prefix or that fall outside the configured
+     * allow prefixes.
      *
-     * Invalid URLs (parse failure or missing scheme/host) are returned unchanged.
+     * Filtered URLs are dropped entirely (not blanked), so no empty strings
+     * leak into the pipeline.
      *
      * @param array<int,string> $urls
      *
-     * @return array<int,string> Sanitized URLs
+     * @return array<int,string> Remaining URLs
      */
     private function filterDenyedAlowedUrls(array $urls): array
     {
@@ -73,19 +75,19 @@ final class URLNormalizer
         /** @var list<string> $allowPrefixes */
         $allowPrefixes = $this->config->allowPrefixes();
 
-        $sanitizedUrls = array_map(function (string $url) use ($denyPrefixes, $allowPrefixes): string {
+        $filtered = array_filter($urls, function (string $url) use ($denyPrefixes, $allowPrefixes): bool {
             if ($this->startsWithAny($url, $denyPrefixes)) {
-                return '';
+                return false;
             }
 
             if ([] !== $allowPrefixes && !$this->startsWithAny($url, $allowPrefixes)) {
-                return '';
+                return false;
             }
 
-            return $url;
-        }, $urls);
+            return true;
+        });
 
-        return array_values($sanitizedUrls);
+        return array_values($filtered);
     }
 
     /**

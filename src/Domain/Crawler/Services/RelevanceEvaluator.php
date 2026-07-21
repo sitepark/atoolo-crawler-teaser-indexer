@@ -7,14 +7,14 @@ namespace Atoolo\CrawlerIndexer\Domain\Crawler\Services;
 use Atoolo\CrawlerIndexer\Config\CrawlerConfig;
 use Symfony\Component\DomCrawler\Crawler;
 
-final class TeaserRelevanceEvaluator implements TeaserRelevanceEvaluatorInterface
+final class RelevanceEvaluator implements RelevanceEvaluatorInterface
 {
     public function __construct(
         private readonly CrawlerConfig $config,
     ) {}
 
     /**
-     * Evaluates whether a teaser is relevant based on its content (HTML, title, intro)
+     * Evaluates whether a document is relevant based on its content (HTML, title, intro)
      * and the defined scoring configuration.
      *
      * @param array{

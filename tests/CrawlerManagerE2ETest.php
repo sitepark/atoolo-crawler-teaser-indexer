@@ -9,8 +9,8 @@ use Atoolo\CrawlerIndexer\Config\CrawlerConfigContext;
 use Atoolo\CrawlerIndexer\Config\CrawlerConfigHelper;
 use Atoolo\CrawlerIndexer\Controller\CrawlerManager;
 use Atoolo\CrawlerIndexer\Domain\Crawler\Services\ExecuteStep;
-use Atoolo\CrawlerIndexer\Domain\Crawler\Services\TeaserData;
-use Atoolo\CrawlerIndexer\Domain\Crawler\Services\TeaserRelevanceEvaluatorInterface;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Services\ExtractedData;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Services\RelevanceEvaluatorInterface;
 use Atoolo\CrawlerIndexer\Domain\Crawler\Steps\Fetcher;
 use Atoolo\CrawlerIndexer\Domain\Crawler\Steps\Indexer;
 use Atoolo\CrawlerIndexer\Domain\Crawler\Steps\Parser;
@@ -122,7 +122,7 @@ final class CrawlerManagerE2ETest extends TestCase
         $fetcher->method('fetchUrls')->willReturn($pages);
 
         $parser = $this->createStub(Parser::class);
-        $parser->method('extractTeasers')->willReturn($parsed);
+        $parser->method('extractData')->willReturn($parsed);
 
         $processor = $this->createStub(Processor::class);
         $processor->method('sanitizeText')->willReturn($processed);
@@ -167,7 +167,7 @@ final class CrawlerManagerE2ETest extends TestCase
     /**
      * Pages that URLCollector already had to fetch while following links
      * (streamed as chunks from collect()) must be parsed by the manager
-     * and merged with the teasers coming from the boundary-URL pipeline.
+     * and merged with the Documents coming from the boundary-URL pipeline.
      */
     public function testChunksStreamedByUrlCollectorAreParsedAndMerged(): void
     {
@@ -177,13 +177,13 @@ final class CrawlerManagerE2ETest extends TestCase
 
         $urlCollector = $this->stubUrlCollector([$inlineChunk], [$this->url2]);
 
-        $inlineTeaser = new TeaserData($this->url1, 'Title 1');
-        $boundaryTeaser = new TeaserData($this->url2, 'Title 2');
+        $inlineDocument = new ExtractedData($this->url1, 'Title 1');
+        $boundaryDocument = new ExtractedData($this->url2, 'Title 2');
 
         $parser = $this->createStub(Parser::class);
-        $parser->method('extractTeasers')->willReturnMap([
-            [$inlineChunk, [$inlineTeaser]],
-            [[['url' => $this->url2, 'html' => '<h1>Title 2</h1>']], [$boundaryTeaser]],
+        $parser->method('extractData')->willReturnMap([
+            [$inlineChunk, [$inlineDocument]],
+            [[['url' => $this->url2, 'html' => '<h1>Title 2</h1>']], [$boundaryDocument]],
         ]);
 
         $fetcher = $this->createStub(Fetcher::class);
@@ -195,8 +195,8 @@ final class CrawlerManagerE2ETest extends TestCase
         $indexer = $this->createMock(Indexer::class);
         $indexer->expects($this->once())
             ->method('doIndex')
-            ->with($this->callback(function (array $items) use ($inlineTeaser, $boundaryTeaser) {
-                $this->assertSame([$inlineTeaser, $boundaryTeaser], $items);
+            ->with($this->callback(function (array $items) use ($inlineDocument, $boundaryDocument) {
+                $this->assertSame([$inlineDocument, $boundaryDocument], $items);
 
                 return true;
             }))
@@ -305,7 +305,7 @@ final class CrawlerManagerE2ETest extends TestCase
 
         $config = $this->createConfig($logger);
 
-        $evaluator = $this->createStub(TeaserRelevanceEvaluatorInterface::class);
+        $evaluator = $this->createStub(RelevanceEvaluatorInterface::class);
         $parser = new Parser($logger, $config, $evaluator);
         $processor = new Processor($logger, $config);
 
@@ -360,7 +360,7 @@ final class CrawlerManagerE2ETest extends TestCase
         $fetcher->method('fetchUrls')->willReturn($pages);
 
         $parser = $this->createStub(Parser::class);
-        $parser->method('extractTeasers')->willReturn($parsed);
+        $parser->method('extractData')->willReturn($parsed);
 
         $processor = $this->createStub(Processor::class);
         $processor->method('sanitizeText')->willReturn($processed);
@@ -394,9 +394,9 @@ final class CrawlerManagerE2ETest extends TestCase
 
     /**
      * Uses real Processor (Generator) so that storageHandlingFetcherParser's
-     * "yield $teaser" line is actually executed.
+     * "yield $Document" line is actually executed.
      */
-    public function testStorageHandlingYieldsTeasersWithRealProcessor(): void
+    public function testStorageHandlingYieldsDocumentsWithRealProcessor(): void
     {
         $logger = $this->createStub(LoggerInterface::class);
         $config = $this->createConfig($logger);
@@ -410,9 +410,9 @@ final class CrawlerManagerE2ETest extends TestCase
         $fetcher = $this->createStub(Fetcher::class);
         $fetcher->method('fetchUrls')->willReturn($pages);
 
-        $parsed = [new TeaserData($this->url1, 'Title 1')];
+        $parsed = [new ExtractedData($this->url1, 'Title 1')];
         $parser = $this->createStub(Parser::class);
-        $parser->method('extractTeasers')->willReturn($parsed);
+        $parser->method('extractData')->willReturn($parsed);
 
         // Real Processor returns a Generator — this causes storageHandlingFetcherParser to yield
         $processor = new Processor($logger, $config);

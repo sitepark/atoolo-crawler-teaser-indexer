@@ -220,17 +220,17 @@ final class CrawlerConfigTest extends TestCase
         $this->assertSame(['utm_source', 'utm_medium'], $config->stripQueryParams());
     }
 
-    // --- maxTeaser / cleanupThreshold ---
+    // --- maxDocument / cleanupThreshold ---
 
-    public function testMaxTeaserDefault(): void
+    public function testMaxDocumentDefault(): void
     {
         $config = $this->makeConfig([]);
         $this->assertSame(100, $config->maxTeaser());
     }
 
-    public function testMaxTeaserCustom(): void
+    public function testMaxDocumentCustom(): void
     {
-        $config = $this->makeConfig(['sp_max_teaser' => 50]);
+        $config = $this->makeConfig(['sp_max_document' => 50]);
         $this->assertSame(50, $config->maxTeaser());
     }
 
@@ -439,12 +439,12 @@ final class CrawlerConfigTest extends TestCase
 
     public function testCrawlerConfigContextResetClearsParams(): void
     {
-        $ctx = new CrawlerConfigContext(['sp_id' => 'my-id', 'sp_max_teaser' => 50]);
+        $ctx = new CrawlerConfigContext(['sp_id' => 'my-id', 'sp_max_document' => 50]);
         $this->assertSame('my-id', $ctx->get('sp_id'));
 
         $ctx->reset();
 
         $this->assertNull($ctx->get('sp_id'));
-        $this->assertNull($ctx->get('sp_max_teaser'));
+        $this->assertNull($ctx->get('sp_max_document'));
     }
 }

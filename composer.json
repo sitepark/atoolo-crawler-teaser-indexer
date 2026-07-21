@@ -69,8 +69,8 @@
         "analyse:compatibilitycheck": "./vendor/bin/phpcs --standard=phpcs.compatibilitycheck.xml",
         "analyse:phplint": "./tools/phplint",
         "analyse:phpstan": "./tools/phpstan analyse",
-        "analyse:php-cs-checker": "./vendor/bin/php-cs-fixer check --diff --show-progress=dots",
-        "php-cs-fixer": "./vendor/bin/php-cs-fixer fix",
+        "analyse:php-cs-checker": "PHP_CS_FIXER_IGNORE_ENV=1 ./tools/php-cs-fixer check --diff --show-progress=dots",
+        "php-cs-fixer": "PHP_CS_FIXER_IGNORE_ENV=1 ./tools/php-cs-fixer fix",
         "report": [
             "@report:phpstan"
         ],

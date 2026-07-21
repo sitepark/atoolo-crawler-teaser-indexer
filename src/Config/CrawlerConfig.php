@@ -95,7 +95,7 @@ final class CrawlerConfig
     {
         return $this->crawlerConfigHelper->bool('sp_strip_query_params_active', false);
     }
-    
+
     /**
      * @return list<string>
      */
@@ -112,7 +112,7 @@ final class CrawlerConfig
 
     public function maxTeaser(): int
     {
-        return $this->crawlerConfigHelper->int('sp_max_teaser', 100);
+        return $this->crawlerConfigHelper->int('sp_max_document', 100);
     }
 
     public function cleanupThreshold(): int
@@ -197,7 +197,7 @@ final class CrawlerConfig
         return $this->crawlerConfigHelper->bool('sp_datetime_present', false);
     }
 
-    // --- content Scoring (The goal is to keep only the most relevant teasers when there are too many of them.) ---
+    // --- content Scoring (The goal is to keep only the most relevant docu when there are too many of them.) ---
 
     public function contentScoringActive(): bool
     {

@@ -245,9 +245,12 @@ final class RequestExecutorTest extends TestCase
     {
         $transportException = new class ('timeout') extends \Exception implements TransportExceptionInterface {};
 
-        $httpClient = $this->createStub(HttpClientInterface::class);
-        $httpClient->method('withOptions')->willReturnSelf();
-        $httpClient->method('request')->willThrowException($transportException);
+        // Symfony's HttpClient is lazy: transport errors surface when the
+        // response is read, not when request() is called.
+        $response = $this->createStub(ResponseInterface::class);
+        $response->method('getStatusCode')->willThrowException($transportException);
+
+        $httpClient = $this->makeHttpClient($response);
 
         $config = $this->makeConfig(['sp_max_retry' => 2, 'sp_backoff_ms' => 0]);
         $logger = $this->createStub(LoggerInterface::class);

@@ -32,7 +32,7 @@ class URLCollector
      */
     public function collect(): \Generator
     {
-        $maxTeaserLimit = $this->config->maxTeaser();
+        $maxDocuments = $this->config->maxTeaser();
 
         /** @var list<string> $collectedUrls */
         $collectedUrls = [];
@@ -63,7 +63,7 @@ class URLCollector
                 foreach ($pageUrls as $pageUrl) {
                     $collectedUrls[] = $pageUrl;
 
-                    if (count($collectedUrls) >= $maxTeaserLimit) {
+                    if (count($collectedUrls) >= $maxDocuments) {
                         return $collectedUrls;
                     }
 
@@ -104,6 +104,7 @@ class URLCollector
                 $urls = $this->robotsTxtChecker->filterAllowed(array_values($urls));
             }
         }
+
         return array_values(array_unique(array_filter($urls, 'is_string')));
     }
 

@@ -21,7 +21,7 @@ use Psr\Log\LoggerInterface;
  * HTML pages (the ones it had to fetch anyway to follow links up to a
  * start URL's extraction_depth) and, once exhausted, returns the list of
  * URLs discovered beyond that depth via getReturn(). Parsing those pages
- * into teasers is the caller's (CrawlerManager) responsibility.
+ * into documents is the caller's (CrawlerManager) responsibility.
  *
  * This test suite ensures that:
  * - Links are extracted, filtered and returned as the generator's return value.
@@ -69,7 +69,7 @@ final class URLCollectorTest extends TestCase
         $ctx = new CrawlerConfigContext(array_merge([
             'sp_start_urls' => [['sp_url' => $this->urlPrefix, 'sp_extraction_depth' => 0]],
             'sp_link_selector' => '#content a[href]',
-            'sp_max_teaser' => 999,
+            'sp_max_document' => 999,
             'sp_deny_prefixes' => [],
             'sp_allow_prefixes' => [$this->urlPrefix],
             'sp_strip_query_params_active' => false,
@@ -285,7 +285,7 @@ HTML;
         );
     }
 
-    public function testMaxTeaserStopsCollectionGlobally(): void
+    public function testMaxDStopsCollectionGlobally(): void
     {
         $html = <<<HTML
 <!doctype html>
@@ -301,7 +301,7 @@ HTML;
         $robotsTxtChecker = $this->createStub(RobotsTxtCheckerInterface::class);
 
         $collector = $this->createCollector($fetcher, $logger, $robotsTxtChecker, [
-            'sp_max_teaser' => 2,
+            'sp_max_document' => 2,
         ]);
         $generator = $collector->collect();
         iterator_to_array($generator);

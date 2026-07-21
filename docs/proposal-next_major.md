@@ -4,9 +4,9 @@
 
 Dieses Dokument ist die **verbindliche Spezifikation** der Zielarchitektur. Unter `src/Proposal/` liegt ein **Code-Skelett**, das sie in Klassen/Signaturen skizziert — bewusst unvollständig (Stubs, keine Adapter, keine Tests). Wo Skelett und Dokument abweichen, gilt das Dokument; offene Stellen im Skelett sind mit „⚠️" markiert. Warum überhaupt umgebaut wird — und was am Bestehenden gut ist — steht kompakt in [review.md](review.md).
 
-Zwei bereits getroffene Grundsatzentscheidungen:
-1. **Ziel-Namespace `Atoolo\CrawlerIndexer`** (statt `Atoolo\Crawler`).
-2. **Indexer bleibt direkt an Solr gekoppelt** — kein Infrastructure-Port (Abschnitt 6).
+Zwei bereits getroffene Grundsatzentscheidungen:#
+1. **Ziel-Namespace `Atoolo\CrawlerIndexer`** (statt `Atoolo\Crawler`).#
+2. **Indexer bleibt direkt an Solr gekoppelt** — kein Infrastructure-Port (Abschnitt 6).#
 
 ## Ausgangslage
 
@@ -16,7 +16,7 @@ Das Bundle crawlt Websites, extrahiert Teaser-Daten (Titel, Intro, Datum) und in
 
 ## 1. Namensgebung
 
-„teaser" ist im Kern überflüssig — das Bundle crawlt, prozessiert, indiziert; dass die Daten *später* als Teaser ausgegeben werden, muss es nicht wissen. Konsequenz: `TeaserRelevanceEvaluator` → `RelevanceEvaluator` (5.1) und Base-Namespace → `Atoolo\CrawlerIndexer` (Abschnitt 2).
+„teaser" ist im Kern überflüssig — das Bundle crawlt, prozessiert, indiziert; dass die Daten *später* als Teaser ausgegeben werden, muss es nicht wissen. Konsequenz: `RelevanceEvaluator` → `RelevanceEvaluator` (5.1) und Base-Namespace → `Atoolo\CrawlerIndexer` (Abschnitt 2).
 
 ## 2. Namespaces & Verzeichnisstruktur
 
@@ -145,7 +145,7 @@ Das Skelett definiert nur Interfaces; die Adapter aus dem Altcode migrieren:
 |-----------|---------|----------|
 | `HttpFetcherInterface` | `HttpFetcher` | `RequestExecutor` (Throttle, Retry/Backoff, Retry-After) |
 | `RobotsTxtCheckerInterface` | `RobotsTxtChecker` | heutiger `RobotsTxtChecker` (spatie) |
-| `RelevanceEvaluatorInterface` | `RelevanceEvaluator` | `TeaserRelevanceEvaluator`, auf DOM-Übergabe umgestellt (5.1) |
+| `RelevanceEvaluatorInterface` | `RelevanceEvaluator` | `RelevanceEvaluator`, auf DOM-Übergabe umgestellt (5.1) |
 
 **Indexer/Solr — bewusst gekoppelt:** Der `IndexerStep` hängt direkt an `SolrIndexService`. Das Bundle hat genau einen Zweck (Solr), ein Port wäre Overhead. Absicht, nicht Nachlässigkeit.
 

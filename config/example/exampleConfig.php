@@ -16,7 +16,7 @@ return [
                 'id' => 'cityname_my_websitename',
                 'respect_robots_txt' => true,
                 'robots_url' => 'https://example.com/robots.txt',
-                'max_teaser' => '1000',
+                'max_document' => '1000',
                 'max_retry' => '3',
                 'parallel_requests' => '3',
                 'delay_ms' => '500',

@@ -118,7 +118,7 @@ src/
 │   │   ├── FieldExtractConfig   - Config for title/intro extraction
 │   │   ├── DateTimeExtractConfig - Config for datetime extraction
 │   │   ├── ContentScoringConfig - Config for content scoring/filtering
-│   │   ├── TeaserRelevanceEvaluator - Implements content scoring logic
+│   │   ├── RelevanceEvaluator - Implements content scoring logic
 │   │   ├── RobotsTxtChecker     - Validates URLs against robots.txt
 │   │   └── URLNormalizer        - Normalizes URLs (query param stripping, deduplication)
 │   └── Ports/
@@ -154,7 +154,7 @@ All configuration is **PHP array-based**, loaded via `IndexerConfigurationLoader
 **RobotsTxtCheckerInterface** - Validates URLs against robots.txt
 - Loaded from config, optional (controlled by `sp_respect_robots_txt`)
 
-**TeaserRelevanceEvaluatorInterface** - Content scoring logic
+**RelevanceEvaluatorInterface** - Content scoring logic
 - Evaluates teasers based on positive/negative signals in URL and body text
 - Filters out teasers below `sp_content_scoring_min_score` threshold
 

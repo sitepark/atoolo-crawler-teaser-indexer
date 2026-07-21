@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Atoolo\CrawlerIndexer\Domain\Crawler\Services;
 
-interface TeaserRelevanceEvaluatorInterface
+interface RelevanceEvaluatorInterface
 {
     /**
      * @param array<string,mixed> $relevanceData

@@ -7,20 +7,20 @@ namespace Tests;
 use Atoolo\CrawlerIndexer\Config\CrawlerConfig;
 use Atoolo\CrawlerIndexer\Config\CrawlerConfigContext;
 use Atoolo\CrawlerIndexer\Config\CrawlerConfigHelper;
-use Atoolo\CrawlerIndexer\Domain\Crawler\Services\TeaserRelevanceEvaluator;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Services\RelevanceEvaluator;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 
-final class TeaserRelevanceEvaluatorTest extends TestCase
+final class RelevanceEvaluatorTest extends TestCase
 {
-    private function makeEvaluator(array $config): TeaserRelevanceEvaluator
+    private function makeEvaluator(array $config): RelevanceEvaluator
     {
         $logger = $this->createStub(LoggerInterface::class);
         $ctx = new CrawlerConfigContext($config);
         $helper = new CrawlerConfigHelper($ctx, $logger);
         $crawlerConfig = new CrawlerConfig($helper);
 
-        return new TeaserRelevanceEvaluator($crawlerConfig);
+        return new RelevanceEvaluator($crawlerConfig);
     }
 
     private function baseConfig(array $overrides = []): array

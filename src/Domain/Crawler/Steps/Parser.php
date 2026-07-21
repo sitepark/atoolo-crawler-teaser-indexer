@@ -5,9 +5,9 @@ namespace Atoolo\CrawlerIndexer\Domain\Crawler\Steps;
 use Atoolo\CrawlerIndexer\Config\CrawlerConfig;
 use Atoolo\CrawlerIndexer\Domain\Crawler\Services\DateTimeExtractConfig;
 use Atoolo\CrawlerIndexer\Domain\Crawler\Services\IntroExtractConfig;
-use Atoolo\CrawlerIndexer\Domain\Crawler\Services\TeaserData;
-use Atoolo\CrawlerIndexer\Domain\Crawler\Services\TeaserDataInterface;
-use Atoolo\CrawlerIndexer\Domain\Crawler\Services\TeaserRelevanceEvaluatorInterface;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Services\ExtractedData;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Services\ExtractedDataInterface;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Services\RelevanceEvaluatorInterface;
 use Atoolo\CrawlerIndexer\Domain\Crawler\Services\TitleExtractConfig;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DomCrawler\Crawler;
@@ -17,17 +17,17 @@ class Parser
     public function __construct(
         private readonly LoggerInterface $logger,
         private readonly CrawlerConfig $config,
-        private readonly TeaserRelevanceEvaluatorInterface $teaserRelevanceEvaluator,
+        private readonly RelevanceEvaluatorInterface $relevanceEvaluator,
     ) {}
 
     /**
-     * Extract teaser-data from fetched HTML.
+     * Extract document from fetched HTML.
      *
      * @param array<int, array{url: string, html: string}> $htmlData
      *
-     * @return TeaserDataInterface[]
+     * @return ExtractedDataInterface[]
      */
-    public function extractTeasers(array $htmlData): array
+    public function extractData(array $htmlData): array
     {
         $results = [];
 
@@ -60,14 +60,14 @@ class Parser
                         [
                             'key' => 'title',
                             'url' => $item['url'],
-                            'dataFound' => $title
+                            'dataFound' => $title,
                         ],
                     );
                     continue;
                 }
 
                 $url = $item['url'];
-                $teaserTitle = ($titleConfig->prefix ?? '') . $title;
+                $title = ($titleConfig->prefix ?? '') . $title;
 
                 $introText = $this->extractIntroductionText($crawler, $introConfig);
                 if (null === $introText && $introConfig->requiredField) {
@@ -82,20 +82,20 @@ class Parser
                 if ($scoringActive) {
                     $relevanceData = [
                         'url' => $url,
-                        'title' => $teaserTitle,
+                        'title' => $title,
                         'introText' => $introText,
                         'html' => $html,
                     ];
-                    $keepTeaser = $this->teaserRelevanceEvaluator->relevant($relevanceData);
-                    if (!$keepTeaser) {
+                    $keepDocument = $this->relevanceEvaluator->relevant($relevanceData);
+                    if (!$keepDocument) {
                         $this->logger->debug(
-                            'Teaser not Relevant',
+                            'Document not Relevant',
                             ['relevanceData' => $relevanceData],
                         );
                         continue;
                     }
                 }
-                $results[] = new TeaserData($url, $teaserTitle, $introText, $dateTime);
+                $results[] = new ExtractedData($url, $title, $introText, $dateTime);
             } catch (\Throwable $e) {
                 $this->logger->warning('[Parser] No Data found for URL', [
                     'url' => $item['url'],

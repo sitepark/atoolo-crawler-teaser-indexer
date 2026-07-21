@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace Atoolo\CrawlerIndexer\Domain\Crawler\Steps;
 
 use Atoolo\CrawlerIndexer\Config\CrawlerConfig;
-use Atoolo\CrawlerIndexer\Domain\Crawler\Services\TeaserData;
-use Atoolo\CrawlerIndexer\Domain\Crawler\Services\TeaserDataInterface;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Services\ExtractedData;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Services\ExtractedDataInterface;
 use Psr\Log\LoggerInterface;
 
 /**
- * The Processor is responsible for sanitizing and normalizing teaser data.
+ * The Processor is responsible for sanitizing and normalizing document.
  * It removes potentially unsafe or irrelevant elements (e.g., HTML tags,
  * scripts, styles), decodes entities, trims whitespace, and ensures titles
  * are consistently formatted. If titles exceed the defined maximum length,
@@ -19,7 +19,7 @@ use Psr\Log\LoggerInterface;
  * By encapsulating these cleaning and formatting rules, the Processor
  * guarantees that all downstream components receive safe, consistent,
  * and usable data. Within the pipeline, it acts as the "data preparation"
- * stage, transforming raw extracted content into standardized teaser
+ * stage, transforming raw extracted content into standardized document
  * information.
  */
 class Processor
@@ -30,13 +30,13 @@ class Processor
     ) {}
 
     /**
-     * @param iterable<int, TeaserDataInterface> $rawTeaserData
+     * @param iterable<int, ExtractedDataInterface> $rawextractedData
      *
-     * @return \Generator<int, TeaserDataInterface>
+     * @return \Generator<int, ExtractedDataInterface>
      */
-    public function sanitizeText(iterable $rawTeaserData): iterable
+    public function sanitizeText(iterable $rawextractedData): iterable
     {
-        foreach ($rawTeaserData as $item) {
+        foreach ($rawextractedData as $item) {
             try {
                 $cleanTitle = $this->cleanString($item->getTitle());
                 $titleConfig = $this->config->titleConfig();
@@ -53,14 +53,14 @@ class Processor
                     $cleanIntroText = $this->truncate($this->cleanString($rawIntroText), $introTextConfig->maxChars);
                 }
 
-                yield new TeaserData(
+                yield new ExtractedData(
                     $item->getUrl(),
                     $truncatedTitle,
                     $cleanIntroText,
                     $item->getDate(),
                 );
             } catch (\Throwable $e) {
-                $this->logger->error('[Processor] Failed to process teaser', [
+                $this->logger->error('[Processor] Failed to process document', [
                     'exception' => $e->getMessage(),
                     'item' => $item,
                 ]);
@@ -91,7 +91,7 @@ class Processor
     }
 
     /**
-     * Truncates a teaser string to a maximum length of 120 characters.
+     * Truncates a document string to a maximum length of 120 characters.
      *
      * @param string $text the cleaned text
      *
@@ -100,7 +100,7 @@ class Processor
     private function truncate(string $text, int $maxLength): string
     {
         if ('' === $text) {
-            $this->logger->warning('[Processor] Empty teaser text encountered');
+            $this->logger->warning('[Processor] Empty document text encountered');
 
             return '';
         }

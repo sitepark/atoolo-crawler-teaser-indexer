@@ -7,8 +7,8 @@ namespace Tests;
 use Atoolo\CrawlerIndexer\Config\CrawlerConfig;
 use Atoolo\CrawlerIndexer\Config\CrawlerConfigContext;
 use Atoolo\CrawlerIndexer\Config\CrawlerConfigHelper;
-use Atoolo\CrawlerIndexer\Domain\Crawler\Services\TeaserData;
-use Atoolo\CrawlerIndexer\Domain\Crawler\Services\TeaserDataInterface;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Services\ExtractedData;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Services\ExtractedDataInterface;
 use Atoolo\CrawlerIndexer\Domain\Crawler\Steps\Processor;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
@@ -34,21 +34,21 @@ final class ProcessorTest extends TestCase
     {
         $datetime = new \DateTimeImmutable('2012-10-12T00:00:00', new \DateTimeZone('UTC'));
         $input = [
-            new TeaserData('https://example.com/1', '<p>Hello <b>World</b></p>', '<p>Dies ist <b>eine</b> Einleitung.</p>', $datetime),
-            new TeaserData('https://example.com/2', "<script>alert('XSS');</script>Test", "<script>alert('bad');</script>Kurztext", $datetime),
-            new TeaserData('https://example.com/3', '   &uuml;berzeugt   ', '   &auml;u&szlig;erst  <i>wichtig</i>   ', $datetime),
-            new TeaserData('https://example.com/4', '', 'Soll ignoriert werden (kein Titel)', $datetime),
-            new TeaserData('https://example.com/5', '       ', '   ', $datetime),
-            new TeaserData('https://example.com/6', str_repeat('a', 200), str_repeat('b', 300), $datetime),
-            new TeaserData('https://example.com/7', "<span style='color:red'>Red Text</span>", "<span style='color:red'>Roter <b>Intro</b> Text</span>", $datetime),
+            new ExtractedData('https://example.com/1', '<p>Hello <b>World</b></p>', '<p>Dies ist <b>eine</b> Einleitung.</p>', $datetime),
+            new ExtractedData('https://example.com/2', "<script>alert('XSS');</script>Test", "<script>alert('bad');</script>Kurztext", $datetime),
+            new ExtractedData('https://example.com/3', '   &uuml;berzeugt   ', '   &auml;u&szlig;erst  <i>wichtig</i>   ', $datetime),
+            new ExtractedData('https://example.com/4', '', 'Soll ignoriert werden (kein Titel)', $datetime),
+            new ExtractedData('https://example.com/5', '       ', '   ', $datetime),
+            new ExtractedData('https://example.com/6', str_repeat('a', 200), str_repeat('b', 300), $datetime),
+            new ExtractedData('https://example.com/7', "<span style='color:red'>Red Text</span>", "<span style='color:red'>Roter <b>Intro</b> Text</span>", $datetime),
         ];
 
         $expected = [
-            new TeaserData('https://example.com/1', 'Hello World', 'Dies ist eine Einleitung.', $datetime),
-            new TeaserData('https://example.com/2', 'Test', 'Kurztext', $datetime),
-            new TeaserData('https://example.com/3', 'überzeugt', 'äußerst wichtig', $datetime),
-            new TeaserData('https://example.com/6', str_repeat('a', 120) . '…', str_repeat('b', 120) . '…', $datetime),
-            new TeaserData('https://example.com/7', 'Red Text', 'Roter Intro Text', $datetime),
+            new ExtractedData('https://example.com/1', 'Hello World', 'Dies ist eine Einleitung.', $datetime),
+            new ExtractedData('https://example.com/2', 'Test', 'Kurztext', $datetime),
+            new ExtractedData('https://example.com/3', 'überzeugt', 'äußerst wichtig', $datetime),
+            new ExtractedData('https://example.com/6', str_repeat('a', 120) . '…', str_repeat('b', 120) . '…', $datetime),
+            new ExtractedData('https://example.com/7', 'Red Text', 'Roter Intro Text', $datetime),
         ];
 
         $result = $this->processor->sanitizeText($input);
@@ -59,7 +59,7 @@ final class ProcessorTest extends TestCase
     {
         $datetime = new \DateTimeImmutable('2024-01-01T00:00:00', new \DateTimeZone('UTC'));
         $input = [
-            new TeaserData('https://example.com/page', 'Title', null, $datetime),
+            new ExtractedData('https://example.com/page', 'Title', null, $datetime),
         ];
 
         $result = iterator_to_array($this->processor->sanitizeText($input));
@@ -72,7 +72,7 @@ final class ProcessorTest extends TestCase
     public function testItemWithoutDatetimeKeyOmitsDatetimeField(): void
     {
         $input = [
-            new TeaserData('https://example.com/page', 'Title'),
+            new ExtractedData('https://example.com/page', 'Title'),
         ];
 
         $result = iterator_to_array($this->processor->sanitizeText($input));
@@ -84,7 +84,7 @@ final class ProcessorTest extends TestCase
     public function testEmptyCleanedTitleAfterStrippingIsDiscarded(): void
     {
         $input = [
-            new TeaserData('https://example.com/page', '<script>alert(1)</script>'),
+            new ExtractedData('https://example.com/page', '<script>alert(1)</script>'),
         ];
 
         $result = iterator_to_array($this->processor->sanitizeText($input));
@@ -103,7 +103,7 @@ final class ProcessorTest extends TestCase
         $processor = new Processor($logger, $config);
 
         $input = [
-            new TeaserData('https://example.com/page', '   '),
+            new ExtractedData('https://example.com/page', '   '),
         ];
 
         $result = iterator_to_array($processor->sanitizeText($input));
@@ -114,7 +114,7 @@ final class ProcessorTest extends TestCase
     public function testIntroTextEmptyStringIsNotIncludedInOutput(): void
     {
         $input = [
-            new TeaserData('https://example.com/page', 'Title', ''),
+            new ExtractedData('https://example.com/page', 'Title', ''),
         ];
 
         $result = iterator_to_array($this->processor->sanitizeText($input));
@@ -133,7 +133,7 @@ final class ProcessorTest extends TestCase
         $config = new CrawlerConfig($helper);
         $processor = new Processor($logger, $config);
 
-        $throwingItem = $this->createMock(TeaserDataInterface::class);
+        $throwingItem = $this->createMock(ExtractedDataInterface::class);
         $throwingItem->method('getTitle')->willThrowException(new \RuntimeException('unexpected'));
 
         $result = iterator_to_array($processor->sanitizeText([$throwingItem]));

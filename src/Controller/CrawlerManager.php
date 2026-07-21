@@ -11,7 +11,7 @@
  * The managed steps are:
  * 1. URLCollector: Collects URLs from the base page.
  * 2. Fetcher: Retrieves the HTML content of the collected URLs. If Process storage is full starts the Parser.
- * 2. Parser: Extracts relevant teaser data from the HTML.
+ * 2. Parser: Extracts relevant documents from the HTML.
  * 3. Processor: Cleans and formats the extracted data.
  * 4. Indexer: Enriches and indexes the data.
  */
@@ -22,7 +22,7 @@ namespace Atoolo\CrawlerIndexer\Controller;
 
 use Atoolo\CrawlerIndexer\Config\CrawlerConfig;
 use Atoolo\CrawlerIndexer\Domain\Crawler\Services\ExecuteStep;
-use Atoolo\CrawlerIndexer\Domain\Crawler\Services\TeaserDataInterface;
+use Atoolo\CrawlerIndexer\Domain\Crawler\Services\ExtractedDataInterface;
 use Atoolo\CrawlerIndexer\Domain\Crawler\Steps\Fetcher;
 use Atoolo\CrawlerIndexer\Domain\Crawler\Steps\Indexer;
 use Atoolo\CrawlerIndexer\Domain\Crawler\Steps\Parser;
@@ -50,36 +50,36 @@ class CrawlerManager
     {
         $htmlPage = $this->urlCollector->collect();
 
-        /** @var array<int, TeaserDataInterface> $teaser */
-        $teaser = [];
+        /** @var array<int, ExtractedDataInterface> $parsedDocuments */
+        $parsedDocuments = [];
         foreach ($htmlPage as $html) {
-            $teaserDataIterator = $this->executeStep->executeStep(
+            $parsedDocumentsIterator = $this->executeStep->executeStep(
                 'Parser',
-                fn($pages) => $this->parser->extractTeasers($pages),
+                fn($pages) => $this->parser->extractData($pages),
                 $html,
             );
-            array_push($teaser, ...iterator_to_array($teaserDataIterator));
+            array_push($parsedDocuments, ...iterator_to_array($parsedDocumentsIterator));
         }
 
         /** @var list<string> $collectedUrls */
         $collectedUrls = $htmlPage->getReturn();
+        $rawParsedDocumentsStream = $this->storageHandlingFetcherParser($collectedUrls, count($parsedDocuments));
 
-        $rawTeaserStream = $this->storageHandlingFetcherParser($collectedUrls, count($teaser));
-        /** @var array<int, TeaserDataInterface> $fetchedTeasers */
-        $fetchedTeasers = iterator_to_array($rawTeaserStream);
-        
-        $allRawTeasers = array_merge($teaser, $fetchedTeasers);
+        /** @var array<int, ExtractedDataInterface> $fetchedParsedDocuments */
+        $fetchedParsedDocuments = iterator_to_array($rawParsedDocumentsStream);
 
-        /** @var TeaserDataInterface[] $finalTeaserData */
-        $finalTeaserData = iterator_to_array(
+        $allRawParsedDocuments = array_merge($parsedDocuments, $fetchedParsedDocuments);
+
+        /** @var ExtractedDataInterface[] $processedDocuments */
+        $processedDocuments = iterator_to_array(
             $this->executeStep->executeStep(
                 'Processor',
                 fn($rawData) => $this->processor->sanitizeText($rawData),
-                $allRawTeasers,
+                $allRawParsedDocuments,
             ),
         );
 
-        $indexerStatus = $this->indexer->doIndex($finalTeaserData);
+        $indexerStatus = $this->indexer->doIndex($processedDocuments);
         $this->logger->info('Indexer statusLine: ' . $indexerStatus->getStatusLine());
         if (0 == $indexerStatus->errors) {
             $this->logger->info("No Status Error [{$indexerStatus->errors}]: Crawling Prozess completed successfully.");
@@ -91,9 +91,9 @@ class CrawlerManager
     /**
      * @param list<string> $urls
      *
-     * @return iterable<int, TeaserDataInterface>
+     * @return \Generator<int, ExtractedDataInterface>
      */
-    private function storageHandlingFetcherParser(array $urls, int $collectedTeaserCount): iterable
+    private function storageHandlingFetcherParser(array $urls, int $collectedDocumentCount): \Generator
     {
         $forcedUrls = $this->config->forcedArticleUrls();
         $concurrency = max(1, $this->config->parallelRequests());
@@ -104,7 +104,7 @@ class CrawlerManager
         ];
 
         foreach ($taggedChunks as [$isForced, $chunk]) {
-            if (!$isForced && $collectedTeaserCount >= $this->config->maxTeaser()) {
+            if (!$isForced && $collectedDocumentCount >= $this->config->maxTeaser()) {
                 continue;
             }
 
@@ -116,21 +116,21 @@ class CrawlerManager
 
             $htmlData = iterator_to_array($htmlDataIterator);
 
-            $teaserDataIterator = $this->executeStep->executeStep(
+            $extractedDataIterator = $this->executeStep->executeStep(
                 'Parser',
-                fn($pages) => $this->parser->extractTeasers($pages),
+                fn($pages) => $this->parser->extractData($pages),
                 $htmlData,
             );
 
-            /** @var array<int, TeaserDataInterface> $teaserData */
-            $teaserData = iterator_to_array($teaserDataIterator);
+            /** @var array<int, ExtractedDataInterface> $extractedData */
+            $extractedData = iterator_to_array($extractedDataIterator);
 
-            foreach ($teaserData as $teaserItem) {
-                yield $teaserItem;
-                ++$collectedTeaserCount;
+            foreach ($extractedData as $document) {
+                yield $document;
+                ++$collectedDocumentCount;
             }
 
-            unset($htmlData, $teaserData, $htmlDataIterator, $teaserDataIterator);
+            unset($htmlData, $extractedData, $htmlDataIterator, $extractedDataIterator);
         }
     }
 }
