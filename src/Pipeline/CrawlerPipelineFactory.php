@@ -39,7 +39,6 @@ class CrawlerPipelineFactory
     public function __construct(
         private readonly LoggerInterface $logger,
         private readonly HttpClientInterface $httpClient,
-        private readonly ExecuteStep $executeStep,
         private readonly SolrIndexService $indexService,
         private readonly IndexerProgressHandler $progressHandler,
         private readonly array $denyEndings,
@@ -75,9 +74,8 @@ class CrawlerPipelineFactory
             $urlCollector,
             $parser,
             $processor,
-            $this->executeStep,
-            $this->logger,
             $indexer,
+            $this->logger,
         );
     }
 }

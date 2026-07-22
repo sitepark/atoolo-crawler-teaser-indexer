@@ -7,7 +7,6 @@ namespace Atoolo\CrawlerIndexer\Tests;
 use Atoolo\CrawlerIndexer\Config\PipelineConfig;
 use Atoolo\CrawlerIndexer\Config\PipelineConfigHelper;
 use Atoolo\CrawlerIndexer\Pipeline\CrawlerPipeline;
-use Atoolo\CrawlerIndexer\Pipeline\ExecuteStep;
 use Atoolo\CrawlerIndexer\Dto\ExtractedData;
 use Atoolo\CrawlerIndexer\Pipeline\Indexer\Indexer;
 use Atoolo\CrawlerIndexer\Pipeline\Parser\Parser;
@@ -90,9 +89,8 @@ final class CrawlerPipelineE2ETest extends TestCase
             $urlCollector,
             $parser,
             $processor,
-            new ExecuteStep($logger),
-            $logger,
             $indexer,
+            $logger,
         );
     }
 

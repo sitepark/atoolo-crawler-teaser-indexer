@@ -12,7 +12,7 @@ use Atoolo\CrawlerIndexer\Pipeline\RelevanceEvaluator\RelevanceEvaluatorInterfac
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DomCrawler\Crawler;
 
-class Parser
+class Parser implements ParserInterface
 {
     public function __construct(
         private readonly LoggerInterface $logger,

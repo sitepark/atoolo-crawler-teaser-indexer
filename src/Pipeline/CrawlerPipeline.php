@@ -20,21 +20,21 @@ declare(strict_types=1);
 namespace Atoolo\CrawlerIndexer\Pipeline;
 
 use Atoolo\CrawlerIndexer\Dto\ExtractedDataInterface;
-use Atoolo\CrawlerIndexer\Pipeline\Indexer\Indexer;
-use Atoolo\CrawlerIndexer\Pipeline\Parser\Parser;
-use Atoolo\CrawlerIndexer\Pipeline\Processor\Processor;
-use Atoolo\CrawlerIndexer\Pipeline\Collector\URLCollector;
+use Atoolo\CrawlerIndexer\Exception\StepExecution;
+use Atoolo\CrawlerIndexer\Pipeline\Collector\URLCollectorInterface;
+use Atoolo\CrawlerIndexer\Pipeline\Indexer\IndexerInterface;
+use Atoolo\CrawlerIndexer\Pipeline\Parser\ParserInterface;
+use Atoolo\CrawlerIndexer\Pipeline\Processor\ProcessorInterface;
 use Psr\Log\LoggerInterface;
 
 class CrawlerPipeline
 {
     public function __construct(
-        private readonly URLCollector $urlCollector,
-        private readonly Parser $parser,
-        private readonly Processor $processor,
-        private readonly ExecuteStep $executeStep,
+        private readonly URLCollectorInterface $urlCollector,
+        private readonly ParserInterface $parser,
+        private readonly ProcessorInterface $processor,
+        private readonly IndexerInterface $indexer,
         private readonly LoggerInterface $logger,
-        private readonly Indexer $indexer,
     ) {}
 
     /**
@@ -44,30 +44,71 @@ class CrawlerPipeline
      * parsed as it arrives. The collected documents are then sanitized and
      * indexed. There is no separate fetch pass - every page is fetched
      * exactly once by the collector.
+     *
+     * Each step is handled explicitly (empty/error/logging) rather than
+     * through a generic wrapper, because the steps are not interchangeable.
      */
     public function startCrawler(): void
     {
-        $htmlChunks = $this->urlCollector->collect();
-        /** @var array<int, ExtractedDataInterface> $rawParsedDocuments */
-        $rawParsedDocuments = [];
-        foreach ($htmlChunks as $htmlChunk) {
-            $parsedDocumentsIterator = $this->executeStep->executeStep(
-                'Parser',
-                fn($pages) => $this->parser->extractData($pages),
-                $htmlChunk,
-            );
-            array_push($rawParsedDocuments, ...iterator_to_array($parsedDocumentsIterator));
+        /** @var array<int, ExtractedDataInterface> $rawDocuments */
+        $rawDocuments = [];
+        foreach ($this->urlCollector->collect() as $htmlChunk) {
+            foreach ($this->parse($htmlChunk) as $document) {
+                $rawDocuments[] = $document;
+            }
         }
 
-        /** @var ExtractedDataInterface[] $processedDocuments */
-        $processedDocuments = iterator_to_array(
-            $this->executeStep->executeStep(
-                'Processor',
-                fn($rawData) => $this->processor->sanitizeText($rawData),
-                $rawParsedDocuments,
-            ),
-        );
+        $this->index($this->process($rawDocuments));
+    }
 
+    /**
+     * @param array<int, array{url: string, html: string}> $htmlChunk
+     *
+     * @return ExtractedDataInterface[]
+     */
+    private function parse(array $htmlChunk): array
+    {
+        try {
+            $documents = $this->parser->extractData($htmlChunk);
+        } catch (\Throwable $e) {
+            $this->logger->error('[Parser] Error: ' . $e->getMessage(), ['exception' => $e]);
+            throw new StepExecution('Parser', $e->getMessage(), $e);
+        }
+
+        if ([] === $documents) {
+            $this->logger->warning('[Parser] Step returned no data.');
+        }
+
+        return $documents;
+    }
+
+    /**
+     * @param array<int, ExtractedDataInterface> $rawDocuments
+     *
+     * @return ExtractedDataInterface[]
+     */
+    private function process(array $rawDocuments): array
+    {
+        try {
+            $sanitized = $this->processor->sanitizeText($rawDocuments);
+            $documents = is_array($sanitized) ? $sanitized : iterator_to_array($sanitized);
+        } catch (\Throwable $e) {
+            $this->logger->error('[Processor] Error: ' . $e->getMessage(), ['exception' => $e]);
+            throw new StepExecution('Processor', $e->getMessage(), $e);
+        }
+
+        if ([] === $documents) {
+            $this->logger->warning('[Processor] Step returned no data.');
+        }
+
+        return array_values($documents);
+    }
+
+    /**
+     * @param ExtractedDataInterface[] $processedDocuments
+     */
+    private function index(array $processedDocuments): void
+    {
         $indexerStatus = $this->indexer->doIndex($processedDocuments);
         $this->logger->info('Indexer statusLine: ' . $indexerStatus->getStatusLine());
         if (0 == $indexerStatus->errors) {

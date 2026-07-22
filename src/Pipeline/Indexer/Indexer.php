@@ -19,7 +19,7 @@ use Atoolo\Search\Service\Indexer\SolrIndexService;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 
-class Indexer implements \Atoolo\Search\Indexer
+class Indexer implements \Atoolo\Search\Indexer, IndexerInterface
 {
     private string $source = '';
 

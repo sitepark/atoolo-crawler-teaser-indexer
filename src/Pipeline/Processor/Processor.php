@@ -22,7 +22,7 @@ use Psr\Log\LoggerInterface;
  * stage, transforming raw extracted content into standardized document
  * information.
  */
-class Processor
+class Processor implements ProcessorInterface
 {
     public function __construct(
         private LoggerInterface $logger,

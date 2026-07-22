@@ -10,7 +10,7 @@ use Psr\Log\LoggerInterface;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\DomCrawler\Link;
 
-class URLCollector
+class URLCollector implements URLCollectorInterface
 {
     public function __construct(
         private readonly PipelineConfig $config,
