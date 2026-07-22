@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Tests;
+namespace Atoolo\CrawlerIndexer\Tests;
 
 use Atoolo\CrawlerIndexer\Config\CrawlerConfig;
 use Atoolo\CrawlerIndexer\Config\CrawlerConfigContext;
 use Atoolo\CrawlerIndexer\Config\CrawlerConfigHelper;
-use Atoolo\CrawlerIndexer\Domain\Crawler\Services\ExtractedData;
-use Atoolo\CrawlerIndexer\Domain\Crawler\Steps\Indexer;
+use Atoolo\CrawlerIndexer\Dto\ExtractedData;
+use Atoolo\CrawlerIndexer\Pipeline\Indexer\Indexer;
 use Atoolo\CrawlerIndexer\Exception\ThresholdNotMetException;
 use Atoolo\Search\Dto\Indexer\IndexerStatus;
 use Atoolo\Search\Service\Indexer\IndexerProgressHandler;

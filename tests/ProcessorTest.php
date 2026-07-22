@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Tests;
+namespace Atoolo\CrawlerIndexer\Tests;
 
 use Atoolo\CrawlerIndexer\Config\CrawlerConfig;
 use Atoolo\CrawlerIndexer\Config\CrawlerConfigContext;
 use Atoolo\CrawlerIndexer\Config\CrawlerConfigHelper;
-use Atoolo\CrawlerIndexer\Domain\Crawler\Services\ExtractedData;
-use Atoolo\CrawlerIndexer\Domain\Crawler\Services\ExtractedDataInterface;
-use Atoolo\CrawlerIndexer\Domain\Crawler\Steps\Processor;
+use Atoolo\CrawlerIndexer\Dto\ExtractedData;
+use Atoolo\CrawlerIndexer\Dto\ExtractedDataInterface;
+use Atoolo\CrawlerIndexer\Pipeline\Processor\Processor;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 

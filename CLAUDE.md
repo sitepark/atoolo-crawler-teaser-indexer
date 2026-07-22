@@ -71,9 +71,9 @@ composer report:phpstan
 
 ## Architecture Overview
 
-The crawler follows a **Pipe and Filter architectural pattern** orchestrated by `CrawlerManager`. The pipeline has five sequential steps:
+The crawler follows a **Pipe and Filter architectural pattern** orchestrated by `CrawlerPipeline`. The pipeline has five sequential steps:
 
-### Execution Pipeline (CrawlerManager)
+### Execution Pipeline (CrawlerPipeline)
 
 ```
 URLCollector → Fetcher ↓ → Parser → Processor → Indexer
@@ -106,7 +106,7 @@ src/
 │   ├── CrawlerConfigContext     - Thread-safe context storing current site config
 │   └── CrawlerConfigHelper      - Helper methods for type-safe config reading
 ├── Controller/
-│   └── CrawlerManager           - Central orchestrator of the 5-step pipeline
+│   └── CrawlerPipeline           - Central orchestrator of the 5-step pipeline
 ├── Domain/Crawler/
 │   ├── Steps/
 │   │   ├── URLCollector         - Step 1: discover URLs
@@ -177,7 +177,7 @@ The bundle uses Symfony's service autowiring (`config/services.yaml`):
 **Test Coverage:**
 - Tests located in `tests/` directory (18 test files)
 - Focus areas: URL collection, fetching, parsing, processing, end-to-end crawling
-- E2E test (`CrawlerManagerE2ETest.php`) validates complete pipeline
+- E2E test (`CrawlerPipelineE2ETest.php`) validates complete pipeline
 
 **Running Tests:**
 ```bash

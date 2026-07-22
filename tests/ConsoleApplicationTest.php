@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests;
+namespace Atoolo\CrawlerIndexer\Tests;
 
 use Atoolo\CrawlerIndexer\Console\Application;
 use PHPUnit\Framework\TestCase;

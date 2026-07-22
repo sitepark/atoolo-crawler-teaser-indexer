@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests;
+namespace Atoolo\CrawlerIndexer\Tests;
 
 use Atoolo\CrawlerIndexer\Exception\ThresholdNotMetException;
 use PHPUnit\Framework\TestCase;

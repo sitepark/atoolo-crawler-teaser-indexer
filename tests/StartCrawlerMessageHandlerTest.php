@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Tests;
+namespace Atoolo\CrawlerIndexer\Tests;
 
 use Atoolo\CrawlerIndexer\Application\CrawlSiteRunner;
-use Atoolo\CrawlerIndexer\Application\StartCrawlerMessage;
-use Atoolo\CrawlerIndexer\Application\StartCrawlerMessageHandler;
+use Atoolo\CrawlerIndexer\Messenger\StartCrawlerMessage;
+use Atoolo\CrawlerIndexer\Messenger\StartCrawlerMessageHandler;
 use Atoolo\CrawlerIndexer\Config\CrawlerConfigContext;
-use Atoolo\CrawlerIndexer\Controller\CrawlerManager;
+use Atoolo\CrawlerIndexer\Pipeline\CrawlerPipeline;
 use Atoolo\Resource\DataBag;
 use Atoolo\Search\Dto\Indexer\IndexerConfiguration;
 use Atoolo\Search\Service\Indexer\IndexerConfigurationLoader;
@@ -26,7 +26,7 @@ final class StartCrawlerMessageHandlerTest extends TestCase
         );
     }
 
-    private function makeRunner(CrawlerManager $manager): CrawlSiteRunner
+    private function makeRunner(CrawlerPipeline $manager): CrawlSiteRunner
     {
         return new CrawlSiteRunner(
             new CrawlerConfigContext([]),
@@ -40,7 +40,7 @@ final class StartCrawlerMessageHandlerTest extends TestCase
         $loader = $this->createMock(IndexerConfigurationLoader::class);
         $loader->method('load')->willReturn($this->makeConfig([]));
 
-        $manager = $this->createMock(CrawlerManager::class);
+        $manager = $this->createMock(CrawlerPipeline::class);
         $manager->expects($this->never())->method('startCrawler');
 
         $logger = $this->createMock(LoggerInterface::class);
@@ -60,7 +60,7 @@ final class StartCrawlerMessageHandlerTest extends TestCase
         $loader = $this->createMock(IndexerConfigurationLoader::class);
         $loader->method('load')->willReturn($this->makeConfig($sites));
 
-        $manager = $this->createMock(CrawlerManager::class);
+        $manager = $this->createMock(CrawlerPipeline::class);
         $manager->expects($this->exactly(2))->method('startCrawler');
 
         $logger = $this->createStub(LoggerInterface::class);
@@ -79,7 +79,7 @@ final class StartCrawlerMessageHandlerTest extends TestCase
         $loader = $this->createMock(IndexerConfigurationLoader::class);
         $loader->method('load')->willReturn($this->makeConfig($sites));
 
-        $manager = $this->createMock(CrawlerManager::class);
+        $manager = $this->createMock(CrawlerPipeline::class);
         $manager->expects($this->once())->method('startCrawler');
 
         $logger = $this->createMock(LoggerInterface::class);

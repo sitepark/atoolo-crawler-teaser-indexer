@@ -5,14 +5,14 @@ declare(strict_types=1);
 namespace Atoolo\CrawlerIndexer\Application;
 
 use Atoolo\CrawlerIndexer\Config\CrawlerConfigContext;
-use Atoolo\CrawlerIndexer\Controller\CrawlerManager;
+use Atoolo\CrawlerIndexer\Pipeline\CrawlerPipeline;
 use Psr\Log\LoggerInterface;
 
 final class CrawlSiteRunner
 {
     public function __construct(
         private readonly CrawlerConfigContext $configContext,
-        private readonly CrawlerManager $crawlerManager,
+        private readonly CrawlerPipeline $crawlerManager,
         private readonly LoggerInterface $logger,
     ) {}
 

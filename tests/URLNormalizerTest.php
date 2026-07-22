@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Tests;
+namespace Atoolo\CrawlerIndexer\Tests;
 
 use Atoolo\CrawlerIndexer\Config\CrawlerConfig;
 use Atoolo\CrawlerIndexer\Config\CrawlerConfigContext;
 use Atoolo\CrawlerIndexer\Config\CrawlerConfigHelper;
-use Atoolo\CrawlerIndexer\Domain\Crawler\Services\URLNormalizer;
+use Atoolo\CrawlerIndexer\Pipeline\Collector\URLNormalizer;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 

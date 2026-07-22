@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace Atoolo\CrawlerIndexer\Config;
 
-use Atoolo\CrawlerIndexer\Domain\Crawler\Services\LengthConditionConfig;
-use Atoolo\CrawlerIndexer\Domain\Crawler\Services\ScoreRuleConfig;
+use Atoolo\CrawlerIndexer\Pipeline\Parser\ScoreRuleConfig;
 use Psr\Log\LoggerInterface;
 
 final class CrawlerConfigHelper

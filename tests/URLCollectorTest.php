@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Tests;
+namespace Atoolo\CrawlerIndexer\Tests;
 
 use Atoolo\CrawlerIndexer\Config\CrawlerConfig;
 use Atoolo\CrawlerIndexer\Config\CrawlerConfigContext;
 use Atoolo\CrawlerIndexer\Config\CrawlerConfigHelper;
-use Atoolo\CrawlerIndexer\Domain\Crawler\Services\RobotsTxtCheckerInterface;
-use Atoolo\CrawlerIndexer\Domain\Crawler\Services\URLNormalizer;
-use Atoolo\CrawlerIndexer\Domain\Crawler\Steps\Fetcher;
-use Atoolo\CrawlerIndexer\Domain\Crawler\Steps\URLCollector;
+use Atoolo\CrawlerIndexer\Pipeline\Collector\RobotsTxtCheckerInterface;
+use Atoolo\CrawlerIndexer\Pipeline\Collector\URLNormalizer;
+use Atoolo\CrawlerIndexer\Pipeline\Fetcher\Fetcher;
+use Atoolo\CrawlerIndexer\Pipeline\Collector\URLCollector;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 
@@ -21,7 +21,7 @@ use Psr\Log\LoggerInterface;
  * HTML pages (the ones it had to fetch anyway to follow links up to a
  * start URL's extraction_depth) and, once exhausted, returns the list of
  * URLs discovered beyond that depth via getReturn(). Parsing those pages
- * into documents is the caller's (CrawlerManager) responsibility.
+ * into documents is the caller's (CrawlerPipeline) responsibility.
  *
  * This test suite ensures that:
  * - Links are extracted, filtered and returned as the generator's return value.

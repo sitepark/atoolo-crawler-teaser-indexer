@@ -4,11 +4,6 @@ declare(strict_types=1);
 
 namespace Atoolo\CrawlerIndexer\Config;
 
-use Atoolo\CrawlerIndexer\Domain\Crawler\Services\ContentScoringConfig;
-use Atoolo\CrawlerIndexer\Domain\Crawler\Services\DateTimeExtractConfig;
-use Atoolo\CrawlerIndexer\Domain\Crawler\Services\IntroExtractConfig;
-use Atoolo\CrawlerIndexer\Domain\Crawler\Services\TitleExtractConfig;
-
 final class CrawlerConfig
 {
     public function __construct(

@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Tests;
+namespace Atoolo\CrawlerIndexer\Tests;
 
 use Atoolo\CrawlerIndexer\Application\CrawlSiteRunner;
 use Atoolo\CrawlerIndexer\Config\CrawlerConfigContext;
-use Atoolo\CrawlerIndexer\Controller\CrawlerManager;
+use Atoolo\CrawlerIndexer\Pipeline\CrawlerPipeline;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 
 final class CrawlSiteRunnerTest extends TestCase
 {
     private function makeRunner(
-        CrawlerManager $manager,
+        CrawlerPipeline $manager,
         LoggerInterface $logger,
     ): CrawlSiteRunner {
         return new CrawlSiteRunner(new CrawlerConfigContext([]), $manager, $logger);
@@ -21,7 +21,7 @@ final class CrawlSiteRunnerTest extends TestCase
 
     public function testRunWithValidSiteCallsStartCrawler(): void
     {
-        $manager = $this->createMock(CrawlerManager::class);
+        $manager = $this->createMock(CrawlerPipeline::class);
         $manager->expects($this->once())->method('startCrawler');
 
         $logger = $this->createStub(LoggerInterface::class);
@@ -30,7 +30,7 @@ final class CrawlSiteRunnerTest extends TestCase
 
     public function testRunWithMissingSiteIdThrowsInvalidArgumentException(): void
     {
-        $manager = $this->createMock(CrawlerManager::class);
+        $manager = $this->createMock(CrawlerPipeline::class);
         $manager->expects($this->never())->method('startCrawler');
 
         $logger = $this->createStub(LoggerInterface::class);
@@ -41,7 +41,7 @@ final class CrawlSiteRunnerTest extends TestCase
 
     public function testRunWithEmptySiteIdThrowsInvalidArgumentException(): void
     {
-        $manager = $this->createMock(CrawlerManager::class);
+        $manager = $this->createMock(CrawlerPipeline::class);
         $logger = $this->createStub(LoggerInterface::class);
 
         $this->expectException(\InvalidArgumentException::class);
@@ -50,7 +50,7 @@ final class CrawlSiteRunnerTest extends TestCase
 
     public function testRunResetsContextEvenWhenCrawlerThrows(): void
     {
-        $manager = $this->createMock(CrawlerManager::class);
+        $manager = $this->createMock(CrawlerPipeline::class);
         $manager->method('startCrawler')->willThrowException(new \RuntimeException('crawl error'));
 
         $logger = $this->createStub(LoggerInterface::class);
@@ -69,7 +69,7 @@ final class CrawlSiteRunnerTest extends TestCase
 
     public function testRunLogsErrorAndRethrowsWhenCrawlerThrows(): void
     {
-        $manager = $this->createMock(CrawlerManager::class);
+        $manager = $this->createMock(CrawlerPipeline::class);
         $manager->method('startCrawler')->willThrowException(new \RuntimeException('crawl error'));
 
         $logger = $this->createMock(LoggerInterface::class);

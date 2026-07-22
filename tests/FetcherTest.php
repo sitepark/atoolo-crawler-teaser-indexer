@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Tests;
+namespace Atoolo\CrawlerIndexer\Tests;
 
-use Atoolo\CrawlerIndexer\Domain\Crawler\Ports\RequestExecutorInterface;
-use Atoolo\CrawlerIndexer\Domain\Crawler\Steps\Fetcher;
+use Atoolo\CrawlerIndexer\Ports\RequestExecutorInterface;
+use Atoolo\CrawlerIndexer\Pipeline\Fetcher\Fetcher;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;

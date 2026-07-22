@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Tests;
+namespace Atoolo\CrawlerIndexer\Tests;
 
 use Atoolo\CrawlerIndexer\Config\CrawlerConfigContext;
 use Atoolo\CrawlerIndexer\Config\CrawlerConfigHelper;
-use Atoolo\CrawlerIndexer\Domain\Crawler\Services\LengthConditionConfig;
-use Atoolo\CrawlerIndexer\Domain\Crawler\Services\ScoreRuleConfig;
+use Atoolo\CrawlerIndexer\Config\LengthConditionConfig;
+use Atoolo\CrawlerIndexer\Pipeline\Parser\ScoreRuleConfig;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 

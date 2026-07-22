@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Tests;
+namespace Atoolo\CrawlerIndexer\Tests;
 
 use Atoolo\CrawlerIndexer\Application\CrawlSiteRunner;
-use Atoolo\CrawlerIndexer\Command\Index;
+use Atoolo\CrawlerIndexer\Command\IndexCommand;
 use Atoolo\CrawlerIndexer\Config\CrawlerConfigContext;
-use Atoolo\CrawlerIndexer\Controller\CrawlerManager;
+use Atoolo\CrawlerIndexer\Pipeline\CrawlerPipeline;
 use Atoolo\Resource\DataBag;
 use Atoolo\Search\Dto\Indexer\IndexerConfiguration;
 use Atoolo\Search\Service\Indexer\IndexerConfigurationLoader;
@@ -27,7 +27,7 @@ final class IndexCommandTest extends TestCase
         );
     }
 
-    private function makeRunner(CrawlerManager $manager): CrawlSiteRunner
+    private function makeRunner(CrawlerPipeline $manager): CrawlSiteRunner
     {
         return new CrawlSiteRunner(
             new CrawlerConfigContext([]),
@@ -36,7 +36,7 @@ final class IndexCommandTest extends TestCase
         );
     }
 
-    private function runCommand(Index $command): CommandTester
+    private function runCommand(IndexCommand $command): CommandTester
     {
         $tester = new CommandTester($command);
         $tester->execute([]);
@@ -49,13 +49,13 @@ final class IndexCommandTest extends TestCase
         $loader = $this->createMock(IndexerConfigurationLoader::class);
         $loader->method('load')->willReturn($this->makeConfig([]));
 
-        $manager = $this->createMock(CrawlerManager::class);
+        $manager = $this->createMock(CrawlerPipeline::class);
         $manager->expects($this->never())->method('startCrawler');
 
         $logger = $this->createMock(LoggerInterface::class);
         $logger->expects($this->once())->method('warning');
 
-        $command = new Index($loader, $this->makeRunner($manager), $logger);
+        $command = new IndexCommand($loader, $this->makeRunner($manager), $logger);
         $tester = $this->runCommand($command);
 
         $this->assertSame(Command::SUCCESS, $tester->getStatusCode());
@@ -71,12 +71,12 @@ final class IndexCommandTest extends TestCase
         $loader = $this->createMock(IndexerConfigurationLoader::class);
         $loader->method('load')->willReturn($this->makeConfig($sites));
 
-        $manager = $this->createMock(CrawlerManager::class);
+        $manager = $this->createMock(CrawlerPipeline::class);
         $manager->expects($this->exactly(2))->method('startCrawler');
 
         $logger = $this->createStub(LoggerInterface::class);
 
-        $command = new Index($loader, $this->makeRunner($manager), $logger);
+        $command = new IndexCommand($loader, $this->makeRunner($manager), $logger);
         $tester = $this->runCommand($command);
 
         $this->assertSame(Command::SUCCESS, $tester->getStatusCode());
@@ -92,13 +92,13 @@ final class IndexCommandTest extends TestCase
         $loader = $this->createMock(IndexerConfigurationLoader::class);
         $loader->method('load')->willReturn($this->makeConfig($sites));
 
-        $manager = $this->createMock(CrawlerManager::class);
+        $manager = $this->createMock(CrawlerPipeline::class);
         $manager->expects($this->once())->method('startCrawler');
 
         $logger = $this->createMock(LoggerInterface::class);
         $logger->expects($this->atLeastOnce())->method('error');
 
-        $command = new Index($loader, $this->makeRunner($manager), $logger);
+        $command = new IndexCommand($loader, $this->makeRunner($manager), $logger);
         $tester = $this->runCommand($command);
 
         $this->assertSame(Command::FAILURE, $tester->getStatusCode());
@@ -111,13 +111,13 @@ final class IndexCommandTest extends TestCase
         $loader = $this->createMock(IndexerConfigurationLoader::class);
         $loader->method('load')->willReturn($this->makeConfig($sites));
 
-        $manager = $this->createMock(CrawlerManager::class);
+        $manager = $this->createMock(CrawlerPipeline::class);
         $manager->method('startCrawler')->willThrowException(new \RuntimeException('crawl failed'));
 
         $logger = $this->createMock(LoggerInterface::class);
         $logger->expects($this->atLeastOnce())->method('error');
 
-        $command = new Index($loader, $this->makeRunner($manager), $logger);
+        $command = new IndexCommand($loader, $this->makeRunner($manager), $logger);
         $tester = $this->runCommand($command);
 
         $this->assertSame(Command::FAILURE, $tester->getStatusCode());
@@ -128,12 +128,12 @@ final class IndexCommandTest extends TestCase
         $loader = $this->createMock(IndexerConfigurationLoader::class);
         $loader->method('load')->willThrowException(new \RuntimeException('config not found'));
 
-        $manager = $this->createMock(CrawlerManager::class);
+        $manager = $this->createMock(CrawlerPipeline::class);
 
         $logger = $this->createMock(LoggerInterface::class);
         $logger->expects($this->once())->method('critical');
 
-        $command = new Index($loader, $this->makeRunner($manager), $logger);
+        $command = new IndexCommand($loader, $this->makeRunner($manager), $logger);
         $tester = $this->runCommand($command);
 
         $this->assertSame(Command::FAILURE, $tester->getStatusCode());
