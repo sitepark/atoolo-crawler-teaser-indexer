@@ -9,8 +9,11 @@ use Psr\Log\LoggerInterface;
 
 final class CrawlerConfigHelper
 {
+    /**
+     * @param array<string, mixed> $params
+     */
     public function __construct(
-        private readonly CrawlerConfigContext $ctx,
+        private readonly array $params,
         private LoggerInterface $logger,
     ) {}
 
@@ -19,7 +22,7 @@ final class CrawlerConfigHelper
     public function bool(string $key, bool $default = false): bool
     {
         $result = $default;
-        $v = $this->ctx->get($key, self::MISSING);
+        $v = $this->params[$key] ?? self::MISSING;
 
         if (self::MISSING === $v) {
             $this->logger->debug(
@@ -53,7 +56,7 @@ final class CrawlerConfigHelper
     public function int(string $key, int $default = 0): int
     {
         $result = $default;
-        $v = $this->ctx->get($key, self::MISSING);
+        $v = $this->params[$key] ?? self::MISSING;
 
         if (self::MISSING === $v) {
             $this->logger->debug(
@@ -76,7 +79,7 @@ final class CrawlerConfigHelper
 
     public function string(string $key, string $default = ''): string
     {
-        $v = $this->ctx->get($key, self::MISSING);
+        $v = $this->params[$key] ?? self::MISSING;
 
         if (self::MISSING === $v) {
             $this->logger->debug('Config missing string, using default', ['key' => $key, 'default' => $default]);
@@ -100,7 +103,7 @@ final class CrawlerConfigHelper
     /** @return list<int> */
     public function intList(string $key): array
     {
-        $v = $this->ctx->get($key, self::MISSING);
+        $v = $this->params[$key] ?? self::MISSING;
 
         if (self::MISSING === $v) {
             $this->logger->debug(
@@ -155,7 +158,7 @@ final class CrawlerConfigHelper
      */
     public function stringList(string $key): array
     {
-        $v = $this->ctx->get($key, self::MISSING);
+        $v = $this->params[$key] ?? self::MISSING;
 
         if (self::MISSING === $v) {
             $this->logger->debug('Config missing string list, using empty list', ['key' => $key]);
@@ -185,7 +188,7 @@ final class CrawlerConfigHelper
     /** @return list<array{url: string, extraction_depth: int}> */
     public function startUrlsList(string $key): array
     {
-        $rawStartUrlsList = $this->ctx->get($key, self::MISSING);
+        $rawStartUrlsList = $this->params[$key] ?? self::MISSING;
 
         if (self::MISSING === $rawStartUrlsList) {
             $this->logger->debug('Config missing string list, using empty list', ['key' => $key]);
@@ -224,7 +227,7 @@ final class CrawlerConfigHelper
      */
     public function readScoreRules(string $key): array
     {
-        $rules = $this->ctx->get($key, self::MISSING);
+        $rules = $this->params[$key] ?? self::MISSING;
 
         if (self::MISSING === $rules) {
             $this->logger->debug('Config missing score rules, using empty list', ['key' => $key]);

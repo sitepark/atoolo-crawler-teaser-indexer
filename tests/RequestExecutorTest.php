@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace Atoolo\CrawlerIndexer\Tests;
 
-use Atoolo\CrawlerIndexer\Config\CrawlerConfig;
-use Atoolo\CrawlerIndexer\Config\CrawlerConfigContext;
+use Atoolo\CrawlerIndexer\Config\PipelineConfig;
 use Atoolo\CrawlerIndexer\Config\CrawlerConfigHelper;
 use Atoolo\CrawlerIndexer\Ports\RequestExecutor;
 use PHPUnit\Framework\TestCase;
@@ -16,18 +15,18 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
 
 final class RequestExecutorTest extends TestCase
 {
-    private function makeConfig(array $overrides = []): CrawlerConfig
+    private function makeConfig(array $overrides = []): PipelineConfig
     {
-        $ctx = new CrawlerConfigContext(array_merge([
+        $ctx = array_merge([
             'sp_user_agent' => 'TestBot/1.0',
             'sp_max_retry' => 3,
             'sp_delay_ms' => 0,
             'sp_backoff_ms' => 100,
-        ], $overrides));
+        ], $overrides);
         $logger = $this->createStub(LoggerInterface::class);
         $helper = new CrawlerConfigHelper($ctx, $logger);
 
-        return new CrawlerConfig($helper);
+        return new PipelineConfig($helper);
     }
 
     private function makeHttpClient(ResponseInterface $response): HttpClientInterface

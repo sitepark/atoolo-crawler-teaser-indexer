@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace Atoolo\CrawlerIndexer\Pipeline\Parser;
 
 use Atoolo\CrawlerIndexer\Config\ContentScoringConfig;
-use Atoolo\CrawlerIndexer\Config\CrawlerConfig;
+use Atoolo\CrawlerIndexer\Config\PipelineConfig;
 use Symfony\Component\DomCrawler\Crawler;
 
 final class RelevanceEvaluator implements RelevanceEvaluatorInterface
 {
     public function __construct(
-        private readonly CrawlerConfig $config,
+        private readonly PipelineConfig $config,
     ) {}
 
     /**

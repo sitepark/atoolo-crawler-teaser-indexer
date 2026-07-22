@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace Atoolo\CrawlerIndexer\Pipeline\Indexer;
 
-use Atoolo\CrawlerIndexer\Config\CrawlerConfig;
+use Atoolo\CrawlerIndexer\Config\PipelineConfig;
 use Atoolo\CrawlerIndexer\Dto\ExtractedDataInterface;
 use Atoolo\CrawlerIndexer\Exception\ThresholdNotMetException;
 use Atoolo\Resource\ResourceLanguage;
@@ -26,7 +26,7 @@ class Indexer implements \Atoolo\Search\Indexer
     public function __construct(
         private IndexerProgressHandler $progressHandler,
         private SolrIndexService $indexService,
-        private readonly CrawlerConfig $config,
+        private readonly PipelineConfig $config,
         private LoggerInterface $logger = new NullLogger(),
     ) {}
 

@@ -2,7 +2,7 @@
 
 namespace Atoolo\CrawlerIndexer\Pipeline\Parser;
 
-use Atoolo\CrawlerIndexer\Config\CrawlerConfig;
+use Atoolo\CrawlerIndexer\Config\PipelineConfig;
 use Atoolo\CrawlerIndexer\Config\DateTimeExtractConfig;
 use Atoolo\CrawlerIndexer\Config\IntroExtractConfig;
 use Atoolo\CrawlerIndexer\Dto\ExtractedData;
@@ -15,7 +15,7 @@ class Parser
 {
     public function __construct(
         private readonly LoggerInterface $logger,
-        private readonly CrawlerConfig $config,
+        private readonly PipelineConfig $config,
         private readonly RelevanceEvaluatorInterface $relevanceEvaluator,
     ) {}
 

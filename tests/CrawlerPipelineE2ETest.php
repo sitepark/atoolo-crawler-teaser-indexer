@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace Atoolo\CrawlerIndexer\Tests;
 
-use Atoolo\CrawlerIndexer\Config\CrawlerConfig;
-use Atoolo\CrawlerIndexer\Config\CrawlerConfigContext;
+use Atoolo\CrawlerIndexer\Config\PipelineConfig;
 use Atoolo\CrawlerIndexer\Config\CrawlerConfigHelper;
 use Atoolo\CrawlerIndexer\Pipeline\CrawlerPipeline;
 use Atoolo\CrawlerIndexer\Pipeline\ExecuteStep;
@@ -47,9 +46,9 @@ final class CrawlerPipelineE2ETest extends TestCase
     /**
      * @param array<int|string> $overrides
      */
-    private function createConfig(LoggerInterface $logger, array $overrides = []): CrawlerConfig
+    private function createConfig(LoggerInterface $logger, array $overrides = []): PipelineConfig
     {
-        $ctx = new CrawlerConfigContext(array_merge([
+        $ctx = array_merge([
             'sp_max_retry' => 1,
             'sp_delay_ms' => 0,
             'sp_retry_status_codes' => [408, 429, 500, 501, 502, 503, 504],
@@ -62,11 +61,11 @@ final class CrawlerPipelineE2ETest extends TestCase
             'sp_content_scoring_min_score' => 0,
             'sp_content_scoring_positive' => [],
             'sp_content_scoring_negative' => [],
-        ], $overrides));
+        ], $overrides);
 
         $helper = new CrawlerConfigHelper($ctx, $logger);
 
-        return new CrawlerConfig($helper);
+        return new PipelineConfig($helper);
     }
 
     /**

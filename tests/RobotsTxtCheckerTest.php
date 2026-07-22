@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace Atoolo\CrawlerIndexer\Tests;
 
-use Atoolo\CrawlerIndexer\Config\CrawlerConfig;
-use Atoolo\CrawlerIndexer\Config\CrawlerConfigContext;
+use Atoolo\CrawlerIndexer\Config\PipelineConfig;
 use Atoolo\CrawlerIndexer\Config\CrawlerConfigHelper;
 use Atoolo\CrawlerIndexer\Ports\RequestExecutorInterface;
 use Atoolo\CrawlerIndexer\Pipeline\Collector\RobotsTxtChecker;
@@ -20,9 +19,9 @@ final class RobotsTxtCheckerTest extends TestCase
         RequestExecutorInterface $requestExecutor,
         LoggerInterface $logger,
     ): RobotsTxtChecker {
-        $ctx = new CrawlerConfigContext($config);
+        $ctx = $config;
         $helper = new CrawlerConfigHelper($ctx, $logger);
-        $crawlerConfig = new CrawlerConfig($helper);
+        $crawlerConfig = new PipelineConfig($helper);
 
         return new RobotsTxtChecker($crawlerConfig, $requestExecutor, $logger);
     }

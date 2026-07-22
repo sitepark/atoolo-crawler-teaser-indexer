@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace Atoolo\CrawlerIndexer\Tests;
 
-use Atoolo\CrawlerIndexer\Config\CrawlerConfig;
-use Atoolo\CrawlerIndexer\Config\CrawlerConfigContext;
+use Atoolo\CrawlerIndexer\Config\PipelineConfig;
 use Atoolo\CrawlerIndexer\Config\CrawlerConfigHelper;
 use Atoolo\CrawlerIndexer\Dto\ExtractedData;
 use Atoolo\CrawlerIndexer\Dto\ExtractedDataInterface;
@@ -19,14 +18,14 @@ final class ProcessorTest extends TestCase
 
     protected function setUp(): void
     {
-        $ctx = new CrawlerConfigContext([
+        $ctx = [
             'sp_title_max_chars' => 120,
             'sp_introText_max_chars' => 120,
-        ]);
+        ];
 
         $logger = $this->createStub(LoggerInterface::class);
         $helper = new CrawlerConfigHelper($ctx, $logger);
-        $config = new CrawlerConfig($helper);
+        $config = new PipelineConfig($helper);
         $this->processor = new Processor($logger, $config);
     }
 
@@ -97,9 +96,9 @@ final class ProcessorTest extends TestCase
         $logger = $this->createMock(LoggerInterface::class);
         $logger->expects($this->once())->method('warning');
 
-        $ctx = new CrawlerConfigContext(['sp_title_max_chars' => 120]);
+        $ctx = ['sp_title_max_chars' => 120];
         $helper = new CrawlerConfigHelper($ctx, $logger);
-        $config = new CrawlerConfig($helper);
+        $config = new PipelineConfig($helper);
         $processor = new Processor($logger, $config);
 
         $input = [
@@ -125,12 +124,12 @@ final class ProcessorTest extends TestCase
 
     public function testCatchBlockIsTriggeredWhenItemThrows(): void
     {
-        $ctx = new CrawlerConfigContext(['sp_title_max_chars' => 120, 'sp_introText_max_chars' => 120]);
+        $ctx = ['sp_title_max_chars' => 120, 'sp_introText_max_chars' => 120];
         $logger = $this->createMock(LoggerInterface::class);
         $logger->expects($this->once())->method('error');
 
         $helper = new CrawlerConfigHelper($ctx, $logger);
-        $config = new CrawlerConfig($helper);
+        $config = new PipelineConfig($helper);
         $processor = new Processor($logger, $config);
 
         $throwingItem = $this->createMock(ExtractedDataInterface::class);

@@ -11,6 +11,18 @@ services:
 
     Atoolo\CrawlerIndexer\:
         resource: "../src/"
+        # These are assembled per run by CrawlerPipelineFactory around an
+        # immutable PipelineConfig, so they are not container services.
+        exclude:
+            - "../src/Config/PipelineConfig.php"
+            - "../src/Config/CrawlerConfigHelper.php"
+            - "../src/Ports/RequestExecutor.php"
+            - "../src/Pipeline/CrawlerPipeline.php"
+            - "../src/Pipeline/Collector"
+            - "../src/Pipeline/Fetcher"
+            - "../src/Pipeline/Parser"
+            - "../src/Pipeline/Processor"
+            - "../src/Pipeline/Indexer"
 
     # Run in Development
     Atoolo\CrawlerIndexer\Command\IndexCommand:
@@ -26,26 +38,11 @@ services:
         arguments:
             $indexerConfigurationLoader: '@atoolo_search.indexer.configuration_loader'
 
-    Atoolo\CrawlerIndexer\Ports\RequestExecutor:
-        arguments:
-            $retryStatusCodes: "%atoolo.crawler.retry_status_codes%"
-
-    Atoolo\CrawlerIndexer\Pipeline\CrawlerPipeline:
-        arguments:
-            $urlCollector: '@Atoolo\CrawlerIndexer\Pipeline\Collector\URLCollector'
-            $fetcher: '@Atoolo\CrawlerIndexer\Pipeline\Fetcher\Fetcher'
-            $processor: '@Atoolo\CrawlerIndexer\Pipeline\Processor\Processor'
-            $logger: "@logger"
-            $indexer: '@Atoolo\CrawlerIndexer\Pipeline\Indexer\Indexer'
-
-    Atoolo\CrawlerIndexer\Ports\RequestExecutorInterface: '@Atoolo\CrawlerIndexer\Ports\RequestExecutor'
-
-    # gehört eigentlich ins Kunden-FEDS bzw. Commons-FEDS
-    Atoolo\CrawlerIndexer\Pipeline\Indexer\Indexer:
+    # Assembles the per-run pipeline graph around an immutable PipelineConfig.
+    # $indexService/$progressHandler gehören eigentlich ins Kunden-FEDS bzw. Commons-FEDS
+    Atoolo\CrawlerIndexer\Pipeline\CrawlerPipelineFactory:
         arguments:
             $indexService: "@atoolo_search.indexer.solr_index_service"
             $progressHandler: "@atoolo_search.indexer.internal_resource_progress_state"
-
-    Atoolo\CrawlerIndexer\Pipeline\Collector\URLNormalizer:
-        arguments:
             $denyEndings: "%atoolo.crawler.deny_endings%"
+            $retryStatusCodes: "%atoolo.crawler.retry_status_codes%"

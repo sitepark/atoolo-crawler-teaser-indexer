@@ -7,7 +7,8 @@ namespace Atoolo\CrawlerIndexer\Tests;
 use Atoolo\CrawlerIndexer\Application\CrawlSiteRunner;
 use Atoolo\CrawlerIndexer\Messenger\StartCrawlerMessage;
 use Atoolo\CrawlerIndexer\Messenger\StartCrawlerMessageHandler;
-use Atoolo\CrawlerIndexer\Config\CrawlerConfigContext;
+use Atoolo\CrawlerIndexer\Config\PipelineConfigFactory;
+use Atoolo\CrawlerIndexer\Pipeline\CrawlerPipelineFactory;
 use Atoolo\CrawlerIndexer\Pipeline\CrawlerPipeline;
 use Atoolo\Resource\DataBag;
 use Atoolo\Search\Dto\Indexer\IndexerConfiguration;
@@ -28,9 +29,12 @@ final class StartCrawlerMessageHandlerTest extends TestCase
 
     private function makeRunner(CrawlerPipeline $manager): CrawlSiteRunner
     {
+        $pipelineFactory = $this->createMock(CrawlerPipelineFactory::class);
+        $pipelineFactory->method('create')->willReturn($manager);
+
         return new CrawlSiteRunner(
-            new CrawlerConfigContext([]),
-            $manager,
+            new PipelineConfigFactory($this->createStub(LoggerInterface::class)),
+            $pipelineFactory,
             $this->createStub(LoggerInterface::class),
         );
     }

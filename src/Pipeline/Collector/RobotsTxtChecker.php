@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Atoolo\CrawlerIndexer\Pipeline\Collector;
 
-use Atoolo\CrawlerIndexer\Config\CrawlerConfig;
+use Atoolo\CrawlerIndexer\Config\PipelineConfig;
 use Atoolo\CrawlerIndexer\Ports\RequestExecutorInterface;
 use Psr\Log\LoggerInterface;
 use Spatie\Robots\RobotsTxt;
@@ -15,7 +15,7 @@ final class RobotsTxtChecker implements RobotsTxtCheckerInterface
     private array $cache = [];
 
     public function __construct(
-        private readonly CrawlerConfig $config,
+        private readonly PipelineConfig $config,
         private readonly RequestExecutorInterface $requestExecutor,
         private readonly LoggerInterface $logger,
     ) {}

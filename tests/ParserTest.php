@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace Atoolo\CrawlerIndexer\Tests;
 
-use Atoolo\CrawlerIndexer\Config\CrawlerConfig;
-use Atoolo\CrawlerIndexer\Config\CrawlerConfigContext;
+use Atoolo\CrawlerIndexer\Config\PipelineConfig;
 use Atoolo\CrawlerIndexer\Config\CrawlerConfigHelper;
 use Atoolo\CrawlerIndexer\Dto\ExtractedDataInterface;
 use Atoolo\CrawlerIndexer\Pipeline\Parser\RelevanceEvaluatorInterface;
@@ -67,10 +66,10 @@ final class ParserTest extends TestCase
             'sp_content_scoring_active' => false,
         ];
 
-        $ctx = new CrawlerConfigContext(array_merge($defaults, $ctxOverrides));
+        $ctx = array_merge($defaults, $ctxOverrides);
         $logger = $this->createStub(LoggerInterface::class);
         $helper = new CrawlerConfigHelper($ctx, $logger);
-        $config = new CrawlerConfig($helper);
+        $config = new PipelineConfig($helper);
 
         $evaluator = $this->createStub(RelevanceEvaluatorInterface::class);
         $evaluator->method('relevant')->willReturn($evaluatorReturns);
@@ -554,7 +553,7 @@ HTML;
         $evaluator = $this->createMock(RelevanceEvaluatorInterface::class);
         $evaluator->method('relevant')->willThrowException(new \RuntimeException('evaluator error'));
 
-        $ctx = new CrawlerConfigContext(array_merge([
+        $ctx = array_merge([
             'sp_title_prefix' => '',
             'sp_title_opengraph' => [],
             'sp_title_css' => ['h1'],
@@ -570,9 +569,9 @@ HTML;
             'sp_datetime_opengraph' => [],
             'sp_datetime_css' => [],
             'sp_content_scoring_active' => true,
-        ]));
+        ]);
         $helper = new CrawlerConfigHelper($ctx, $logger);
-        $config = new CrawlerConfig($helper);
+        $config = new PipelineConfig($helper);
         $parser = new Parser($logger, $config, $evaluator);
 
         $html = '<html><body><h1>Title</h1></body></html>';

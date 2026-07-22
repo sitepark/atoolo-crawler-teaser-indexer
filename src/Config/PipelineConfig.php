@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Atoolo\CrawlerIndexer\Config;
 
-final class CrawlerConfig
+final class PipelineConfig
 {
     public function __construct(
         private CrawlerConfigHelper $crawlerConfigHelper,
@@ -107,7 +107,7 @@ final class CrawlerConfig
 
     public function maxTeaser(): int
     {
-        return $this->crawlerConfigHelper->int('sp_max_document', 100);
+        return $this->crawlerConfigHelper->int('sp_max_teaser', 100);
     }
 
     public function cleanupThreshold(): int

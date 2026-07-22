@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace Atoolo\CrawlerIndexer\Tests;
 
-use Atoolo\CrawlerIndexer\Config\CrawlerConfig;
-use Atoolo\CrawlerIndexer\Config\CrawlerConfigContext;
+use Atoolo\CrawlerIndexer\Config\PipelineConfig;
 use Atoolo\CrawlerIndexer\Config\CrawlerConfigHelper;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
@@ -13,13 +12,13 @@ use Psr\Log\LoggerInterface;
 final class CrawlerConfigTest extends TestCase
 {
     /** @param array<string, mixed> $params */
-    private function makeConfig(array $params): CrawlerConfig
+    private function makeConfig(array $params): PipelineConfig
     {
-        $ctx = new CrawlerConfigContext($params);
+        $ctx = $params;
         $logger = $this->createStub(LoggerInterface::class);
         $helper = new CrawlerConfigHelper($ctx, $logger);
 
-        return new CrawlerConfig($helper);
+        return new PipelineConfig($helper);
     }
 
     // --- categoriesId ---
@@ -230,7 +229,7 @@ final class CrawlerConfigTest extends TestCase
 
     public function testMaxDocumentCustom(): void
     {
-        $config = $this->makeConfig(['sp_max_document' => 50]);
+        $config = $this->makeConfig(['sp_max_teaser' => 50]);
         $this->assertSame(50, $config->maxTeaser());
     }
 
@@ -435,16 +434,5 @@ final class CrawlerConfigTest extends TestCase
         $this->assertSame(['news', 'sport'], $scoringConfig->positive[0]->matchAny);
         $this->assertCount(1, $scoringConfig->negative);
         $this->assertSame(1, $scoringConfig->negative[0]->score);
-    }
-
-    public function testCrawlerConfigContextResetClearsParams(): void
-    {
-        $ctx = new CrawlerConfigContext(['sp_id' => 'my-id', 'sp_max_document' => 50]);
-        $this->assertSame('my-id', $ctx->get('sp_id'));
-
-        $ctx->reset();
-
-        $this->assertNull($ctx->get('sp_id'));
-        $this->assertNull($ctx->get('sp_max_document'));
     }
 }

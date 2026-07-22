@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace Atoolo\CrawlerIndexer\Tests;
 
-use Atoolo\CrawlerIndexer\Config\CrawlerConfig;
-use Atoolo\CrawlerIndexer\Config\CrawlerConfigContext;
+use Atoolo\CrawlerIndexer\Config\PipelineConfig;
 use Atoolo\CrawlerIndexer\Config\CrawlerConfigHelper;
 use Atoolo\CrawlerIndexer\Dto\ExtractedData;
 use Atoolo\CrawlerIndexer\Pipeline\Indexer\Indexer;
@@ -21,18 +20,18 @@ use Solarium\QueryType\Update\Result as SolrUpdateResult;
 
 final class IndexerTest extends TestCase
 {
-    private function makeConfig(array $overrides = []): CrawlerConfig
+    private function makeConfig(array $overrides = []): PipelineConfig
     {
-        $ctx = new CrawlerConfigContext(array_merge([
+        $ctx = array_merge([
             'sp_id' => 'test-source',
             'sp_cleanup_threshold' => 0,
             'sp_introText_present' => false,
             'sp_datetime_present' => false,
-        ], $overrides));
+        ], $overrides);
         $logger = $this->createStub(LoggerInterface::class);
         $helper = new CrawlerConfigHelper($ctx, $logger);
 
-        return new CrawlerConfig($helper);
+        return new PipelineConfig($helper);
     }
 
     private function makeIndexer(

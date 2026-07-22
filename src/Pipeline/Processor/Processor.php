@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Atoolo\CrawlerIndexer\Pipeline\Processor;
 
-use Atoolo\CrawlerIndexer\Config\CrawlerConfig;
+use Atoolo\CrawlerIndexer\Config\PipelineConfig;
 use Atoolo\CrawlerIndexer\Dto\ExtractedData;
 use Atoolo\CrawlerIndexer\Dto\ExtractedDataInterface;
 use Psr\Log\LoggerInterface;
@@ -26,7 +26,7 @@ class Processor
 {
     public function __construct(
         private LoggerInterface $logger,
-        private readonly CrawlerConfig $config,
+        private readonly PipelineConfig $config,
     ) {}
 
     /**

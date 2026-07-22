@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Atoolo\CrawlerIndexer\Pipeline\Collector;
 
-use Atoolo\CrawlerIndexer\Config\CrawlerConfig;
+use Atoolo\CrawlerIndexer\Config\PipelineConfig;
 
 /**
  * Normalizes and filters URLs according to configurable rules.
@@ -24,7 +24,7 @@ final class URLNormalizer
      * @param array<string> $denyEndings
      */
     public function __construct(
-        private readonly CrawlerConfig $config,
+        private readonly PipelineConfig $config,
         private readonly array $denyEndings,
     ) {}
 

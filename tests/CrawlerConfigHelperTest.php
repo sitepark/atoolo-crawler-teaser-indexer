@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Atoolo\CrawlerIndexer\Tests;
 
-use Atoolo\CrawlerIndexer\Config\CrawlerConfigContext;
 use Atoolo\CrawlerIndexer\Config\CrawlerConfigHelper;
 use Atoolo\CrawlerIndexer\Config\LengthConditionConfig;
 use Atoolo\CrawlerIndexer\Pipeline\Parser\ScoreRuleConfig;
@@ -15,7 +14,7 @@ final class CrawlerConfigHelperTest extends TestCase
 {
     private function makeHelper(array $params, ?LoggerInterface $logger = null): CrawlerConfigHelper
     {
-        $ctx = new CrawlerConfigContext($params);
+        $ctx = $params;
 
         return new CrawlerConfigHelper($ctx, $logger ?? $this->createStub(LoggerInterface::class));
     }

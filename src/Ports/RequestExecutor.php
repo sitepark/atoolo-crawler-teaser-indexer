@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Atoolo\CrawlerIndexer\Ports;
 
-use Atoolo\CrawlerIndexer\Config\CrawlerConfig;
+use Atoolo\CrawlerIndexer\Config\PipelineConfig;
 use Psr\Log\LoggerInterface;
 use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -20,7 +20,7 @@ final class RequestExecutor implements RequestExecutorInterface
      */
     public function __construct(
         private readonly array $retryStatusCodes,
-        private readonly CrawlerConfig $config,
+        private readonly PipelineConfig $config,
         private HttpClientInterface $httpClient,
         private readonly LoggerInterface $logger,
     ) {

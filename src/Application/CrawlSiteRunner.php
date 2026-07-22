@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace Atoolo\CrawlerIndexer\Application;
 
-use Atoolo\CrawlerIndexer\Config\CrawlerConfigContext;
-use Atoolo\CrawlerIndexer\Pipeline\CrawlerPipeline;
+use Atoolo\CrawlerIndexer\Config\PipelineConfigFactory;
+use Atoolo\CrawlerIndexer\Pipeline\CrawlerPipelineFactory;
 use Psr\Log\LoggerInterface;
 
 final class CrawlSiteRunner
 {
     public function __construct(
-        private readonly CrawlerConfigContext $configContext,
-        private readonly CrawlerPipeline $crawlerManager,
+        private readonly PipelineConfigFactory $configFactory,
+        private readonly CrawlerPipelineFactory $pipelineFactory,
         private readonly LoggerInterface $logger,
     ) {}
 
@@ -21,26 +21,18 @@ final class CrawlSiteRunner
      */
     public function run(array $site): void
     {
-        $this->configContext->set($site);
-        /** @var string $siteKey */
-        $siteKey = $site['sp_id'] ?? null;
-
-        if (!is_string($siteKey) || '' === $siteKey) {
-            $this->logger->error('Invalid site config: missing "sp_id" field.');
-            throw new \InvalidArgumentException('Site config is missing required field "sp_id".');
-        }
+        $config = $this->configFactory->create($site);
+        $siteKey = $config->id();
 
         try {
             $this->logger->info(sprintf('Processing site: %s', $siteKey));
-            $this->crawlerManager->startCrawler();
+            $this->pipelineFactory->create($config)->startCrawler();
             $this->logger->info(sprintf('Successfully crawled: %s', $siteKey));
         } catch (\Throwable $e) {
             $this->logger->error('[Crawler] Failed site', [
                 'exception' => $e,
             ]);
             throw $e;
-        } finally {
-            $this->configContext->reset();
         }
     }
 }

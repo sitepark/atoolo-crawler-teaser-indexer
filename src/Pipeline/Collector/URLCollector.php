@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Atoolo\CrawlerIndexer\Pipeline\Collector;
 
-use Atoolo\CrawlerIndexer\Config\CrawlerConfig;
+use Atoolo\CrawlerIndexer\Config\PipelineConfig;
 use Atoolo\CrawlerIndexer\Pipeline\Fetcher\Fetcher;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DomCrawler\Crawler;
@@ -13,7 +13,7 @@ use Symfony\Component\DomCrawler\Link;
 class URLCollector
 {
     public function __construct(
-        private readonly CrawlerConfig $config,
+        private readonly PipelineConfig $config,
         private readonly URLNormalizer $urlNormalizer,
         private readonly LoggerInterface $logger,
         private RobotsTxtCheckerInterface $robotsTxtChecker,

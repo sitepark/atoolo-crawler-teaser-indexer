@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace Atoolo\CrawlerIndexer\Tests;
 
-use Atoolo\CrawlerIndexer\Config\CrawlerConfig;
-use Atoolo\CrawlerIndexer\Config\CrawlerConfigContext;
+use Atoolo\CrawlerIndexer\Config\PipelineConfig;
 use Atoolo\CrawlerIndexer\Config\CrawlerConfigHelper;
 use Atoolo\CrawlerIndexer\Pipeline\Collector\RobotsTxtCheckerInterface;
 use Atoolo\CrawlerIndexer\Pipeline\Collector\URLNormalizer;
@@ -66,18 +65,18 @@ final class URLCollectorTest extends TestCase
         RobotsTxtCheckerInterface $robotsTxtChecker,
         array $overrides = [],
     ): URLCollector {
-        $ctx = new CrawlerConfigContext(array_merge([
+        $ctx = array_merge([
             'sp_start_urls' => [['sp_url' => $this->urlPrefix, 'sp_extraction_depth' => 0]],
             'sp_link_selector' => '#content a[href]',
-            'sp_max_document' => 999,
+            'sp_max_teaser' => 999,
             'sp_deny_prefixes' => [],
             'sp_allow_prefixes' => [$this->urlPrefix],
             'sp_strip_query_params_active' => false,
             'sp_strip_query_params' => [],
-        ], $overrides));
+        ], $overrides);
 
         $helper = new CrawlerConfigHelper($ctx, $logger);
-        $crawlerConfig = new CrawlerConfig($helper);
+        $crawlerConfig = new PipelineConfig($helper);
         $urlNormalizer = new URLNormalizer($crawlerConfig, []);
 
         return new URLCollector($crawlerConfig, $urlNormalizer, $logger, $robotsTxtChecker, $fetcher);
@@ -301,7 +300,7 @@ HTML;
         $robotsTxtChecker = $this->createStub(RobotsTxtCheckerInterface::class);
 
         $collector = $this->createCollector($fetcher, $logger, $robotsTxtChecker, [
-            'sp_max_document' => 2,
+            'sp_max_teaser' => 2,
         ]);
         $generator = $collector->collect();
         iterator_to_array($generator);

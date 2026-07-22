@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace Atoolo\CrawlerIndexer\Tests;
 
 use Atoolo\CrawlerIndexer\Application\CrawlSiteRunner;
-use Atoolo\CrawlerIndexer\Config\CrawlerConfigContext;
+use Atoolo\CrawlerIndexer\Config\PipelineConfigFactory;
 use Atoolo\CrawlerIndexer\Pipeline\CrawlerPipeline;
+use Atoolo\CrawlerIndexer\Pipeline\CrawlerPipelineFactory;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 
@@ -16,7 +17,14 @@ final class CrawlSiteRunnerTest extends TestCase
         CrawlerPipeline $manager,
         LoggerInterface $logger,
     ): CrawlSiteRunner {
-        return new CrawlSiteRunner(new CrawlerConfigContext([]), $manager, $logger);
+        $pipelineFactory = $this->createMock(CrawlerPipelineFactory::class);
+        $pipelineFactory->method('create')->willReturn($manager);
+
+        return new CrawlSiteRunner(
+            new PipelineConfigFactory($this->createStub(LoggerInterface::class)),
+            $pipelineFactory,
+            $logger,
+        );
     }
 
     public function testRunWithValidSiteCallsStartCrawler(): void
@@ -46,25 +54,6 @@ final class CrawlSiteRunnerTest extends TestCase
 
         $this->expectException(\InvalidArgumentException::class);
         $this->makeRunner($manager, $logger)->run(['sp_id' => '']);
-    }
-
-    public function testRunResetsContextEvenWhenCrawlerThrows(): void
-    {
-        $manager = $this->createMock(CrawlerPipeline::class);
-        $manager->method('startCrawler')->willThrowException(new \RuntimeException('crawl error'));
-
-        $logger = $this->createStub(LoggerInterface::class);
-        $ctx = new CrawlerConfigContext([]);
-        $runner = new CrawlSiteRunner($ctx, $manager, $logger);
-
-        try {
-            $runner->run(['sp_id' => 'site-1', 'extra' => 'value']);
-            $this->fail('Expected RuntimeException');
-        } catch (\RuntimeException) {
-            // After run() throws, the finally block must have called reset()
-            $this->assertNull($ctx->get('sp_id'));
-            $this->assertNull($ctx->get('extra'));
-        }
     }
 
     public function testRunLogsErrorAndRethrowsWhenCrawlerThrows(): void

@@ -20,7 +20,7 @@ declare(strict_types=1);
 
 namespace Atoolo\CrawlerIndexer\Pipeline;
 
-use Atoolo\CrawlerIndexer\Config\CrawlerConfig;
+use Atoolo\CrawlerIndexer\Config\PipelineConfig;
 use Atoolo\CrawlerIndexer\Dto\ExtractedDataInterface;
 use Atoolo\CrawlerIndexer\Pipeline\Fetcher\Fetcher;
 use Atoolo\CrawlerIndexer\Pipeline\Indexer\Indexer;
@@ -36,7 +36,7 @@ class CrawlerPipeline
         private readonly Fetcher $fetcher,
         private readonly Parser $parser,
         private readonly Processor $processor,
-        private readonly CrawlerConfig $config,
+        private readonly PipelineConfig $config,
         private readonly ExecuteStep $executeStep,
         private readonly LoggerInterface $logger,
         private readonly Indexer $indexer,
