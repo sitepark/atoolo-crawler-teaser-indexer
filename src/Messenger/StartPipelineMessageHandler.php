@@ -2,21 +2,21 @@
 
 namespace Atoolo\CrawlerIndexer\Messenger;
 
-use Atoolo\CrawlerIndexer\Application\CrawlSiteRunner;
+use Atoolo\CrawlerIndexer\Application\PipelineRunner;
 use Atoolo\Search\Service\Indexer\IndexerConfigurationLoader;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
-final class StartCrawlerMessageHandler
+final class StartPipelineMessageHandler
 {
     public function __construct(
-        private readonly CrawlSiteRunner $runner,
+        private readonly PipelineRunner $runner,
         private readonly IndexerConfigurationLoader $indexerConfigurationLoader,
         private readonly LoggerInterface $logger,
     ) {}
 
-    public function __invoke(StartCrawlerMessage $message): void
+    public function __invoke(StartPipelineMessage $message): void
     {
         $config = $this->indexerConfigurationLoader->load('atooloTeaserCrawler');
 

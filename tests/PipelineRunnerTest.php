@@ -4,23 +4,23 @@ declare(strict_types=1);
 
 namespace Atoolo\CrawlerIndexer\Tests;
 
-use Atoolo\CrawlerIndexer\Application\CrawlSiteRunner;
+use Atoolo\CrawlerIndexer\Application\PipelineRunner;
 use Atoolo\CrawlerIndexer\Config\PipelineConfigFactory;
 use Atoolo\CrawlerIndexer\Pipeline\CrawlerPipeline;
 use Atoolo\CrawlerIndexer\Pipeline\CrawlerPipelineFactory;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 
-final class CrawlSiteRunnerTest extends TestCase
+final class PipelineRunnerTest extends TestCase
 {
     private function makeRunner(
         CrawlerPipeline $manager,
         LoggerInterface $logger,
-    ): CrawlSiteRunner {
+    ): PipelineRunner {
         $pipelineFactory = $this->createMock(CrawlerPipelineFactory::class);
         $pipelineFactory->method('create')->willReturn($manager);
 
-        return new CrawlSiteRunner(
+        return new PipelineRunner(
             new PipelineConfigFactory($this->createStub(LoggerInterface::class)),
             $pipelineFactory,
             $logger,

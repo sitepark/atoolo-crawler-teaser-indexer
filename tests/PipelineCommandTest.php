@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Atoolo\CrawlerIndexer\Tests;
 
-use Atoolo\CrawlerIndexer\Application\CrawlSiteRunner;
-use Atoolo\CrawlerIndexer\Command\IndexCommand;
+use Atoolo\CrawlerIndexer\Application\PipelineRunner;
+use Atoolo\CrawlerIndexer\Command\PipelineCommand;
 use Atoolo\CrawlerIndexer\Config\PipelineConfigFactory;
 use Atoolo\CrawlerIndexer\Pipeline\CrawlerPipelineFactory;
 use Atoolo\CrawlerIndexer\Pipeline\CrawlerPipeline;
@@ -17,7 +17,7 @@ use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
 
-final class IndexCommandTest extends TestCase
+final class PipelineCommandTest extends TestCase
 {
     private function makeConfig(array $sites): IndexerConfiguration
     {
@@ -28,19 +28,19 @@ final class IndexCommandTest extends TestCase
         );
     }
 
-    private function makeRunner(CrawlerPipeline $manager): CrawlSiteRunner
+    private function makeRunner(CrawlerPipeline $manager): PipelineRunner
     {
         $pipelineFactory = $this->createMock(CrawlerPipelineFactory::class);
         $pipelineFactory->method('create')->willReturn($manager);
 
-        return new CrawlSiteRunner(
+        return new PipelineRunner(
             new PipelineConfigFactory($this->createStub(LoggerInterface::class)),
             $pipelineFactory,
             $this->createStub(LoggerInterface::class),
         );
     }
 
-    private function runCommand(IndexCommand $command): CommandTester
+    private function runCommand(PipelineCommand $command): CommandTester
     {
         $tester = new CommandTester($command);
         $tester->execute([]);
@@ -59,7 +59,7 @@ final class IndexCommandTest extends TestCase
         $logger = $this->createMock(LoggerInterface::class);
         $logger->expects($this->once())->method('warning');
 
-        $command = new IndexCommand($loader, $this->makeRunner($manager), $logger);
+        $command = new PipelineCommand($loader, $this->makeRunner($manager), $logger);
         $tester = $this->runCommand($command);
 
         $this->assertSame(Command::SUCCESS, $tester->getStatusCode());
@@ -80,7 +80,7 @@ final class IndexCommandTest extends TestCase
 
         $logger = $this->createStub(LoggerInterface::class);
 
-        $command = new IndexCommand($loader, $this->makeRunner($manager), $logger);
+        $command = new PipelineCommand($loader, $this->makeRunner($manager), $logger);
         $tester = $this->runCommand($command);
 
         $this->assertSame(Command::SUCCESS, $tester->getStatusCode());
@@ -102,13 +102,13 @@ final class IndexCommandTest extends TestCase
         $logger = $this->createMock(LoggerInterface::class);
         $logger->expects($this->atLeastOnce())->method('error');
 
-        $command = new IndexCommand($loader, $this->makeRunner($manager), $logger);
+        $command = new PipelineCommand($loader, $this->makeRunner($manager), $logger);
         $tester = $this->runCommand($command);
 
         $this->assertSame(Command::FAILURE, $tester->getStatusCode());
     }
 
-    public function testExecuteWithSiteRunnerThrowingReturnsFailure(): void
+    public function testExecuteWithPipelineRunnerThrowingReturnsFailure(): void
     {
         $sites = [['sp_id' => 'site-1']];
 
@@ -121,7 +121,7 @@ final class IndexCommandTest extends TestCase
         $logger = $this->createMock(LoggerInterface::class);
         $logger->expects($this->atLeastOnce())->method('error');
 
-        $command = new IndexCommand($loader, $this->makeRunner($manager), $logger);
+        $command = new PipelineCommand($loader, $this->makeRunner($manager), $logger);
         $tester = $this->runCommand($command);
 
         $this->assertSame(Command::FAILURE, $tester->getStatusCode());
@@ -137,7 +137,7 @@ final class IndexCommandTest extends TestCase
         $logger = $this->createMock(LoggerInterface::class);
         $logger->expects($this->once())->method('critical');
 
-        $command = new IndexCommand($loader, $this->makeRunner($manager), $logger);
+        $command = new PipelineCommand($loader, $this->makeRunner($manager), $logger);
         $tester = $this->runCommand($command);
 
         $this->assertSame(Command::FAILURE, $tester->getStatusCode());

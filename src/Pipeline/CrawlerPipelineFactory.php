@@ -11,7 +11,7 @@ use Atoolo\CrawlerIndexer\Pipeline\Collector\URLNormalizer;
 use Atoolo\CrawlerIndexer\Pipeline\Fetcher\Fetcher;
 use Atoolo\CrawlerIndexer\Pipeline\Indexer\Indexer;
 use Atoolo\CrawlerIndexer\Pipeline\Parser\Parser;
-use Atoolo\CrawlerIndexer\Pipeline\Parser\RelevanceEvaluator;
+use Atoolo\CrawlerIndexer\Pipeline\RelevanceEvaluator\RelevanceEvaluator;
 use Atoolo\CrawlerIndexer\Pipeline\Processor\Processor;
 use Atoolo\CrawlerIndexer\Ports\RequestExecutor;
 use Atoolo\Search\Service\Indexer\IndexerProgressHandler;

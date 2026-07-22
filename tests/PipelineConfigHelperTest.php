@@ -4,19 +4,19 @@ declare(strict_types=1);
 
 namespace Atoolo\CrawlerIndexer\Tests;
 
-use Atoolo\CrawlerIndexer\Config\CrawlerConfigHelper;
+use Atoolo\CrawlerIndexer\Config\PipelineConfigHelper;
 use Atoolo\CrawlerIndexer\Config\LengthConditionConfig;
-use Atoolo\CrawlerIndexer\Pipeline\Parser\ScoreRuleConfig;
+use Atoolo\CrawlerIndexer\Pipeline\RelevanceEvaluator\ScoreRuleConfig;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 
-final class CrawlerConfigHelperTest extends TestCase
+final class PipelineConfigHelperTest extends TestCase
 {
-    private function makeHelper(array $params, ?LoggerInterface $logger = null): CrawlerConfigHelper
+    private function makeHelper(array $params, ?LoggerInterface $logger = null): PipelineConfigHelper
     {
         $ctx = $params;
 
-        return new CrawlerConfigHelper($ctx, $logger ?? $this->createStub(LoggerInterface::class));
+        return new PipelineConfigHelper($ctx, $logger ?? $this->createStub(LoggerInterface::class));
     }
 
     // --- bool() ---

@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Atoolo\CrawlerIndexer\Tests;
 
-use Atoolo\CrawlerIndexer\Application\CrawlSiteRunner;
-use Atoolo\CrawlerIndexer\Messenger\StartCrawlerMessage;
-use Atoolo\CrawlerIndexer\Messenger\StartCrawlerMessageHandler;
+use Atoolo\CrawlerIndexer\Application\PipelineRunner;
+use Atoolo\CrawlerIndexer\Messenger\StartPipelineMessage;
+use Atoolo\CrawlerIndexer\Messenger\StartPipelineMessageHandler;
 use Atoolo\CrawlerIndexer\Config\PipelineConfigFactory;
 use Atoolo\CrawlerIndexer\Pipeline\CrawlerPipelineFactory;
 use Atoolo\CrawlerIndexer\Pipeline\CrawlerPipeline;
@@ -16,7 +16,7 @@ use Atoolo\Search\Service\Indexer\IndexerConfigurationLoader;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 
-final class StartCrawlerMessageHandlerTest extends TestCase
+final class StartPipelineMessageHandlerTest extends TestCase
 {
     private function makeConfig(array $sites): IndexerConfiguration
     {
@@ -27,12 +27,12 @@ final class StartCrawlerMessageHandlerTest extends TestCase
         );
     }
 
-    private function makeRunner(CrawlerPipeline $manager): CrawlSiteRunner
+    private function makeRunner(CrawlerPipeline $manager): PipelineRunner
     {
         $pipelineFactory = $this->createMock(CrawlerPipelineFactory::class);
         $pipelineFactory->method('create')->willReturn($manager);
 
-        return new CrawlSiteRunner(
+        return new PipelineRunner(
             new PipelineConfigFactory($this->createStub(LoggerInterface::class)),
             $pipelineFactory,
             $this->createStub(LoggerInterface::class),
@@ -50,8 +50,8 @@ final class StartCrawlerMessageHandlerTest extends TestCase
         $logger = $this->createMock(LoggerInterface::class);
         $logger->expects($this->once())->method('warning');
 
-        $handler = new StartCrawlerMessageHandler($this->makeRunner($manager), $loader, $logger);
-        $handler(new StartCrawlerMessage());
+        $handler = new StartPipelineMessageHandler($this->makeRunner($manager), $loader, $logger);
+        $handler(new StartPipelineMessage());
     }
 
     public function testInvokeCallsRunnerForEachValidSite(): void
@@ -69,8 +69,8 @@ final class StartCrawlerMessageHandlerTest extends TestCase
 
         $logger = $this->createStub(LoggerInterface::class);
 
-        $handler = new StartCrawlerMessageHandler($this->makeRunner($manager), $loader, $logger);
-        $handler(new StartCrawlerMessage());
+        $handler = new StartPipelineMessageHandler($this->makeRunner($manager), $loader, $logger);
+        $handler(new StartPipelineMessage());
     }
 
     public function testInvokeSkipsInvalidSiteWithoutSpId(): void
@@ -89,7 +89,7 @@ final class StartCrawlerMessageHandlerTest extends TestCase
         $logger = $this->createMock(LoggerInterface::class);
         $logger->expects($this->once())->method('error');
 
-        $handler = new StartCrawlerMessageHandler($this->makeRunner($manager), $loader, $logger);
-        $handler(new StartCrawlerMessage());
+        $handler = new StartPipelineMessageHandler($this->makeRunner($manager), $loader, $logger);
+        $handler(new StartPipelineMessage());
     }
 }

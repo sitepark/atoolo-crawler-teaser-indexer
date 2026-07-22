@@ -95,16 +95,16 @@ The Fetcher and Parser are chunked based on `sp_parallel_requests` configuration
 ```
 src/
 ├── Application/
-│   ├── CrawlSiteRunner          - Orchestrates single site crawling with config context
+│   ├── PipelineRunner          - Orchestrates single site crawling with config context
 │   ├── Schedule                 - Provides cron schedule via ScheduleProviderInterface
-│   ├── StartCrawlerMessage      - Messenger message for async crawling
-│   └── StartCrawlerMessageHandler - Handles async crawler invocation
+│   ├── StartPipelineMessage      - Messenger message for async crawling
+│   └── StartPipelineMessageHandler - Handles async crawler invocation
 ├── Command/
 │   └── Index                    - CLI command: bin/console crawler:scheduler-atoolo-crawler-teaser-indexer
 ├── Config/
 │   ├── CrawlerConfig            - Accessor for configuration values (sp_* prefixed)
 │   ├── CrawlerConfigContext     - Thread-safe context storing current site config
-│   └── CrawlerConfigHelper      - Helper methods for type-safe config reading
+│   └── PipelineConfigHelper      - Helper methods for type-safe config reading
 ├── Controller/
 │   └── CrawlerPipeline           - Central orchestrator of the 5-step pipeline
 ├── Domain/Crawler/
@@ -239,7 +239,7 @@ composer test:infection                  # Mutation testing
 
 **Thread-safe Configuration:** CrawlerConfigContext stores current site config (implements ResetInterface) to avoid state leakage across sites
 
-**Symfony Messenger Integration:** StartCrawlerMessage and StartCrawlerMessageHandler enable async/scheduled crawling via Symfony Messenger
+**Symfony Messenger Integration:** StartPipelineMessage and StartPipelineMessageHandler enable async/scheduled crawling via Symfony Messenger
 
 ## Dependencies
 

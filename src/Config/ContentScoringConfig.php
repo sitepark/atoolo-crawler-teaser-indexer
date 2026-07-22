@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Atoolo\CrawlerIndexer\Config;
 
-use Atoolo\CrawlerIndexer\Pipeline\Parser\ScoreRuleConfig;
+use Atoolo\CrawlerIndexer\Pipeline\RelevanceEvaluator\ScoreRuleConfig;
 
 final class ContentScoringConfig
 {

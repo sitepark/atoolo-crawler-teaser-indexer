@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Atoolo\CrawlerIndexer\Tests;
 
 use Atoolo\CrawlerIndexer\Config\PipelineConfig;
-use Atoolo\CrawlerIndexer\Config\CrawlerConfigHelper;
+use Atoolo\CrawlerIndexer\Config\PipelineConfigHelper;
 use Atoolo\CrawlerIndexer\Dto\ExtractedData;
 use Atoolo\CrawlerIndexer\Dto\ExtractedDataInterface;
 use Atoolo\CrawlerIndexer\Pipeline\Processor\Processor;
@@ -24,7 +24,7 @@ final class ProcessorTest extends TestCase
         ];
 
         $logger = $this->createStub(LoggerInterface::class);
-        $helper = new CrawlerConfigHelper($ctx, $logger);
+        $helper = new PipelineConfigHelper($ctx, $logger);
         $config = new PipelineConfig($helper);
         $this->processor = new Processor($logger, $config);
     }
@@ -97,7 +97,7 @@ final class ProcessorTest extends TestCase
         $logger->expects($this->once())->method('warning');
 
         $ctx = ['sp_title_max_chars' => 120];
-        $helper = new CrawlerConfigHelper($ctx, $logger);
+        $helper = new PipelineConfigHelper($ctx, $logger);
         $config = new PipelineConfig($helper);
         $processor = new Processor($logger, $config);
 
@@ -128,7 +128,7 @@ final class ProcessorTest extends TestCase
         $logger = $this->createMock(LoggerInterface::class);
         $logger->expects($this->once())->method('error');
 
-        $helper = new CrawlerConfigHelper($ctx, $logger);
+        $helper = new PipelineConfigHelper($ctx, $logger);
         $config = new PipelineConfig($helper);
         $processor = new Processor($logger, $config);
 

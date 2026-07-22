@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Atoolo\CrawlerIndexer\Tests;
 
 use Atoolo\CrawlerIndexer\Config\PipelineConfig;
-use Atoolo\CrawlerIndexer\Config\CrawlerConfigHelper;
+use Atoolo\CrawlerIndexer\Config\PipelineConfigHelper;
 use Atoolo\CrawlerIndexer\Pipeline\Collector\RobotsTxtCheckerInterface;
 use Atoolo\CrawlerIndexer\Pipeline\Collector\URLNormalizer;
 use Atoolo\CrawlerIndexer\Pipeline\Fetcher\Fetcher;
@@ -75,7 +75,7 @@ final class URLCollectorTest extends TestCase
             'sp_strip_query_params' => [],
         ], $overrides);
 
-        $helper = new CrawlerConfigHelper($ctx, $logger);
+        $helper = new PipelineConfigHelper($ctx, $logger);
         $crawlerConfig = new PipelineConfig($helper);
         $urlNormalizer = new URLNormalizer($crawlerConfig, []);
 

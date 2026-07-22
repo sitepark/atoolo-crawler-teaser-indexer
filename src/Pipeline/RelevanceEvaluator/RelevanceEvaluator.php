@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Atoolo\CrawlerIndexer\Pipeline\Parser;
+namespace Atoolo\CrawlerIndexer\Pipeline\RelevanceEvaluator;
 
 use Atoolo\CrawlerIndexer\Config\ContentScoringConfig;
 use Atoolo\CrawlerIndexer\Config\PipelineConfig;

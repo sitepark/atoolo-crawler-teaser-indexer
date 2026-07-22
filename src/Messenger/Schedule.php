@@ -32,7 +32,7 @@ final class Schedule implements ScheduleProviderInterface
                 $schedule->add(
                     RecurringMessage::cron(
                         $scheduleTime,
-                        new StartCrawlerMessage(),
+                        new StartPipelineMessage(),
                     ),
                 );
                 ++$successCount;

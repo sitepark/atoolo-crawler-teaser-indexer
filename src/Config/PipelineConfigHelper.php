@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Atoolo\CrawlerIndexer\Config;
 
-use Atoolo\CrawlerIndexer\Pipeline\Parser\ScoreRuleConfig;
+use Atoolo\CrawlerIndexer\Pipeline\RelevanceEvaluator\ScoreRuleConfig;
 use Psr\Log\LoggerInterface;
 
-final class CrawlerConfigHelper
+final class PipelineConfigHelper
 {
     /**
      * @param array<string, mixed> $params

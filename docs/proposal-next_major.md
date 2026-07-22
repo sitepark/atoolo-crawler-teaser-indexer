@@ -1,68 +1,76 @@
-# Proposal: Next Major
++# Proposal: Next Major
++
++## Wie dieses Dokument zu lesen ist
++
++Dieses Dokument ist die **verbindliche Spezifikation** der Zielarchitektur. Unter `src/Proposal/` liegt ein **Code-Skelett**, das sie in Klassen/Signaturen skizziert — bewusst unvollständig (Stubs, keine Adapter, keine Tests). Wo Skelett und Dokument abweichen, gilt das Dokument; offene Stellen im Skelett sind mit „⚠️" markiert. Warum überhaupt umgebaut wird — und was am Bestehenden gut ist — steht kompakt in [review.md](review.md).
++
++Zwei bereits getroffene Grundsatzentscheidungen:
++1. **Ziel-Namespace `Atoolo\CrawlerIndexer`** (statt `Atoolo\Crawler`).
++2. **Indexer bleibt direkt an Solr gekoppelt** — kein Infrastructure-Port (Abschnitt 6).
++
++## Ausgangslage
++
++Das Bundle crawlt Websites, extrahiert Teaser-Daten (Titel, Intro, Datum) und indiziert sie nach Solr. Heute: eine „Pipe and Filter"-Pipeline (`URLCollector +→ Fetcher → Parser → Processor → Indexer`), orchestriert von `Controller\CrawlerManager`, konfiguriert über ein `sp_*`-Array pro Site. Der Minor hat die +abwärtskompatiblen Bugfixes erledigt; der Major bringt die strukturellen Breaking Changes.
++
++---
++
++## 1. Namensgebung#
++
++„teaser" ist im Kern überflüssig — das Bundle crawlt, prozessiert, indiziert; dass die Daten *später* als Teaser ausgegeben werden, muss es nicht wissen. +Konsequenz: `RelevanceEvaluator` → `RelevanceEvaluator` (5.1) und Base-Namespace → `Atoolo\CrawlerIndexer` (Abschnitt 2).
++
 
-## Wie dieses Dokument zu lesen ist
+# Wurde von mir zum großteil so übernommen 
 
-Dieses Dokument ist die **verbindliche Spezifikation** der Zielarchitektur. Unter `src/Proposal/` liegt ein **Code-Skelett**, das sie in Klassen/Signaturen skizziert — bewusst unvollständig (Stubs, keine Adapter, keine Tests). Wo Skelett und Dokument abweichen, gilt das Dokument; offene Stellen im Skelett sind mit „⚠️" markiert. Warum überhaupt umgebaut wird — und was am Bestehenden gut ist — steht kompakt in [review.md](review.md).
+- die runner in src/Application gelassen 
+- die exeptions in src/Exception liegen lassen
+- die Ports in src/Ports gelassen
+- Ich habe noch diverse Classen namen angepasst, weil ich fand das sie besser auf das neue Model passen oder verständlicher sind
 
-Zwei bereits getroffene Grundsatzentscheidungen:#
-1. # **Ziel-Namespace `Atoolo\CrawlerIndexer`** (statt `Atoolo\Crawler`).
-2. # **Indexer bleibt direkt an Solr gekoppelt** — kein Infrastructure-Port (Abschnitt 6).
-
-## Ausgangslage
-
-Das Bundle crawlt Websites, extrahiert Teaser-Daten (Titel, Intro, Datum) und indiziert sie nach Solr. Heute: eine „Pipe and Filter"-Pipeline (`URLCollector → Fetcher → Parser → Processor → Indexer`), orchestriert von `Controller\CrawlerPipeline`, konfiguriert über ein `sp_*`-Array pro Site. Der Minor hat die abwärtskompatiblen Bugfixes erledigt; der Major bringt die strukturellen Breaking Changes.
-
----
-
-## 1. Namensgebung#
-
-# „teaser" ist im Kern überflüssig — das Bundle crawlt, prozessiert, indiziert; dass die Daten *später* als Teaser ausgegeben werden, muss es nicht wissen. Konsequenz: `RelevanceEvaluator` → `RelevanceEvaluator` (5.1) und Base-Namespace → `Atoolo\CrawlerIndexer` (Abschnitt 2).
-
-## 2. Namespaces & Verzeichnisstruktur
-
-- # Base-Namespace `Atoolo\Crawler` → **`Atoolo\CrawlerIndexer`**. Breaking Change (Host-Apps referenzieren die Bundle-Klasse) → passt in den Major (Cutover: Abschnitt 10).
-- `Domain/` weckt DDD-Erwartungen (Domain/Application/Infrastructure), die hier nicht eingelöst werden → auflösen.
-- `Controller/` ist in Symfony für HTTP-Controller reserviert; `CrawlerPipeline` ist keiner → umbenennen/verschieben.
-- `Console\Application` ist für ein Bundle obsolet (Commands laufen über die Host-Console) → entfernen. (Nicht mit dem `Application\`-Namespace verwechseln.)
-
-Zielstruktur (das Skelett bildet sie unter `…\Proposal\` bereits ab):
-
-```
-src/
-├── Command/IndexCommand.php
-├── Config/                     PipelineConfig, PipelineConfigFactory + Value-Objects
-│   (FieldExtractConfig, DateTimeExtractConfig, ContentScoringConfig,
-│    ScoreRuleConfig, LengthConditionConfig, HttpFetcherConfig)
-├── Dto/                        CrawledPage, IndexEntry
-├── Pipeline/
-│   ├── CrawlerPipeline.php     (ersetzt CrawlerPipeline)
-│   ├── {Crawler,Parser,Processor,Indexer}StepInterface.php
-│   ├── Crawler/    CrawlerStep + HttpFetcher(Interface) + RobotsTxtChecker(Interface)
-│   ├── Parser/     ParserStep + RelevanceEvaluator(Interface)
-│   ├── Processor/  ProcessorStep
-│   └── Indexer/    IndexerStep (hängt bewusst direkt an SolrIndexService)
-├── Messenger/                  StartCrawlerMessage(+Handler), Schedule
-├── CrawlerRunner.php           (gemeinsame Site-Lade-Schleife, Abschnitt 8)
-├── CrawlSiteRunner.php         (eine Site: Factory → Pipeline)
-└── AtooloCrawlerTeaserIndexerBundle.php
-```
-
-Step-Interfaces liegen direkt unter `Pipeline/`, die Default-Implementierung samt der von ihr benötigten Kollaborator-Interfaces im jeweiligen Unterordner.
-
-### 2.1 Config
-
-`CrawlerConfig` → **`PipelineConfig`**, und zwar als **immutable DTO statt Service**. Jede Site hat eine eigene Config, die während eines Laufs konstant bleibt. Statt sie als geteilten Service über einen mutierbaren `CrawlerConfigContext` zu fahren (Race-Condition-Gefahr, impliziter Zustand), wird pro Lauf **eine Instanz erzeugt und als Parameter** durch die Pipeline gereicht. Damit entfallen `CrawlerConfigContext`, `CrawlerConfigHelper` und `CrawlerConfig` als 3-Klassen-Konstrukt.
-
-Erzeugt wird sie von einem `PipelineConfigFactory`-Service (`create(array $siteData): PipelineConfig`), der das `sp_*`-Array validiert. **Bewusst:** bei ungültiger Config (z.B. fehlende `sp_id`) eine `\InvalidArgumentException` werfen statt `null` — die Site-Schleife (Abschnitt 8) fängt das pro Site ab.
-⚠️ Skelett: `PipelineConfigFactory::create()` ist ein Stub (`?PipelineConfig`, `return null`). Auf obigen Vertrag umstellen.
-
-Ablauf: `CrawlerRunner` liest die Config-Datei → pro Site `PipelineConfigFactory` → `CrawlerPipeline::run($config)`. Kein `reset()` mehr, kein geteilter Zustand.
-
-**Verfeinerung (niedrige Priorität):** `PipelineConfig` ist mit ~17 Feldern ein God-DTO; jeder Step bekommt alles, braucht aber nur eine Scheibe. Wo ein Step genau eine braucht (z.B. `CrawlerStep` → `HttpFetcherConfig`), diese einzeln übergeben; sonst als Container belassen (volle Slicing-Umstellung ist wegen der Per-Lauf-Übergabe unhandlich).
-
++## 2. Namespaces & Verzeichnisstruktur
++
++- # Base-Namespace `Atoolo\Crawler` → **`Atoolo\CrawlerIndexer`**. Breaking Change (Host-Apps referenzieren die Bundle-Klasse) → passt in den Major (Cutover: Abschnitt 10).
++- `Domain/` weckt DDD-Erwartungen (Domain/Application/Infrastructure), die hier nicht eingelöst werden → auflösen.
++- `Controller/` ist in Symfony für HTTP-Controller reserviert; `CrawlerManager` ist keiner → umbenennen/verschieben.
++- `Console\Application` ist für ein Bundle obsolet (Commands laufen über die Host-Console) → entfernen. (Nicht mit dem `Application\`-Namespace verwechseln.)
++
++Zielstruktur (das Skelett bildet sie unter `…\Proposal\` bereits ab):
++
++```
++src/
++├── Command/IndexCommand.php
++├── Config/                     PipelineConfig, PipelineConfigFactory + Value-Objects
++│   (FieldExtractConfig, DateTimeExtractConfig, ContentScoringConfig,
++│    ScoreRuleConfig, LengthConditionConfig, HttpFetcherConfig)
++├── Dto/                        CrawledPage, IndexEntry
++├── Pipeline/
++│   ├── CrawlerPipeline.php     (ersetzt CrawlerManager)
++│   ├── {Crawler,Parser,Processor,Indexer}StepInterface.php
++│   ├── Crawler/    CrawlerStep + HttpFetcher(Interface) + RobotsTxtChecker(Interface)
++│   ├── Parser/     ParserStep + RelevanceEvaluator(Interface)
++│   ├── Processor/  ProcessorStep
++│   └── Indexer/    IndexerStep (hängt bewusst direkt an SolrIndexService)
++├── Messenger/                  StartCrawlerMessage(+Handler), Schedule
++├── CrawlerRunner.php           (gemeinsame Site-Lade-Schleife, Abschnitt 8)
++├── CrawlSiteRunner.php         (eine Site: Factory → Pipeline)
++└── AtooloCrawlerTeaserIndexerBundle.php
++```
++
++Step-Interfaces liegen direkt unter `Pipeline/`, die Default-Implementierung samt der von ihr benötigten Kollaborator-Interfaces im jeweiligen Unterordner.
++
++### 2.1 Config
++
++`CrawlerConfig` → **`PipelineConfig`**, und zwar als **immutable DTO statt Service**. Jede Site hat eine eigene Config, die während eines Laufs konstant +bleibt. Statt sie als geteilten Service über einen mutierbaren `CrawlerConfigContext` zu fahren (Race-Condition-Gefahr, impliziter Zustand), wird pro Lauf +**eine Instanz erzeugt und als Parameter** durch die Pipeline gereicht. Damit entfallen `CrawlerConfigContext`, `CrawlerConfigHelper` und `CrawlerConfig` als +3-Klassen-Konstrukt.
++
++Erzeugt wird sie von einem `PipelineConfigFactory`-Service (`create(array $siteData): PipelineConfig`), der das `sp_*`-Array validiert. **Bewusst:** bei +ungültiger Config (z.B. fehlende `sp_id`) eine `\InvalidArgumentException` werfen statt `null` — die Site-Schleife (Abschnitt 8) fängt das pro Site ab.
++⚠️ Skelett: `PipelineConfigFactory::create()` ist ein Stub (`?PipelineConfig`, `return null`). Auf obigen Vertrag umstellen.
++
++Ablauf: `CrawlerRunner` liest die Config-Datei → pro Site `PipelineConfigFactory` → `CrawlerPipeline::run($config)`. Kein `reset()` mehr, kein geteilter +Zustand.
++
++**Verfeinerung (niedrige Priorität):** `PipelineConfig` ist mit ~17 Feldern ein God-DTO; jeder Step bekommt alles, braucht aber nur eine Scheibe. Wo ein Step +genau eine braucht (z.B. `CrawlerStep` → `HttpFetcherConfig`), diese einzeln übergeben; sonst als Container belassen (volle Slicing-Umstellung ist wegen der +Per-Lauf-Übergabe unhandlich).
++
 ## 3. Pipeline-Architektur
 
-- `CrawlerPipeline` → **`CrawlerPipeline`** (Name passt, macht mehr als „crawlen").
+- `CrawlerManager` → **`CrawlerPipeline`** (Name passt, macht mehr als „crawlen").
 - **`URLCollector` + `Fetcher` zu einem `CrawlerStep` mergen.** Heute lädt der URLCollector zur Link-Entdeckung fast alle Seiten (bis auf die letzte Ebene), die der Fetcher anschließend erneut lädt — doppelter Traffic ohne Cache. Der `CrawlerStep` fetcht während der BFS und reicht jede Seite direkt weiter.
 - **`executeStep`-Wrapper streichen.** Die Vereinheitlichung von Leer-/Fehler-/Logging-Behandlung über alle Steps bringt weniger als sie kostet — die Steps sind ohnehin nicht austauschbar. Jeden Step einzeln behandeln.
 - **Ein Interface pro Step** (`CrawlerStepInterface` etc.) → Steps per Decorator modifizierbar.
@@ -206,12 +214,12 @@ Das Skelett liegt parallel unter `src/Proposal/`, damit der Altcode lauffähig b
 
 ## 11. Tests
 
-Es gibt bereits eine substanzielle Suite (~18 Dateien). Problem ist nicht Coverage, sondern dass sie gegen die **alte** Architektur (`CrawlerPipeline`, `CrawlerConfig`, Array-Steps) geschrieben ist → beim Umbau größtenteils zu portieren.
+Es gibt bereits eine substanzielle Suite (~18 Dateien). Problem ist nicht Coverage, sondern dass sie gegen die **alte** Architektur (`CrawlerManager`, `CrawlerConfig`, Array-Steps) geschrieben ist → beim Umbau größtenteils zu portieren.
 
 Zielbild:
 - **Unit pro Step** (aus vorhandenen portieren): `CrawlerStep` (BFS/Tiefe>0/Filter/robots/Canonical/maxItems/forced), `ParserStep`, `ProcessorStep` (Truncation nach Clean), `IndexerStep` (0-Einträge/Cleanup-Policy).
 - **Adapter** auf neue Signaturen nachziehen (u.a. DOM-Übergabe an Evaluator); neu: `PipelineConfigFactory` (Validierungsfehler).
-- **Echtes E2E:** Der heutige `CrawlerPipelineE2ETest` stubbt überwiegend die Steps. Wünschenswert: Integrationstest gegen einen Mock-HTTP-Server über die ganze Pipeline.
+- **Echtes E2E:** Der heutige `CrawlerManagerE2ETest` stubbt überwiegend die Steps. Wünschenswert: Integrationstest gegen einen Mock-HTTP-Server über die ganze Pipeline.
 
 ## 12. Umsetzungsreihenfolge
 

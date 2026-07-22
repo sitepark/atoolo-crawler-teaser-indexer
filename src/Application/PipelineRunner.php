@@ -8,7 +8,7 @@ use Atoolo\CrawlerIndexer\Config\PipelineConfigFactory;
 use Atoolo\CrawlerIndexer\Pipeline\CrawlerPipelineFactory;
 use Psr\Log\LoggerInterface;
 
-final class CrawlSiteRunner
+final class PipelineRunner
 {
     public function __construct(
         private readonly PipelineConfigFactory $configFactory,

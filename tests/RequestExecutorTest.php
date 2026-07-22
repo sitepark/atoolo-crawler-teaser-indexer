@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Atoolo\CrawlerIndexer\Tests;
 
 use Atoolo\CrawlerIndexer\Config\PipelineConfig;
-use Atoolo\CrawlerIndexer\Config\CrawlerConfigHelper;
+use Atoolo\CrawlerIndexer\Config\PipelineConfigHelper;
 use Atoolo\CrawlerIndexer\Ports\RequestExecutor;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
@@ -24,7 +24,7 @@ final class RequestExecutorTest extends TestCase
             'sp_backoff_ms' => 100,
         ], $overrides);
         $logger = $this->createStub(LoggerInterface::class);
-        $helper = new CrawlerConfigHelper($ctx, $logger);
+        $helper = new PipelineConfigHelper($ctx, $logger);
 
         return new PipelineConfig($helper);
     }

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Atoolo\CrawlerIndexer\Command;
 
-use Atoolo\CrawlerIndexer\Application\CrawlSiteRunner;
+use Atoolo\CrawlerIndexer\Application\PipelineRunner;
 use Atoolo\Search\Service\Indexer\IndexerConfigurationLoader;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -16,11 +16,11 @@ use Symfony\Component\Console\Output\OutputInterface;
     name: 'crawler:scheduler-atoolo-crawler-teaser-indexer',
     description: 'Run crawler for all configured sites sequentially (same logic as production handler).',
 )]
-final class IndexCommand extends Command
+final class PipelineCommand extends Command
 {
     public function __construct(
         private readonly IndexerConfigurationLoader $indexerConfigurationLoader,
-        private readonly CrawlSiteRunner $runner,
+        private readonly PipelineRunner $runner,
         private readonly LoggerInterface $logger,
     ) {
         parent::__construct();

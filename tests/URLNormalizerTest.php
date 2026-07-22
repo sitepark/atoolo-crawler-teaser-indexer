@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Atoolo\CrawlerIndexer\Tests;
 
 use Atoolo\CrawlerIndexer\Config\PipelineConfig;
-use Atoolo\CrawlerIndexer\Config\CrawlerConfigHelper;
+use Atoolo\CrawlerIndexer\Config\PipelineConfigHelper;
 use Atoolo\CrawlerIndexer\Pipeline\Collector\URLNormalizer;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
@@ -16,7 +16,7 @@ final class URLNormalizerTest extends TestCase
     {
         $logger = $this->createStub(LoggerInterface::class);
         $ctx = $config;
-        $helper = new CrawlerConfigHelper($ctx, $logger);
+        $helper = new PipelineConfigHelper($ctx, $logger);
         $crawlerConfig = new PipelineConfig($helper);
         $denyEndings = [
             '.jpg',

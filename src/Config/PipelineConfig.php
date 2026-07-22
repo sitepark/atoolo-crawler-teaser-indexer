@@ -7,7 +7,7 @@ namespace Atoolo\CrawlerIndexer\Config;
 final class PipelineConfig
 {
     public function __construct(
-        private CrawlerConfigHelper $crawlerConfigHelper,
+        private PipelineConfigHelper $crawlerConfigHelper,
     ) {}
 
     // --- Category ---

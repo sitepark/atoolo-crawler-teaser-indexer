@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace Atoolo\CrawlerIndexer\Tests;
 
 use Atoolo\CrawlerIndexer\Config\PipelineConfig;
-use Atoolo\CrawlerIndexer\Config\CrawlerConfigHelper;
+use Atoolo\CrawlerIndexer\Config\PipelineConfigHelper;
 use Atoolo\CrawlerIndexer\Pipeline\CrawlerPipeline;
 use Atoolo\CrawlerIndexer\Pipeline\ExecuteStep;
 use Atoolo\CrawlerIndexer\Dto\ExtractedData;
-use Atoolo\CrawlerIndexer\Pipeline\Parser\RelevanceEvaluatorInterface;
+use Atoolo\CrawlerIndexer\Pipeline\RelevanceEvaluator\RelevanceEvaluatorInterface;
 use Atoolo\CrawlerIndexer\Pipeline\Fetcher\Fetcher;
 use Atoolo\CrawlerIndexer\Pipeline\Indexer\Indexer;
 use Atoolo\CrawlerIndexer\Pipeline\Parser\Parser;
@@ -63,7 +63,7 @@ final class CrawlerPipelineE2ETest extends TestCase
             'sp_content_scoring_negative' => [],
         ], $overrides);
 
-        $helper = new CrawlerConfigHelper($ctx, $logger);
+        $helper = new PipelineConfigHelper($ctx, $logger);
 
         return new PipelineConfig($helper);
     }

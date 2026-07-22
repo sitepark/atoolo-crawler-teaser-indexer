@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Atoolo\CrawlerIndexer\Tests;
 
 use Atoolo\CrawlerIndexer\Config\PipelineConfig;
-use Atoolo\CrawlerIndexer\Config\CrawlerConfigHelper;
+use Atoolo\CrawlerIndexer\Config\PipelineConfigHelper;
 use Atoolo\CrawlerIndexer\Dto\ExtractedDataInterface;
-use Atoolo\CrawlerIndexer\Pipeline\Parser\RelevanceEvaluatorInterface;
+use Atoolo\CrawlerIndexer\Pipeline\RelevanceEvaluator\RelevanceEvaluatorInterface;
 use Atoolo\CrawlerIndexer\Pipeline\Parser\Parser;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
@@ -68,7 +68,7 @@ final class ParserTest extends TestCase
 
         $ctx = array_merge($defaults, $ctxOverrides);
         $logger = $this->createStub(LoggerInterface::class);
-        $helper = new CrawlerConfigHelper($ctx, $logger);
+        $helper = new PipelineConfigHelper($ctx, $logger);
         $config = new PipelineConfig($helper);
 
         $evaluator = $this->createStub(RelevanceEvaluatorInterface::class);
@@ -570,7 +570,7 @@ HTML;
             'sp_datetime_css' => [],
             'sp_content_scoring_active' => true,
         ]);
-        $helper = new CrawlerConfigHelper($ctx, $logger);
+        $helper = new PipelineConfigHelper($ctx, $logger);
         $config = new PipelineConfig($helper);
         $parser = new Parser($logger, $config, $evaluator);
 

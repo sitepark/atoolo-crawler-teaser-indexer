@@ -15,7 +15,7 @@ services:
         # immutable PipelineConfig, so they are not container services.
         exclude:
             - "../src/Config/PipelineConfig.php"
-            - "../src/Config/CrawlerConfigHelper.php"
+            - "../src/Config/PipelineConfigHelper.php"
             - "../src/Ports/RequestExecutor.php"
             - "../src/Pipeline/CrawlerPipeline.php"
             - "../src/Pipeline/Collector"
@@ -25,7 +25,7 @@ services:
             - "../src/Pipeline/Indexer"
 
     # Run in Development
-    Atoolo\CrawlerIndexer\Command\IndexCommand:
+    Atoolo\CrawlerIndexer\Command\PipelineCommand:
         arguments:
             $indexerConfigurationLoader: '@atoolo_search.indexer.configuration_loader'
 
@@ -34,7 +34,7 @@ services:
         arguments:
             $schedule: "%atoolo.crawler.schedule%"
 
-    Atoolo\CrawlerIndexer\Messenger\StartCrawlerMessageHandler:
+    Atoolo\CrawlerIndexer\Messenger\StartPipelineMessageHandler:
         arguments:
             $indexerConfigurationLoader: '@atoolo_search.indexer.configuration_loader'
 

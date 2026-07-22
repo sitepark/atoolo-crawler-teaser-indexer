@@ -31,6 +31,6 @@ final class PipelineConfigFactory
             throw new \InvalidArgumentException('Site config is missing required field "sp_id".');
         }
 
-        return new PipelineConfig(new CrawlerConfigHelper($siteData, $this->logger));
+        return new PipelineConfig(new PipelineConfigHelper($siteData, $this->logger));
     }
 }
