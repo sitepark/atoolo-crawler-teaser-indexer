@@ -31,6 +31,16 @@ class Indexer implements \Atoolo\Search\Indexer, IndexerInterface
     ) {}
 
     /**
+     * Marks the start of the crawl run so the reported duration spans the
+     * whole process. doIndex()'s start() reuses this start time (see
+     * IndexerProgressState::start()).
+     */
+    public function prepare(string $message): void
+    {
+        $this->progressHandler->prepare($message);
+    }
+
+    /**
      * Main indexing logic: transforms items into Solr documents.
      *
      * @param ExtractedDataInterface[] $finalDocuments

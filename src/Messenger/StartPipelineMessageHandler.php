@@ -38,8 +38,22 @@ final class StartPipelineMessageHandler
             return;
         }
         foreach ($sites as $site) {
-            if ($this->isValidSite($site)) {
+            // Invalid config (e.g. missing sp_id): skip this site, keep going.
+            if (!$this->isValidSite($site)) {
+                continue;
+            }
+
+            // A fatal error in one site (Solr down, threshold not met, …) must
+            // not abort the remaining sites: log it and continue.
+            try {
                 $this->runner->run($site);
+            } catch (\Throwable $e) {
+                /** @var string $siteKey */
+                $siteKey = $site['sp_id'] ?? '';
+                $this->logger->error(
+                    sprintf('Crawling failed for "%s": %s', $siteKey, $e->getMessage()),
+                    ['exception' => $e, 'site_id' => $siteKey],
+                );
             }
         }
     }

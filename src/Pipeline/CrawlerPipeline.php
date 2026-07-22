@@ -50,6 +50,10 @@ class CrawlerPipeline
      */
     public function startCrawler(): void
     {
+        // Mark the start of the run so the indexer's reported duration spans
+        // the whole crawl (crawling + parsing + indexing), not just indexing.
+        $this->indexer->prepare('Crawler run started');
+
         /** @var array<int, ExtractedDataInterface> $rawDocuments */
         $rawDocuments = [];
         foreach ($this->urlCollector->collect() as $htmlChunk) {

@@ -73,6 +73,35 @@ final class StartPipelineMessageHandlerTest extends TestCase
         $handler(new StartPipelineMessage());
     }
 
+    public function testInvokeContinuesWithNextSiteWhenOneSiteFails(): void
+    {
+        $sites = [
+            ['sp_id' => 'site-1'],
+            ['sp_id' => 'site-2'],
+        ];
+
+        $loader = $this->createMock(IndexerConfigurationLoader::class);
+        $loader->method('load')->willReturn($this->makeConfig($sites));
+
+        $calls = 0;
+        $manager = $this->createMock(CrawlerPipeline::class);
+        $manager->expects($this->exactly(2))
+            ->method('startCrawler')
+            ->willReturnCallback(function () use (&$calls): void {
+                ++$calls;
+                if (1 === $calls) {
+                    throw new \RuntimeException('site-1 exploded');
+                }
+            });
+
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->atLeastOnce())->method('error');
+
+        $handler = new StartPipelineMessageHandler($this->makeRunner($manager), $loader, $logger);
+        // Must not throw: the failing site-1 is isolated, site-2 still runs.
+        $handler(new StartPipelineMessage());
+    }
+
     public function testInvokeSkipsInvalidSiteWithoutSpId(): void
     {
         $sites = [
