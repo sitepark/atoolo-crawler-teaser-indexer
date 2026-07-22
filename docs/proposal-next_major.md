@@ -68,9 +68,18 @@
 +
 +**Verfeinerung (niedrige Priorität):** `PipelineConfig` ist mit ~17 Feldern ein God-DTO; jeder Step bekommt alles, braucht aber nur eine Scheibe. Wo ein Step +genau eine braucht (z.B. `CrawlerStep` → `HttpFetcherConfig`), diese einzeln übergeben; sonst als Container belassen (volle Slicing-Umstellung ist wegen der +Per-Lauf-Übergabe unhandlich).
 +
+
+## Prozesszeit indexer sollte passen.
+Im Indexer gibt es "return $this->progressHandler->getStatus();"
+Im der CrawlerPipeline wird das dann aufgegriffen
+$indexerStatus = $this->indexer->doIndex($processedDocuments);
+    $this->logger->info('Indexer statusLine: ' . $indexerStatus->getStatusLine());
+
+
+
 ## 3. Pipeline-Architektur
 
-- `CrawlerManager` → **`CrawlerPipeline`** (Name passt, macht mehr als „crawlen").
++ - `CrawlerManager` → **`CrawlerPipeline`** (Name passt, macht mehr als „crawlen").
 - **`URLCollector` + `Fetcher` zu einem `CrawlerStep` mergen.** Heute lädt der URLCollector zur Link-Entdeckung fast alle Seiten (bis auf die letzte Ebene), die der Fetcher anschließend erneut lädt — doppelter Traffic ohne Cache. Der `CrawlerStep` fetcht während der BFS und reicht jede Seite direkt weiter.
 - **`executeStep`-Wrapper streichen.** Die Vereinheitlichung von Leer-/Fehler-/Logging-Behandlung über alle Steps bringt weniger als sie kostet — die Steps sind ohnehin nicht austauschbar. Jeden Step einzeln behandeln.
 - **Ein Interface pro Step** (`CrawlerStepInterface` etc.) → Steps per Decorator modifizierbar.
