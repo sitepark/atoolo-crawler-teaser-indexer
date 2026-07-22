@@ -21,63 +21,155 @@ class URLCollector
     ) {}
 
     /**
-     * Breadth-first crawls all configured start URLs.
+     * Breadth-first crawls all configured start URLs and streams every
+     * fetched page.
      *
-     * URLs discovered beyond that depth are not fetched here; they are
-     * returned as the generator's return value, for the main
-     * Fetcher/Parser pipeline (orchestrated by the caller) to process.
+     * Each URL is fetched exactly once. A whole BFS level is fetched in
+     * chunks of `sp_parallel_requests` (concurrent HTTP), each fetched
+     * chunk is yielded straight downstream, and links are discovered from
+     * the fetched HTML to build the next level. There is no second fetch
+     * pass and no list of "collected URLs" - the caller only consumes the
+     * yielded page chunks.
      *
-     * @return \Generator<int, array<int, array{url: string, html: string}>, mixed, list<string>>
+     * `sp_forced_article_urls` are always fetched (independent of the
+     * `sp_max_teaser` limit); the crawl itself stops once `sp_max_teaser`
+     * pages have been streamed.
+     *
+     * @return \Generator<int, array<int, array{url: string, html: string}>>
      */
     public function collect(): \Generator
     {
+        /** @var array<string, true> $visited */
+        $visited = [];
+        $documentCount = 0;
         $maxDocuments = $this->config->maxTeaser();
 
-        /** @var list<string> $collectedUrls */
-        $collectedUrls = [];
+        foreach ($this->fetchInChunks($this->config->forcedArticleUrls()) as $chunk) {
+            yield $chunk;
+        }
 
         foreach ($this->config->startUrls() as $start) {
             $maxDepth = (int) $start['extraction_depth'];
-            $visited = [];
-            $queue = [['url' => $start['url'], 'depth' => 0]];
+            /** @var list<string> $currentLevel */
+            $currentLevel = [(string) $start['url']];
+            $depth = 0;
 
-            for ($i = 0; $i < count($queue); ++$i) {
-                $url = (string) $queue[$i]['url'];
-                $depth = (int) $queue[$i]['depth'];
-
-                if ($depth > $maxDepth || isset($visited[$url])) {
-                    continue;
+            while ([] !== $currentLevel) {
+                $level = $this->unvisited($currentLevel, $visited);
+                if ([] === $level) {
+                    break;
                 }
 
-                $visited[$url] = true;
+                // Mark the whole level visited up front, so links discovered
+                // within it are never re-queued or fetched a second time.
+                $this->markVisited($level, $visited);
 
-                $fetched = $this->fetcher->fetchUrls([$url]);
-                yield $fetched;
+                /** @var list<string> $nextLevel */
+                $nextLevel = [];
+                $discover = $depth <= $maxDepth;
 
-                $pageUrls = array_diff(
-                    $this->findHrefUrlsByCssSelector($fetched, $url),
-                    array_keys($visited),
-                );
-
-                foreach ($pageUrls as $pageUrl) {
-                    $collectedUrls[] = $pageUrl;
-
-                    if (count($collectedUrls) >= $maxDocuments) {
-                        return $collectedUrls;
+                foreach (array_chunk($level, max(1, $this->config->parallelRequests())) as $chunk) {
+                    if ($documentCount >= $maxDocuments) {
+                        return;
                     }
 
-                    if ($depth < $maxDepth && !isset($visited[$pageUrl])) {
-                        $queue[] = ['url' => $pageUrl, 'depth' => $depth + 1];
+                    $fetched = $this->fetcher->fetchUrls($chunk);
+                    if ([] === $fetched) {
+                        continue;
+                    }
+
+                    yield $fetched;
+                    $documentCount += count($fetched);
+
+                    if ($discover) {
+                        $nextLevel = [...$nextLevel, ...$this->discoverLinks($fetched, $visited)];
                     }
                 }
 
-                if (function_exists('gc_collect_cycles')) {
-                    gc_collect_cycles();
+                // One level beyond maxDepth is still fetched (the leaf pages),
+                // but we never discover further links from it.
+                if (!$discover) {
+                    break;
+                }
+
+                $currentLevel = array_values(array_unique($nextLevel));
+                ++$depth;
+            }
+        }
+    }
+
+    /**
+     * @param list<string>        $urls
+     * @param array<string, true> $visited
+     */
+    private function markVisited(array $urls, array &$visited): void
+    {
+        foreach ($urls as $url) {
+            $visited[$url] = true;
+        }
+    }
+
+    /**
+     * @param list<string>        $urls
+     * @param array<string, true> $visited
+     *
+     * @return list<string>
+     */
+    private function unvisited(array $urls, array $visited): array
+    {
+        $out = [];
+        foreach ($urls as $url) {
+            if (!isset($visited[$url])) {
+                $out[] = $url;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Fetches the given URLs concurrently, chunk by chunk, and returns each
+     * non-empty fetched chunk. Used for URLs that need no link discovery
+     * (e.g. forced article URLs).
+     *
+     * @param list<string> $urls
+     *
+     * @return list<array<int, array{url: string, html: string}>>
+     */
+    private function fetchInChunks(array $urls): array
+    {
+        $chunks = [];
+        foreach (array_chunk($urls, max(1, $this->config->parallelRequests())) as $chunk) {
+            $fetched = $this->fetcher->fetchUrls($chunk);
+            if ([] !== $fetched) {
+                $chunks[] = $fetched;
+            }
+        }
+
+        return $chunks;
+    }
+
+    /**
+     * Extracts, filters and deduplicates the links found on the given
+     * fetched pages, skipping anything already visited.
+     *
+     * @param array<int, array{url: string, html: string}> $fetchedPages
+     * @param array<string, true>                          $visited
+     *
+     * @return list<string>
+     */
+    private function discoverLinks(array $fetchedPages, array $visited): array
+    {
+        $links = [];
+        foreach ($fetchedPages as $page) {
+            foreach ($this->findHrefUrlsByCssSelector([$page], $page['url']) as $link) {
+                if (!isset($visited[$link])) {
+                    $links[] = $link;
                 }
             }
         }
 
-        return $collectedUrls;
+        return $links;
     }
 
     /**

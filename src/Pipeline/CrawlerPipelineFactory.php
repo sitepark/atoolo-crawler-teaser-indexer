@@ -73,10 +73,8 @@ class CrawlerPipelineFactory
 
         return new CrawlerPipeline(
             $urlCollector,
-            $fetcher,
             $parser,
             $processor,
-            $config,
             $this->executeStep,
             $this->logger,
             $indexer,

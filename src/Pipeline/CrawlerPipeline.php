@@ -9,9 +9,8 @@
  * through the pipeline until the final output is produced.
  *
  * The managed steps are:
- * 1. URLCollector: Collects URLs from the base page.
- * 2. Fetcher: Retrieves the HTML content of the collected URLs. If Process storage is full starts the Parser.
- * 2. Parser: Extracts relevant documents from the HTML.
+ * 1. URLCollector: Crawls the start URLs and streams every fetched page (each fetched exactly once).
+ * 2. Parser: Extracts relevant documents from the streamed HTML.
  * 3. Processor: Cleans and formats the extracted data.
  * 4. Indexer: Enriches and indexes the data.
  */
@@ -20,9 +19,7 @@ declare(strict_types=1);
 
 namespace Atoolo\CrawlerIndexer\Pipeline;
 
-use Atoolo\CrawlerIndexer\Config\PipelineConfig;
 use Atoolo\CrawlerIndexer\Dto\ExtractedDataInterface;
-use Atoolo\CrawlerIndexer\Pipeline\Fetcher\Fetcher;
 use Atoolo\CrawlerIndexer\Pipeline\Indexer\Indexer;
 use Atoolo\CrawlerIndexer\Pipeline\Parser\Parser;
 use Atoolo\CrawlerIndexer\Pipeline\Processor\Processor;
@@ -33,10 +30,8 @@ class CrawlerPipeline
 {
     public function __construct(
         private readonly URLCollector $urlCollector,
-        private readonly Fetcher $fetcher,
         private readonly Parser $parser,
         private readonly Processor $processor,
-        private readonly PipelineConfig $config,
         private readonly ExecuteStep $executeStep,
         private readonly LoggerInterface $logger,
         private readonly Indexer $indexer,
@@ -44,37 +39,32 @@ class CrawlerPipeline
 
     /**
      * Starts the full crawling workflow.
+     *
+     * The URLCollector streams every fetched page as a chunk; each chunk is
+     * parsed as it arrives. The collected documents are then sanitized and
+     * indexed. There is no separate fetch pass - every page is fetched
+     * exactly once by the collector.
      */
     public function startCrawler(): void
     {
-        $htmlPage = $this->urlCollector->collect();
-
-        /** @var array<int, ExtractedDataInterface> $parsedDocuments */
-        $parsedDocuments = [];
-        foreach ($htmlPage as $html) {
+        $htmlChunks = $this->urlCollector->collect();
+        /** @var array<int, ExtractedDataInterface> $rawParsedDocuments */
+        $rawParsedDocuments = [];
+        foreach ($htmlChunks as $htmlChunk) {
             $parsedDocumentsIterator = $this->executeStep->executeStep(
                 'Parser',
                 fn($pages) => $this->parser->extractData($pages),
-                $html,
+                $htmlChunk,
             );
-            array_push($parsedDocuments, ...iterator_to_array($parsedDocumentsIterator));
+            array_push($rawParsedDocuments, ...iterator_to_array($parsedDocumentsIterator));
         }
-
-        /** @var list<string> $collectedUrls */
-        $collectedUrls = $htmlPage->getReturn();
-        $rawParsedDocumentsStream = $this->storageHandlingFetcherParser($collectedUrls, count($parsedDocuments));
-
-        /** @var array<int, ExtractedDataInterface> $fetchedParsedDocuments */
-        $fetchedParsedDocuments = iterator_to_array($rawParsedDocumentsStream);
-
-        $allRawParsedDocuments = array_merge($parsedDocuments, $fetchedParsedDocuments);
 
         /** @var ExtractedDataInterface[] $processedDocuments */
         $processedDocuments = iterator_to_array(
             $this->executeStep->executeStep(
                 'Processor',
                 fn($rawData) => $this->processor->sanitizeText($rawData),
-                $allRawParsedDocuments,
+                $rawParsedDocuments,
             ),
         );
 
@@ -84,52 +74,6 @@ class CrawlerPipeline
             $this->logger->info("No Status Error [{$indexerStatus->errors}]: Crawling Prozess completed successfully.");
         } else {
             $this->logger->error("Status Errors [{$indexerStatus->errors}]: Crawling Prozess Stops by Indexing.");
-        }
-    }
-
-    /**
-     * @param list<string> $urls
-     *
-     * @return \Generator<int, ExtractedDataInterface>
-     */
-    private function storageHandlingFetcherParser(array $urls, int $collectedDocumentCount): \Generator
-    {
-        $forcedUrls = $this->config->forcedArticleUrls();
-        $concurrency = max(1, $this->config->parallelRequests());
-
-        $taggedChunks = [
-            ...array_map(fn(array $c) => [true,  $c], [] !== $forcedUrls ? array_chunk($forcedUrls, $concurrency) : []),
-            ...array_map(fn(array $c) => [false, $c], array_chunk($urls, $concurrency)),
-        ];
-
-        foreach ($taggedChunks as [$isForced, $chunk]) {
-            if (!$isForced && $collectedDocumentCount >= $this->config->maxTeaser()) {
-                continue;
-            }
-
-            $htmlDataIterator = $this->executeStep->executeStep(
-                'Fetcher',
-                fn($urls) => $this->fetcher->fetchUrls($urls),
-                $chunk,
-            );
-
-            $htmlData = iterator_to_array($htmlDataIterator);
-
-            $extractedDataIterator = $this->executeStep->executeStep(
-                'Parser',
-                fn($pages) => $this->parser->extractData($pages),
-                $htmlData,
-            );
-
-            /** @var array<int, ExtractedDataInterface> $extractedData */
-            $extractedData = iterator_to_array($extractedDataIterator);
-
-            foreach ($extractedData as $document) {
-                yield $document;
-                ++$collectedDocumentCount;
-            }
-
-            unset($htmlData, $extractedData, $htmlDataIterator, $extractedDataIterator);
         }
     }
 }
