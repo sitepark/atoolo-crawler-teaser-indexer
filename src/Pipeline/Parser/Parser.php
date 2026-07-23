@@ -25,9 +25,9 @@ class Parser implements ParserInterface
      *
      * @param array<int, array{url: string, html: string}> $htmlData
      *
-     * @return ExtractedDataInterface[]
+     * @return \Generator<int, ExtractedDataInterface[]>
      */
-    public function extractData(array $htmlData): array
+    public function extractData(array $htmlData): \Generator
     {
         $results = [];
 
@@ -95,7 +95,8 @@ class Parser implements ParserInterface
                         continue;
                     }
                 }
-                $results[] = new ExtractedData($url, $title, $introText, $dateTime);
+                $extracted = new ExtractedData($url, $title, $introText, $dateTime);
+                yield $extracted;
             } catch (\Throwable $e) {
                 $this->logger->warning('[Parser] No Data found for URL', [
                     'url' => $item['url'],

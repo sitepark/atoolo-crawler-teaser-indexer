@@ -68,9 +68,9 @@ class CrawlerPipeline
     /**
      * @param array<int, array{url: string, html: string}> $htmlChunk
      *
-     * @return ExtractedDataInterface[]
+     * @return \Generator<int,ExtractedDataInterface[]>
      */
-    private function parse(array $htmlChunk): array
+    private function parse(array $htmlChunk): \Generator
     {
         try {
             $documents = $this->parser->extractData($htmlChunk);
@@ -83,7 +83,7 @@ class CrawlerPipeline
             $this->logger->warning('[Parser] Step returned no data.');
         }
 
-        return $documents;
+        yield from $documents;
     }
 
     /**

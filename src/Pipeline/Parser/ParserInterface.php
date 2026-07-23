@@ -13,7 +13,7 @@ interface ParserInterface
      *
      * @param array<int, array{url: string, html: string}> $htmlData
      *
-     * @return ExtractedDataInterface[]
+     * @return \Generator<int, ExtractedDataInterface[]>
      */
-    public function extractData(array $htmlData): array;
+    public function extractData(array $htmlData): \Generator;
 }
