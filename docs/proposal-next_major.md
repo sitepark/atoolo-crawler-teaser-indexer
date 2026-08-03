@@ -145,17 +145,17 @@
 +- `RelevanceEvaluator` (Interface, umbenannt) → neben `ParserStep`
 +- `URLNormalizer` → auflösen (5.2)
 
-### 5.1 RelevanceEvaluator
-
-Keyword-basiertes Relevanz-Scoring (aus `title  introText  Hauptinhalts-Text`; positive/negative Regeln  Längen-Bedingung; `forcedArticleUrls` immer relevant). Wird pragmatisch vom `ParserStep` aufgerufen — okay, aber im Klassen-Kommentar dokumentieren.
-
-Er braucht **kein rohes HTML**, aber die **geparste DOM** — denn er wertet nicht den ganzen Body aus, sondern eine über eine Selektor-Prioritätsliste gewählte Hauptinhalts-Region (Navigation/Footer raushalten). Daraus zwei Entscheidungen:
-1. **DOM (`Crawler`) übergeben, nicht einen vorausgewählten String.** Welche Region relevant ist, ist eine Scoring- keine Parser-Entscheidung. Wichtig: die DOM ist ein Aufruf-Argument *innerhalb* des Parse-Steps, kein Pipeline-Payload; entscheidend ist nur, dass das HTML nicht erneut geparst wird.
-2. **Selektor-Liste konfigurierbar** machen (neues Feld in `ContentScoringConfig`, Default = bisherige Liste), statt hartkodiert.
-
-Signatur: `relevant(IndexEntry $entry, Crawler $dom, ContentScoringConfig $config): bool`. Tradeoff: koppelt das Interface an DomCrawler — vertretbar, da das ganze Bundle damit parst.
-⚠️ Skelett: Interface nimmt `string $bodyText`, `ParserStep` übergibt naiv `filter('body')->text()` (verwirft die Selektor-Auswahl). Auf `Crawler $dom`  Config-Selektoren umstellen.
-
++### 5.1 RelevanceEvaluator
++
++Keyword-basiertes Relevanz-Scoring (aus `title  introText  Hauptinhalts-Text`; positive/negative Regeln  Längen-Bedingung; `forcedArticleUrls` immer relevant). Wird pragmatisch vom `ParserStep` aufgerufen — okay, aber im Klassen-Kommentar dokumentieren.
++
++Er braucht **kein rohes HTML**, aber die **geparste DOM** — denn er wertet nicht den ganzen Body aus, sondern eine über eine Selektor-Prioritätsliste gewählte Hauptinhalts-Region (Navigation/Footer raushalten). Daraus zwei Entscheidungen:
++1. **DOM (`Crawler`) übergeben, nicht einen vorausgewählten String.** Welche Region relevant ist, ist eine Scoring- keine Parser-Entscheidung. Wichtig: die DOM ist ein Aufruf-Argument *innerhalb* des Parse-Steps, kein Pipeline-Payload; entscheidend ist nur, dass das HTML nicht erneut geparst wird.
++2. **Selektor-Liste konfigurierbar** machen (neues Feld in `ContentScoringConfig`, Default = bisherige Liste), statt hartkodiert.
++
++Signatur: `relevant(IndexEntry $entry, Crawler $dom, ContentScoringConfig $config): bool`. Tradeoff: koppelt das Interface an DomCrawler — vertretbar, da das ganze Bundle damit parst.
++⚠️ Skelett: Interface nimmt `string $bodyText`, `ParserStep` übergibt naiv `filter('body')->text()` (verwirft die Selektor-Auswahl). Auf `Crawler $dom`  Config-Selektoren umstellen.
++
 +### 5.2 URLNormalizer
 +
 +Auflösen und als private Methoden in den `CrawlerStep` ziehen. Dabei Normalisierung (Kanonisieren, Query-Stripping, Dedup) von Filterung (allow/deny/endings) trennen — beides an **einer** Stelle, nicht wie heute teils doppelt. Im Skelett bereits im `CrawlerStep` zusammengezogen.

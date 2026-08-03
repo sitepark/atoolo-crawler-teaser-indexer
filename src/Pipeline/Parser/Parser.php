@@ -201,7 +201,7 @@ class Parser implements ParserInterface
                 'url' => $url,
                 'title' => $title,
                 'introText' => $introText,
-                'htmlBlock' => $this->findCssSelectorContent($crawler, $this->config->relevanceContentSelector()) ?? $crawler->outerHtml(),
+                'html' => $this->findCssSelectorContent($crawler, $this->config->relevanceContentSelector()) ?? $crawler->outerHtml(),
             ];
             $keepDocument = $this->relevanceEvaluator->relevant($relevanceData);
             if (!$keepDocument) {

@@ -22,7 +22,7 @@ final class RelevanceEvaluator implements RelevanceEvaluatorInterface
      * url: string,
      * title: string,
      * introText?: string,
-     * htmlBlock?: string,
+     * html?: string,
      * datetime?: \DateTimeImmutable
      * } $relevanceData
      */
@@ -49,7 +49,7 @@ final class RelevanceEvaluator implements RelevanceEvaluatorInterface
      * url: string,
      * title: string,
      * introText?: string,
-     * htmlBlock?: string,
+     * html?: string,
      * datetime?: \DateTimeImmutable
      * } $t
      *
@@ -63,19 +63,19 @@ final class RelevanceEvaluator implements RelevanceEvaluatorInterface
         $title = (string) $t['title'];
         $intro = (string) ($t['introText'] ?? '');
         $url = (string) $t['url'];
-        $body = $this->extractBodyTextFromHtml((string) ($t['htmlBlock'] ?? ''));
+        $html = (string) ($t['html'] ?? '');
 
-        $haystack = $this->normalize($title . "\n" . $intro . "\n" . $body);
+        $haystack = $this->normalize($title . "\n" . $intro . "\n" . $html);
 
         foreach ($cfg->positive as $rule) {
-            if ($this->ruleMatches($rule, $haystack, $intro, $body)) {
+            if ($this->ruleMatches($rule, $haystack, $intro, $html)) {
                 $score += $rule->score;
                 $reasons[] = '+' . $rule->score . ' "' . ($rule->matchAny[0] ?? 'rule') . '"';
             }
         }
 
         foreach ($cfg->negative as $rule) {
-            if ($this->ruleMatches($rule, $haystack, $intro, $body)) {
+            if ($this->ruleMatches($rule, $haystack, $intro, $html)) {
                 $score += $rule->score;
                 $reasons[] = $rule->score . ' "' . ($rule->matchAny[0] ?? 'rule') . '"';
             }
@@ -121,22 +121,5 @@ final class RelevanceEvaluator implements RelevanceEvaluatorInterface
     private function contains(string $haystack, string $needle): bool
     {
         return '' !== $needle && str_contains($haystack, $this->normalize($needle));
-    }
-
-    private function extractBodyTextFromHtml(string $htmlBlock): string
-    {
-        try {
-            $crawler = new Crawler($htmlBlock);
-            foreach (['main', '#content', '#boxes', 'article', 'body'] as $sel) {
-                $n = $crawler->filter($sel);
-                if ($n->count() > 0) {
-                    return trim($n->first()->text());
-                }
-            }
-
-            return '';
-        } catch (\Throwable) {
-            return '';
-        }
     }
 }
