@@ -22,7 +22,7 @@ final class RelevanceEvaluator implements RelevanceEvaluatorInterface
      * url: string,
      * title: string,
      * introText?: string,
-     * html?: string,
+     * htmlBlock?: string,
      * datetime?: \DateTimeImmutable
      * } $relevanceData
      */
@@ -49,7 +49,7 @@ final class RelevanceEvaluator implements RelevanceEvaluatorInterface
      * url: string,
      * title: string,
      * introText?: string,
-     * html?: string,
+     * htmlBlock?: string,
      * datetime?: \DateTimeImmutable
      * } $t
      *
@@ -63,7 +63,7 @@ final class RelevanceEvaluator implements RelevanceEvaluatorInterface
         $title = (string) $t['title'];
         $intro = (string) ($t['introText'] ?? '');
         $url = (string) $t['url'];
-        $body = $this->extractBodyTextFromHtml((string) ($t['html'] ?? ''));
+        $body = $this->extractBodyTextFromHtml((string) ($t['htmlBlock'] ?? ''));
 
         $haystack = $this->normalize($title . "\n" . $intro . "\n" . $body);
 
@@ -123,10 +123,10 @@ final class RelevanceEvaluator implements RelevanceEvaluatorInterface
         return '' !== $needle && str_contains($haystack, $this->normalize($needle));
     }
 
-    private function extractBodyTextFromHtml(string $html): string
+    private function extractBodyTextFromHtml(string $htmlBlock): string
     {
         try {
-            $crawler = new Crawler($html);
+            $crawler = new Crawler($htmlBlock);
             foreach (['main', '#content', '#boxes', 'article', 'body'] as $sel) {
                 $n = $crawler->filter($sel);
                 if ($n->count() > 0) {

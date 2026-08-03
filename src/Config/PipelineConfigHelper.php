@@ -156,12 +156,14 @@ final class PipelineConfigHelper
     /**
      * @return list<string>
      */
-    public function stringList(string $key): array
+    public function stringList(string $key, bool $isLogged = true): array
     {
         $v = $this->params[$key] ?? self::MISSING;
 
         if (self::MISSING === $v) {
-            $this->logger->debug('Config missing string list, using empty list', ['key' => $key]);
+            if ($isLogged){
+                $this->logger->debug('Config missing string list, using empty list', ['key' => $key]);
+            }
 
             return [];
         }

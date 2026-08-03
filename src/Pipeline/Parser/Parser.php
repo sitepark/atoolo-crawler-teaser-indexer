@@ -18,7 +18,8 @@ class Parser implements ParserInterface
         private readonly LoggerInterface $logger,
         private readonly PipelineConfig $config,
         private readonly RelevanceEvaluatorInterface $relevanceEvaluator,
-    ) {}
+    ) {
+    }
 
     /**
      * Extract documents from fetched HTML.
@@ -34,8 +35,6 @@ class Parser implements ParserInterface
      */
     public function extractData(array $htmlData): \Generator
     {
-        $splitSelector = $this->config->splitHtmlDocumentSelector();
-
         foreach ($htmlData as $item) {
             $html = $item['html'];
             if (empty($html)) {
@@ -55,12 +54,15 @@ class Parser implements ParserInterface
             // Each block is parsed independently: a missing title, a missing
             // required field, or a parse error skips only that block - the
             // remaining blocks of the page are still emitted.
-            foreach ($this->resolveBlocks($crawler, $splitSelector) as $block) {
+            foreach (
+                $this->resolveBlocks(
+                    $crawler,
+                ) as $crawlerBlock
+            ) {
                 try {
                     $extracted = $this->extractFromBlock(
-                        $block,
+                        $crawlerBlock,
                         $item['url'],
-                        $html,
                     );
                     if (null !== $extracted) {
                         yield $extracted;
@@ -87,12 +89,11 @@ class Parser implements ParserInterface
      * node that is an ancestor of another matched node is dropped - the
      * innermost match wins.
      *
-     * @param list<string> $splitSelectors
-     *
      * @return list<Crawler>
      */
-    private function resolveBlocks(Crawler $crawler, ?array $splitSelectors): array
+    private function resolveBlocks(Crawler $crawler): array
     {
+        $splitSelectors = $this->config->splitHtmlDocumentSelector();
         if (null === $splitSelectors || [] === $splitSelectors) {
             return [$crawler];
         }
@@ -156,7 +157,6 @@ class Parser implements ParserInterface
     private function extractFromBlock(
         Crawler $crawler,
         string $url,
-        string $html,
     ): ?ExtractedDataInterface {
         $titleConfig = $this->config->titleConfig();
         $introConfig = $this->config->introTextConfig();
@@ -201,13 +201,17 @@ class Parser implements ParserInterface
                 'url' => $url,
                 'title' => $title,
                 'introText' => $introText,
-                'html' => $html,
+                'htmlBlock' => $this->findCssSelectorContent($crawler, $this->config->relevanceContentSelector()) ?? $crawler->outerHtml(),
             ];
             $keepDocument = $this->relevanceEvaluator->relevant($relevanceData);
             if (!$keepDocument) {
                 $this->logger->debug(
                     'Document not Relevant',
-                    ['relevanceData' => $relevanceData],
+                    [
+                        'url' => $relevanceData['url'],
+                        'title' => $relevanceData['title'],
+                        'introText' => $relevanceData['introText'],
+                    ],
                 );
 
                 return null;

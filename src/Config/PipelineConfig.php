@@ -145,17 +145,12 @@ final class PipelineConfig
     // --- Parser: Document split (1:N) ---
 
     /**
-     * XPath selector that splits a page into multiple documents - one per
-     * matching element (e.g. `//article` or, ":has"-style,
-     * `//*[@id="content"]//div[.//h2]`). When null/empty, or when nothing
-     * matches, or the XPath is invalid, the whole page is a single document
-     * (1:1, the default).
-     *
+     * XPath selector that splits a page into multiple documents
      * @return list<string>
      */
     public function splitHtmlDocumentSelector(): ?array
     {
-        return $this->crawlerConfigHelper->stringList('sp_split_html_document');
+        return $this->crawlerConfigHelper->stringList('sp_split_html_document', false);
     }
 
     // --- Parser: Title ---
@@ -217,6 +212,11 @@ final class PipelineConfig
     public function contentScoringActive(): bool
     {
         return $this->crawlerConfigHelper->bool('sp_content_scoring_active', false);
+    }
+
+    public function relevanceContentSelector(): string
+    {
+        return $this->crawlerConfigHelper->string('sp_relevance_content_selector', "");
     }
 
     public function contentScoringConfig(): ContentScoringConfig
