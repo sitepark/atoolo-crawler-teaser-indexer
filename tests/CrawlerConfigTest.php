@@ -347,7 +347,11 @@ final class CrawlerConfigTest extends TestCase
         $dtConfig = $config->dateTimeConfig();
         $this->assertFalse($dtConfig->present);
         $this->assertFalse($dtConfig->requiredField);
-        $this->assertTrue($dtConfig->onlyDate);
+        // Without sp_datetime_present the whole datetime config stays inert -
+        // no sub-option is read, so onlyDate is false rather than its default.
+        $this->assertFalse($dtConfig->onlyDate);
+        $this->assertSame([], $dtConfig->opengraph);
+        $this->assertSame([], $dtConfig->css);
     }
 
     public function testDateTimeConfigCustomValues(): void

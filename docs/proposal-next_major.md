@@ -117,30 +117,33 @@
 +
 +**`CrawlResult` statt `void`:** `run()`/`index()` geben im Skelett `void` zurück → die alte `IndexerStatus` (indiziert/gelöscht/Fehler) ist weg. Für einen Cronjob eine echte Regression. Mindestens die Indexer-Zähler zurückgeben; Upstream-Zähler (gecrawlt/übersprungen) bräuchten einen `RunMetrics`-Kollektor durch die Chain. ⚠️ Skelett: gibt `void` zurück.
 +
-## 4. Typisierung (DTOs)
++## 4. Typisierung (DTOs)
++
++Statt Arrays: `CrawledPage` (`url`, `html`) als Crawler-Output, `IndexEntry` (`url`, `title`, `?introText`, `?datetime`  Extension-Bag) als Parser-Output, der bis zum Indexer durchläuft.
++
++| Step | Input → Output |
++|------|----------------|
++| CrawlerStep | – → `CrawledPage` |
++| ParserStep | `CrawledPage` → `IndexEntry` |
++| ProcessorStep | `IndexEntry` → `IndexEntry` |
++| IndexerStep | `IndexEntry` → – |
++
 
-Statt Arrays: `CrawledPage` (`url`, `html`) als Crawler-Output, `IndexEntry` (`url`, `title`, `?introText`, `?datetime`  Extension-Bag) als Parser-Output, der bis zum Indexer durchläuft.
-
-| Step | Input → Output |
-|------|----------------|
-| CrawlerStep | – → `CrawledPage` |
-| ParserStep | `CrawledPage` → `IndexEntry` |
-| ProcessorStep | `IndexEntry` → `IndexEntry` |
-| IndexerStep | `IndexEntry` → – |
-
-**1:N ist erlaubt** (Generator): Eine `CrawledPage` darf mehrere `IndexEntry` erzeugen (Übersichtsseite mit vielen `<article>`). Default ist heute 1:1; für Multi-Teaser-Seiten braucht der Parser einen „Teaser-Locator". Nicht durch eine 1:1-Annahme im Interface verschenken.
+## Das ist mir auch bewusst, aber es kann auch schnell mal zu inkonsistenten teaser führen. Zudem erhöht es den integrationsaufwand, wenn es gebaucht wird. Ich habe es trotzdem hinzugefügt, weil es sicherlich für unsere Kunden relevant ist.
++
++**1:N ist erlaubt** (Generator): Eine `CrawledPage` darf mehrere `IndexEntry` erzeugen (Übersichtsseite mit vielen `<article>`). Default ist heute 1:1; für Multi-Teaser-Seiten braucht der Parser +einen „Teaser-Locator". Nicht durch eine 1:1-Annahme im Interface verschenken.
 +
 +### 4.1 IndexEntry-Extension
 +
 +Für kundenspezifische Daten bekommt `IndexEntry` eine typisierte **Extension-Bag** (`withExtension()` / `extension(Class::class)`). Da `IndexEntry` immutable ist, reichen die `with*()`-Methoden Extensions automatisch durch alle Steps.
 +⚠️ Die Bag ist aktuell ein **Eingang ohne Ausgang** — es gibt keinen sauberen Weg, eine Extension in ein Solr-Feld zu bringen (und das Anhängen im Parser per Decorator ist heikel). Lösung in Abschnitt 7.
 +
-## 5. `Domain\Crawler\Services` auflösen
-
-Die `…Config`-Klassen → `Config/` (im Skelett erledigt). Es bleiben:
-- `RobotsTxtChecker` (Interface) → neben `CrawlerStep`
-- `RelevanceEvaluator` (Interface, umbenannt) → neben `ParserStep`
-- `URLNormalizer` → auflösen (5.2)
++## 5. `Domain\Crawler\Services` auflösen
++
++Die `…Config`-Klassen → `Config/` (im Skelett erledigt). Es bleiben:
++- `RobotsTxtChecker` (Interface) → neben `CrawlerStep`
++- `RelevanceEvaluator` (Interface, umbenannt) → neben `ParserStep`
++- `URLNormalizer` → auflösen (5.2)
 
 ### 5.1 RelevanceEvaluator
 
@@ -153,10 +156,10 @@ Er braucht **kein rohes HTML**, aber die **geparste DOM** — denn er wertet nic
 Signatur: `relevant(IndexEntry $entry, Crawler $dom, ContentScoringConfig $config): bool`. Tradeoff: koppelt das Interface an DomCrawler — vertretbar, da das ganze Bundle damit parst.
 ⚠️ Skelett: Interface nimmt `string $bodyText`, `ParserStep` übergibt naiv `filter('body')->text()` (verwirft die Selektor-Auswahl). Auf `Crawler $dom`  Config-Selektoren umstellen.
 
-### 5.2 URLNormalizer
-
-Auflösen und als private Methoden in den `CrawlerStep` ziehen. Dabei Normalisierung (Kanonisieren, Query-Stripping, Dedup) von Filterung (allow/deny/endings) trennen — beides an **einer** Stelle, nicht wie heute teils doppelt. Im Skelett bereits im `CrawlerStep` zusammengezogen.
-
++### 5.2 URLNormalizer
++
++Auflösen und als private Methoden in den `CrawlerStep` ziehen. Dabei Normalisierung (Kanonisieren, Query-Stripping, Dedup) von Filterung (allow/deny/endings) trennen — beides an **einer** Stelle, nicht wie heute teils doppelt. Im Skelett bereits im `CrawlerStep` zusammengezogen.
++
 +## 6. Adapter / konkrete Implementierungen
 +
 +Das Skelett definiert nur Interfaces; die Adapter aus dem Altcode migrieren:

@@ -47,6 +47,12 @@ class Indexer implements \Atoolo\Search\Indexer, IndexerInterface
      */
     public function doIndex(array $finalDocuments): IndexerStatus
     {
+        $this->source = $this->config->id();
+
+        // A page can produce several documents (1:N); drop content-duplicates
+        // (same title + intro + date) so redundant documents are not indexed.
+        $finalDocuments = $this->deduplicate($finalDocuments);
+
         $language = ResourceLanguage::default();
         $updater = $this->indexService->updater($language);
 
@@ -54,12 +60,11 @@ class Indexer implements \Atoolo\Search\Indexer, IndexerInterface
 
         $processId = uniqid('', true);
         $successCount = 0;
-        $this->source = $this->config->id();
         foreach ($finalDocuments as $finalDocument) {
             try {
                 $document = $updater->createDocument();
 
-                $document->setField('id', $finalDocument->getUrl());
+                $document->setField('id', $this->buildDocumentId($finalDocument));
                 $document->setField('title', $finalDocument->getTitle());
 
                 if (!empty($finalDocument->getIntroText()) && $this->config->introTextPresent()) {
@@ -134,6 +139,50 @@ class Indexer implements \Atoolo\Search\Indexer, IndexerInterface
         $this->progressHandler->finish();
 
         return $this->progressHandler->getStatus();
+    }
+
+    /**
+     * Removes documents that are redundant by content (same title, intro and
+     * date), keeping the first occurrence. Distinct documents from the same
+     * page are kept.
+     *
+     * @param ExtractedDataInterface[] $documents
+     *
+     * @return list<ExtractedDataInterface>
+     */
+    private function deduplicate(array $documents): array
+    {
+        $seen = [];
+        $unique = [];
+        foreach ($documents as $document) {
+            $key = $this->signature($document);
+            if (isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
+            $unique[] = $document;
+        }
+
+        return $unique;
+    }
+
+    /**
+     * Builds a stable, source-scoped document id from its content, so several
+     * documents from one page get distinct ids while identical content maps to
+     * the same id (id is no longer the URL).
+     */
+    private function buildDocumentId(ExtractedDataInterface $document): string
+    {
+        return sha1($this->source . "\0" . $this->signature($document));
+    }
+
+    private function signature(ExtractedDataInterface $document): string
+    {
+        return implode("\0", [
+            $document->getTitle(),
+            $document->getIntroText() ?? '',
+            $document->getDate()?->format(\DATE_ATOM) ?? '',
+        ]);
     }
 
     // -------------------------------------------------------------------------

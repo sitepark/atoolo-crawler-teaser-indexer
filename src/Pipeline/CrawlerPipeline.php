@@ -68,22 +68,19 @@ class CrawlerPipeline
     /**
      * @param array<int, array{url: string, html: string}> $htmlChunk
      *
-     * @return \Generator<int,ExtractedDataInterface[]>
+     * @return \Generator<int, ExtractedDataInterface>
      */
     private function parse(array $htmlChunk): \Generator
     {
+        // A generator only runs (and can fail) while iterated, so the guard
+        // has to wrap the iteration itself. Per-page/per-document errors are
+        // already handled inside the Parser; this catches step-level failures.
         try {
-            $documents = $this->parser->extractData($htmlChunk);
+            yield from $this->parser->extractData($htmlChunk);
         } catch (\Throwable $e) {
             $this->logger->error('[Parser] Error: ' . $e->getMessage(), ['exception' => $e]);
             throw new StepExecution('Parser', $e->getMessage(), $e);
         }
-
-        if ([] === $documents) {
-            $this->logger->warning('[Parser] Step returned no data.');
-        }
-
-        yield from $documents;
     }
 
     /**

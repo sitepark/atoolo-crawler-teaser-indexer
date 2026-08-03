@@ -78,6 +78,17 @@ final class CrawlerPipelineE2ETest extends TestCase
         return $urlCollector;
     }
 
+    /**
+     * Wraps items in a generator, mirroring Parser::extractData()'s return
+     * type (which cannot be produced by willReturn()).
+     *
+     * @param array<int, mixed> $items
+     */
+    private function toGenerator(array $items): \Generator
+    {
+        yield from $items;
+    }
+
     private function makeManager(
         URLCollector $urlCollector,
         Parser $parser,
@@ -117,7 +128,7 @@ final class CrawlerPipelineE2ETest extends TestCase
         ];
 
         $parser = $this->createStub(Parser::class);
-        $parser->method('extractData')->willReturn($parsed);
+        $parser->method('extractData')->willReturnCallback(fn(): \Generator => $this->toGenerator($parsed));
 
         $processor = $this->createStub(Processor::class);
         $processor->method('sanitizeText')->willReturn($processed);
@@ -163,10 +174,9 @@ final class CrawlerPipelineE2ETest extends TestCase
         $doc2 = new ExtractedData($this->url2, 'Title 2');
 
         $parser = $this->createStub(Parser::class);
-        $parser->method('extractData')->willReturnMap([
-            [$chunk1, [$doc1]],
-            [$chunk2, [$doc2]],
-        ]);
+        $parser->method('extractData')->willReturnCallback(
+            fn(array $pages): \Generator => $this->toGenerator($pages === $chunk1 ? [$doc1] : [$doc2]),
+        );
 
         $processor = $this->createStub(Processor::class);
         $processor->method('sanitizeText')->willReturnArgument(0);
@@ -248,9 +258,9 @@ final class CrawlerPipelineE2ETest extends TestCase
         ];
 
         $parser = $this->createStub(Parser::class);
-        $parser->method('extractData')->willReturn([
-            ['url' => $this->url1, 'title' => 'Title', 'date' => $date],
-        ]);
+        $parser->method('extractData')->willReturnCallback(fn(): \Generator => $this->toGenerator([
+            new ExtractedData($this->url1, 'Title'),
+        ]));
 
         $processor = $this->createStub(Processor::class);
         $processor->method('sanitizeText')->willReturn([
@@ -286,7 +296,7 @@ final class CrawlerPipelineE2ETest extends TestCase
         $chunk = [['url' => $this->url1, 'html' => '<h1>Title 1</h1>']];
 
         $parser = $this->createStub(Parser::class);
-        $parser->method('extractData')->willReturn([new ExtractedData($this->url1, 'Title 1')]);
+        $parser->method('extractData')->willReturnCallback(fn(): \Generator => $this->toGenerator([new ExtractedData($this->url1, 'Title 1')]));
 
         $processor = new Processor($logger, $config);
 

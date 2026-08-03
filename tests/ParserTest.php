@@ -117,9 +117,9 @@ final class ParserTest extends TestCase
 </html>
 HTML;
 
-        $result = $this->normalizeDatetime($this->parser->extractData([
+        $result = $this->normalizeDatetime(iterator_to_array($this->parser->extractData([
             ['url' => 'https://example.com/page1', 'html' => $html],
-        ]));
+        ]), false));
 
         $this->assertSame([
             [
@@ -143,9 +143,9 @@ HTML;
 </html>
 HTML;
 
-        $result = $this->normalizeDatetime($this->parser->extractData([
+        $result = $this->normalizeDatetime(iterator_to_array($this->parser->extractData([
             ['url' => 'https://example.com/page2', 'html' => $html],
-        ]));
+        ]), false));
 
         $this->assertSame([
             [
@@ -160,17 +160,17 @@ HTML;
     public function testSkipsWhenNoTitle(): void
     {
         $html = '<html><body><p>No title here</p></body></html>';
-        $result = $this->parser->extractData([
+        $result = iterator_to_array($this->parser->extractData([
             ['url' => 'https://example.com/page3', 'html' => $html],
-        ]);
+        ]), false);
         $this->assertSame([], $result);
     }
 
     public function testSkipsEmptyHtml(): void
     {
-        $result = $this->parser->extractData([
+        $result = iterator_to_array($this->parser->extractData([
             ['url' => 'https://example.com/empty', 'html' => ''],
-        ]);
+        ]), false);
         $this->assertSame([], $result);
     }
 
@@ -179,14 +179,204 @@ HTML;
         $html1 = '<html><body><h1>First</h1></body></html>';
         $html2 = '<html><body><h1>Second</h1></body></html>';
 
-        $result = $this->parser->extractData([
+        $result = iterator_to_array($this->parser->extractData([
             ['url' => 'https://example.com/1', 'html' => $html1],
             ['url' => 'https://example.com/2', 'html' => $html2],
-        ]);
+        ]), false);
 
         $this->assertCount(2, $result);
         $this->assertSame('First', $result[0]->getTitle());
         $this->assertSame('Second', $result[1]->getTitle());
+    }
+
+    // --- Multi-document split (1:N) ---
+
+    public function testSplitsOnePageIntoMultipleDocumentsBySelector(): void
+    {
+        $parser = $this->makeParser([
+            'sp_split_html_document' => ['//article'],
+            'sp_title_css' => ['h1'],
+        ]);
+        $html = <<<HTML
+<html><body>
+  <article><h1>First</h1></article>
+  <article><h1>Second</h1></article>
+  <article><h1>Third</h1></article>
+</body></html>
+HTML;
+
+        $result = iterator_to_array($parser->extractData([
+            ['url' => 'https://example.com/overview', 'html' => $html],
+        ]), false);
+
+        $this->assertCount(3, $result);
+        $this->assertSame(
+            ['First', 'Second', 'Third'],
+            array_map(static fn(ExtractedDataInterface $d): string => $d->getTitle(), $result),
+        );
+        // Every document from the same page shares the page URL.
+        $this->assertSame(
+            array_fill(0, 3, 'https://example.com/overview'),
+            array_map(static fn(ExtractedDataInterface $d): string => $d->getUrl(), $result),
+        );
+    }
+
+    public function testEachSplitDocumentExtractsItsOwnFieldsWithinItsBlock(): void
+    {
+        $parser = $this->makeParser([
+            'sp_split_html_document' => ['//article'],
+            'sp_title_css' => ['h2'],
+            'sp_introText_present' => true,
+            'sp_introText_css' => ['.intro'],
+            'sp_datetime_present' => true,
+            'sp_datetime_css' => ['.date'],
+        ]);
+        $html = <<<HTML
+<html><body>
+  <article><h2>Idea One</h2><p class="intro">First idea</p><span class="date">2026-01-01</span></article>
+  <article><h2>Idea Two</h2><p class="intro">Second idea</p><span class="date">2026-02-02</span></article>
+</body></html>
+HTML;
+
+        $result = iterator_to_array($parser->extractData([
+            ['url' => 'https://example.com/ideas', 'html' => $html],
+        ]), false);
+
+        $this->assertCount(2, $result);
+        $this->assertSame('Idea One', $result[0]->getTitle());
+        $this->assertSame('First idea', $result[0]->getIntroText());
+        $this->assertSame('2026-01-01', $result[0]->getDate()->format('Y-m-d'));
+        $this->assertSame('Idea Two', $result[1]->getTitle());
+        $this->assertSame('Second idea', $result[1]->getIntroText());
+        $this->assertSame('2026-02-02', $result[1]->getDate()->format('Y-m-d'));
+    }
+
+    public function testSplitSelectorWithoutMatchFallsBackToWholePage(): void
+    {
+        $parser = $this->makeParser([
+            'sp_split_html_document' => ['//article'],
+            'sp_title_css' => ['h1'],
+        ]);
+        $html = '<html><body><h1>Single Page</h1></body></html>';
+
+        $result = iterator_to_array($parser->extractData([
+            ['url' => 'https://example.com/', 'html' => $html],
+        ]), false);
+
+        $this->assertCount(1, $result);
+        $this->assertSame('Single Page', $result[0]->getTitle());
+    }
+
+    /**
+     * Complex, noisy page (nav/wrapper/footer) split via an XPath ":has"-style
+     * selector. The innermost-only variant yields exactly the leaf blocks,
+     * each parsed with its own title/intro/date - proving the block tags are
+     * preserved (not flattened to plain text).
+     */
+    public function testSplitsComplexHtmlViaInnermostXPathSelector(): void
+    {
+        $parser = $this->makeParser([
+            'sp_split_html_document' => ['//*[@id="content"]//div[(.//h2 or .//h3 or .//h4) and not(.//div[.//h2 or .//h3 or .//h4])]'],
+            'sp_title_css' => ['h2', 'h3', 'h4'],
+            'sp_introText_present' => true,
+            'sp_introText_css' => ['.intro'],
+            'sp_datetime_present' => true,
+            'sp_datetime_css' => ['.date'],
+        ]);
+
+        $html = <<<HTML
+<html>
+  <head><title>Overview</title></head>
+  <body>
+    <header><nav><ul><li><a href="/home">Home</a></li></ul></nav></header>
+    <div id="content">
+      <div class="portlet-content-container">
+        <div class="teaser"><h2>Teaser One</h2><p class="intro">Intro one</p><span class="date">2026-01-01</span></div>
+        <div class="teaser"><h3>Teaser Two</h3><p class="intro">Intro two</p><span class="date">2026-02-02</span></div>
+        <div class="teaser"><h4>Teaser Three</h4><p class="intro">Intro three</p></div>
+      </div>
+    </div>
+    <footer><p>Footer</p></footer>
+  </body>
+</html>
+HTML;
+
+        $result = iterator_to_array($parser->extractData([
+            ['url' => 'https://example.com/overview', 'html' => $html],
+        ]), false);
+
+        $this->assertCount(3, $result);
+        $this->assertSame(
+            ['Teaser One', 'Teaser Two', 'Teaser Three'],
+            array_map(static fn(ExtractedDataInterface $d): string => $d->getTitle(), $result),
+        );
+        $this->assertSame(
+            ['Intro one', 'Intro two', 'Intro three'],
+            array_map(static fn(ExtractedDataInterface $d): ?string => $d->getIntroText(), $result),
+        );
+        $this->assertSame('2026-01-01', $result[0]->getDate()?->format('Y-m-d'));
+        $this->assertNull($result[2]->getDate());
+    }
+
+    /**
+     * A broad ":has"-style XPath also matches ancestor wrappers (the container
+     * has h2/h3/h4 descendants too). The Parser drops any matched node that is
+     * an ancestor of another matched node, so the wrapper does not produce a
+     * duplicate of its inner block - the innermost match wins.
+     */
+    public function testBroadHasXPathDropsWrapperContainerAndYieldsNoDuplicates(): void
+    {
+        $parser = $this->makeParser([
+            'sp_split_html_document' => ['//*[@id="content"]//div[.//h2 or .//h3 or .//h4]'],
+            'sp_title_css' => ['h2', 'h3', 'h4'],
+        ]);
+
+        $html = <<<HTML
+<html><body>
+  <div id="content">
+    <div class="portlet-content-container">
+      <div class="teaser"><h2>Teaser One</h2></div>
+      <div class="teaser"><h3>Teaser Two</h3></div>
+    </div>
+  </div>
+</body></html>
+HTML;
+
+        $result = iterator_to_array($parser->extractData([
+            ['url' => 'https://example.com/overview', 'html' => $html],
+        ]), false);
+
+        // The wrapper (portlet-content-container) is an ancestor of both
+        // teasers and is dropped; only the two innermost teasers remain.
+        $this->assertSame(
+            ['Teaser One', 'Teaser Two'],
+            array_map(static fn(ExtractedDataInterface $d): string => $d->getTitle(), $result),
+        );
+    }
+
+    public function testSplitBlockWithoutTitleIsSkippedButOthersAreKept(): void
+    {
+        $parser = $this->makeParser([
+            'sp_split_html_document' => ['//article'],
+            'sp_title_css' => ['h1'],
+        ]);
+        $html = <<<HTML
+<html><body>
+  <article><h1>Has Title</h1></article>
+  <article><p>no title here</p></article>
+  <article><h1>Also Has Title</h1></article>
+</body></html>
+HTML;
+
+        $result = iterator_to_array($parser->extractData([
+            ['url' => 'https://example.com/mixed', 'html' => $html],
+        ]), false);
+
+        $this->assertCount(2, $result);
+        $this->assertSame(
+            ['Has Title', 'Also Has Title'],
+            array_map(static fn(ExtractedDataInterface $d): string => $d->getTitle(), $result),
+        );
     }
 
     // --- Huge HTML ---
@@ -196,9 +386,9 @@ HTML;
         $parser = $this->makeParser();
         $html = '<html><body><h1>Title</h1></body>' . str_repeat('x', 2_000_001) . '</html>';
 
-        $result = $parser->extractData([
+        $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]);
+        ]), false);
 
         $this->assertSame([], $result);
     }
@@ -210,9 +400,9 @@ HTML;
         $parser = $this->makeParser(['sp_title_prefix' => 'PREFIX: ']);
         $html = '<html><body><h1>News</h1></body></html>';
 
-        $result = $parser->extractData([
+        $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]);
+        ]), false);
 
         $this->assertSame('PREFIX: News', $result[0]->getTitle());
     }
@@ -224,9 +414,9 @@ HTML;
         $parser = $this->makeParser();
         $html = '<html><body><h1>Title</h1><div class="introText">Ignored</div></body></html>';
 
-        $result = $parser->extractData([
+        $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]);
+        ]), false);
 
         $this->assertCount(1, $result);
         $this->assertNull($result[0]->getIntroText());
@@ -240,9 +430,9 @@ HTML;
         ]);
         $html = '<html><body><h1>Title</h1><p class="intro">Lead text</p></body></html>';
 
-        $result = $parser->extractData([
+        $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]);
+        ]), false);
 
         $this->assertSame('Lead text', $result[0]->getIntroText());
     }
@@ -256,9 +446,9 @@ HTML;
         ]);
         $html = '<html><body><h1>Title</h1></body></html>';
 
-        $result = $parser->extractData([
+        $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]);
+        ]), false);
 
         $this->assertSame([], $result);
     }
@@ -272,9 +462,9 @@ HTML;
         ]);
         $html = '<html><body><h1>Title</h1></body></html>';
 
-        $result = $parser->extractData([
+        $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]);
+        ]), false);
 
         $this->assertCount(1, $result);
         $this->assertNull($result[0]->getIntroText());
@@ -294,9 +484,9 @@ HTML;
 </html>
 HTML;
 
-        $result = $parser->extractData([
+        $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]);
+        ]), false);
 
         $this->assertSame('OG intro text', $result[0]->getIntroText());
     }
@@ -308,9 +498,9 @@ HTML;
         $parser = $this->makeParser();
         $html = '<html><body><h1>Title</h1><div class="date">2026-01-14</div></body></html>';
 
-        $result = $parser->extractData([
+        $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]);
+        ]), false);
 
         $this->assertCount(1, $result);
         $this->assertNull($result[0]->getDate());
@@ -325,9 +515,9 @@ HTML;
         ]);
         $html = '<html><body><h1>Title</h1></body></html>';
 
-        $result = $parser->extractData([
+        $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]);
+        ]), false);
 
         $this->assertSame([], $result);
     }
@@ -341,9 +531,9 @@ HTML;
         ]);
         $html = '<html><body><h1>Title</h1></body></html>';
 
-        $result = $parser->extractData([
+        $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]);
+        ]), false);
 
         $this->assertCount(1, $result);
         $this->assertNull($result[0]->getDate());
@@ -363,9 +553,9 @@ HTML;
 </html>
 HTML;
 
-        $result = $parser->extractData([
+        $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]);
+        ]), false);
 
         $this->assertCount(1, $result);
         $this->assertInstanceOf(\DateTimeImmutable::class, $result[0]->getDate());
@@ -388,9 +578,9 @@ HTML;
 </html>
 HTML;
 
-        $result = $parser->extractData([
+        $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]);
+        ]), false);
 
         $this->assertCount(1, $result);
         $this->assertInstanceOf(\DateTimeImmutable::class, $result[0]->getDate());
@@ -406,9 +596,9 @@ HTML;
         ]);
         $html = '<html><body><h1>Title</h1><span class="published">2026-07-04</span></body></html>';
 
-        $result = $parser->extractData([
+        $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]);
+        ]), false);
 
         $this->assertCount(1, $result);
         $this->assertSame('2026-07-04', $result[0]->getDate()->format('Y-m-d'));
@@ -424,9 +614,9 @@ HTML;
         ]);
         $html = '<html><body><h1>Title</h1><div class="date">2026-01-14 08:30:00</div></body></html>';
 
-        $result = $parser->extractData([
+        $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]);
+        ]), false);
 
         $this->assertCount(1, $result);
         $this->assertSame('2026-01-14', $result[0]->getDate()->format('Y-m-d'));
@@ -444,9 +634,9 @@ HTML;
         ]);
         $html = '<html><body><h1>Title</h1><div class="date">2026-01-14 12:00:00</div></body></html>';
 
-        $result = $parser->extractData([
+        $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]);
+        ]), false);
 
         $this->assertCount(1, $result);
         $this->assertSame('2026-01-14', $result[0]->getDate()->format('Y-m-d'));
@@ -464,9 +654,9 @@ HTML;
         );
         $html = '<html><body><h1>Title</h1></body></html>';
 
-        $result = $parser->extractData([
+        $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]);
+        ]), false);
 
         $this->assertSame([], $result);
     }
@@ -479,9 +669,9 @@ HTML;
         );
         $html = '<html><body><h1>Title</h1></body></html>';
 
-        $result = $parser->extractData([
+        $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]);
+        ]), false);
 
         $this->assertCount(1, $result);
         $this->assertSame('Title', $result[0]->getTitle());
@@ -500,9 +690,9 @@ HTML;
         ]);
         $html = '<html><body><h1>Title</h1></body></html>';
 
-        $result = $parser->extractData([
+        $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]);
+        ]), false);
 
         $this->assertCount(1, $result);
         $this->assertNull($result[0]->getIntroText());
@@ -518,9 +708,9 @@ HTML;
         ]);
         $html = '<html><body><h1>Title</h1></body></html>';
 
-        $result = $parser->extractData([
+        $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]);
+        ]), false);
 
         $this->assertCount(1, $result);
         $this->assertNull($result[0]->getDate());
@@ -537,9 +727,9 @@ HTML;
         ]);
         $html = '<html><body><h1>Title</h1><div class="date">@invalid</div></body></html>';
 
-        $result = $parser->extractData([
+        $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]);
+        ]), false);
 
         $this->assertCount(1, $result);
         $this->assertNull($result[0]->getDate());
@@ -575,7 +765,7 @@ HTML;
         $parser = new Parser($logger, $config, $evaluator);
 
         $html = '<html><body><h1>Title</h1></body></html>';
-        $result = $parser->extractData([['url' => 'https://example.com/', 'html' => $html]]);
+        $result = iterator_to_array($parser->extractData([['url' => 'https://example.com/', 'html' => $html]]), false);
 
         $this->assertSame([], $result);
     }
@@ -590,7 +780,7 @@ HTML;
         ]);
         $html = '<html><body><h1>Title</h1><div class="date">@invalid</div></body></html>';
 
-        $result = $parser->extractData([['url' => 'https://example.com/', 'html' => $html]]);
+        $result = iterator_to_array($parser->extractData([['url' => 'https://example.com/', 'html' => $html]]), false);
 
         $this->assertSame([], $result);
     }

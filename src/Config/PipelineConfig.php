@@ -142,6 +142,22 @@ final class PipelineConfig
         return $this->crawlerConfigHelper->string('sp_user_agent', 'Atoolo/Crawler-Teaser-Indexer');
     }
 
+    // --- Parser: Document split (1:N) ---
+
+    /**
+     * XPath selector that splits a page into multiple documents - one per
+     * matching element (e.g. `//article` or, ":has"-style,
+     * `//*[@id="content"]//div[.//h2]`). When null/empty, or when nothing
+     * matches, or the XPath is invalid, the whole page is a single document
+     * (1:1, the default).
+     *
+     * @return list<string>
+     */
+    public function splitHtmlDocumentSelector(): ?array
+    {
+        return $this->crawlerConfigHelper->stringList('sp_split_html_document');
+    }
+
     // --- Parser: Title ---
 
     public function titleConfig(): TitleExtractConfig
@@ -158,23 +174,27 @@ final class PipelineConfig
 
     public function introTextConfig(): IntroExtractConfig
     {
+        $present = $this->crawlerConfigHelper->bool('sp_introText_present', false);
+
         return new IntroExtractConfig(
-            present: $this->crawlerConfigHelper->bool('sp_introText_present', false),
-            requiredField: $this->crawlerConfigHelper->bool('sp_introText_required_field', false),
-            opengraph: $this->crawlerConfigHelper->stringList('sp_introText_opengraph'),
-            css: $this->crawlerConfigHelper->stringList('sp_introText_css'),
+            present: $present,
+            requiredField: $present ? $this->crawlerConfigHelper->bool('sp_introText_required_field', false) : false,
+            opengraph: $present ? $this->crawlerConfigHelper->stringList('sp_introText_opengraph') : [],
+            css: $present ? $this->crawlerConfigHelper->stringList('sp_introText_css') : [],
             maxChars: $this->crawlerConfigHelper->int('sp_introText_max_chars', 999),
         );
     }
 
     public function dateTimeConfig(): DateTimeExtractConfig
     {
+        $present = $this->crawlerConfigHelper->bool('sp_datetime_present', false);
+
         return new DateTimeExtractConfig(
-            present: $this->crawlerConfigHelper->bool('sp_datetime_present', false),
-            requiredField: $this->crawlerConfigHelper->bool('sp_datetime_required_field', false),
-            onlyDate: $this->crawlerConfigHelper->bool('sp_datetime_only_date', true),
-            opengraph: $this->crawlerConfigHelper->stringList('sp_datetime_opengraph'),
-            css: $this->crawlerConfigHelper->stringList('sp_datetime_css'),
+            present: $present,
+            requiredField: $present ? $this->crawlerConfigHelper->bool('sp_datetime_required_field', false) : false,
+            onlyDate: $present ? $this->crawlerConfigHelper->bool('sp_datetime_only_date', true) : false,
+            opengraph: $present ? $this->crawlerConfigHelper->stringList('sp_datetime_opengraph') : [],
+            css: $present ? $this->crawlerConfigHelper->stringList('sp_datetime_css') : [],
         );
     }
 

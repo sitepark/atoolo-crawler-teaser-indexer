@@ -21,21 +21,20 @@ class Parser implements ParserInterface
     ) {}
 
     /**
-     * Extract document from fetched HTML.
+     * Extract documents from fetched HTML.
+     *
+     * A page yields one document per matching block when the XPath
+     * `sp_split_html_document` is configured (1:N, e.g. an overview
+     * page with many blocks), otherwise the whole page is a single document
+     * (1:1).
      *
      * @param array<int, array{url: string, html: string}> $htmlData
      *
-     * @return \Generator<int, ExtractedDataInterface[]>
+     * @return \Generator<int, ExtractedDataInterface>
      */
     public function extractData(array $htmlData): \Generator
     {
-        $results = [];
-
-        $titleConfig = $this->config->titleConfig();
-        $introConfig = $this->config->introTextConfig();
-        $dateTimeConfig = $this->config->dateTimeConfig();
-
-        $scoringActive = $this->config->contentScoringActive();
+        $splitSelector = $this->config->splitHtmlDocumentSelector();
 
         foreach ($htmlData as $item) {
             $html = $item['html'];
@@ -43,77 +42,183 @@ class Parser implements ParserInterface
                 continue;
             }
 
-            try {
-                if (strlen($html) > 2_000_000) {
-                    $this->logger->warning('Skipping huge HTML', [
-                        'url' => $item['url'],
-                        'bytes' => strlen($html),
-                    ]);
-                    continue;
-                }
-                $crawler = new Crawler($html);
-
-                $title = $this->extractTitleText($crawler, $titleConfig);
-                if (null === $title || '' === $title) {
-                    $this->logger->debug(
-                        'Title Not found in Processor',
-                        [
-                            'key' => 'title',
-                            'url' => $item['url'],
-                            'dataFound' => $title,
-                        ],
-                    );
-                    continue;
-                }
-
-                $url = $item['url'];
-                $title = ($titleConfig->prefix ?? '') . $title;
-
-                $introText = $this->extractIntroductionText($crawler, $introConfig);
-                if (null === $introText && $introConfig->requiredField) {
-                    continue;
-                }
-
-                $dateTime = $this->extractDateTime($crawler, $dateTimeConfig);
-                if (null === $dateTime && $dateTimeConfig->requiredField) {
-                    continue;
-                }
-
-                if ($scoringActive) {
-                    $relevanceData = [
-                        'url' => $url,
-                        'title' => $title,
-                        'introText' => $introText,
-                        'html' => $html,
-                    ];
-                    $keepDocument = $this->relevanceEvaluator->relevant($relevanceData);
-                    if (!$keepDocument) {
-                        $this->logger->debug(
-                            'Document not Relevant',
-                            ['relevanceData' => $relevanceData],
-                        );
-                        continue;
-                    }
-                }
-                $extracted = new ExtractedData($url, $title, $introText, $dateTime);
-                yield $extracted;
-            } catch (\Throwable $e) {
-                $this->logger->warning('[Parser] No Data found for URL', [
+            if (strlen($html) > 2_000_000) {
+                $this->logger->warning('Skipping huge HTML', [
                     'url' => $item['url'],
+                    'bytes' => strlen($html),
+                ]);
+                continue;
+            }
+
+            $crawler = new Crawler($html);
+
+            // Each block is parsed independently: a missing title, a missing
+            // required field, or a parse error skips only that block - the
+            // remaining blocks of the page are still emitted.
+            foreach ($this->resolveBlocks($crawler, $splitSelector) as $block) {
+                try {
+                    $extracted = $this->extractFromBlock(
+                        $block,
+                        $item['url'],
+                        $html,
+                    );
+                    if (null !== $extracted) {
+                        yield $extracted;
+                    }
+                } catch (\Throwable $e) {
+                    $this->logger->warning('[Parser] No Data found for URL', [
+                        'url' => $item['url'],
+                        'exception' => $e,
+                    ]);
+                }
+            }
+        }
+    }
+
+    /**
+     * Resolves the blocks a page is split into. With a valid split selector that
+     * matches, each matching element becomes its own block (1:N). Otherwise -
+     * no selector, no match, or an invalid XPath - the whole page is a single
+     * block (1:1).
+     *
+     * A broad ":has"-style selector (e.g. `//div[.//h2]`) also matches wrapper
+     * containers, since those have the block headings as descendants too. To
+     * avoid emitting a wrapper as a duplicate of its inner block, any matched
+     * node that is an ancestor of another matched node is dropped - the
+     * innermost match wins.
+     *
+     * @param list<string> $splitSelectors
+     *
+     * @return list<Crawler>
+     */
+    private function resolveBlocks(Crawler $crawler, ?array $splitSelectors): array
+    {
+        if (null === $splitSelectors || [] === $splitSelectors) {
+            return [$crawler];
+        }
+
+        $nodes = [];
+        foreach ($splitSelectors as $splitSelector) {
+            try {
+                foreach ($crawler->filterXPath($splitSelector) as $node) {
+                    $nodes[] = $node;
+                }
+            } catch (\Throwable $e) {
+                $this->logger->warning('[Parser] Invalid split selector, using whole page', [
+                    'selector' => $splitSelector,
                     'exception' => $e,
                 ]);
             }
         }
 
-        return $results;
+        if ([] === $nodes) {
+            return [$crawler];
+        }
+
+        $blocks = [];
+        foreach ($nodes as $node) {
+            if ($this->isAncestorOfAny($node, $nodes)) {
+                continue;
+            }
+            $blocks[] = new Crawler($node);
+        }
+
+        return $blocks;
+    }
+
+    /**
+     * Whether $node is an ancestor of any other node in $others (identity by
+     * DOM node, not object reference).
+     *
+     * @param list<\DOMNode> $others
+     */
+    private function isAncestorOfAny(\DOMNode $node, array $others): bool
+    {
+        foreach ($others as $other) {
+            if ($node->isSameNode($other)) {
+                continue;
+            }
+            for ($parent = $other->parentNode; null !== $parent; $parent = $parent->parentNode) {
+                if ($parent->isSameNode($node)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Extracts a single document from one block (whole page or split element).
+     * Returns null when the block is skipped (no title, required field missing,
+     * or filtered out by content scoring).
+     */
+    private function extractFromBlock(
+        Crawler $crawler,
+        string $url,
+        string $html,
+    ): ?ExtractedDataInterface {
+        $titleConfig = $this->config->titleConfig();
+        $introConfig = $this->config->introTextConfig();
+        $dateTimeConfig = $this->config->dateTimeConfig();
+        $scoringActive = $this->config->contentScoringActive();
+
+        $title = '';
+        if ($titleConfig->present) {
+            $title = $this->extractTitleText($crawler, $titleConfig);
+            if (null === $title || '' === $title) {
+                $this->logger->debug(
+                    'Title Not found in Processor',
+                    [
+                        'key' => 'title',
+                        'url' => $url,
+                    ],
+                );
+
+                return null;
+            }
+            $title = ($titleConfig->prefix ?? '') . $title;
+        }
+
+        $introText = null;
+        if ($introConfig->present) {
+            $introText = $this->extractIntroductionText($crawler, $introConfig);
+            if (null === $introText && $introConfig->requiredField) {
+                return null;
+            }
+        }
+
+        $dateTime = null;
+        if ($dateTimeConfig->present) {
+            $dateTime = $this->extractDateTime($crawler, $dateTimeConfig);
+            if (null === $dateTime && $dateTimeConfig->requiredField) {
+                return null;
+            }
+        }
+
+        if ($scoringActive) {
+            $relevanceData = [
+                'url' => $url,
+                'title' => $title,
+                'introText' => $introText,
+                'html' => $html,
+            ];
+            $keepDocument = $this->relevanceEvaluator->relevant($relevanceData);
+            if (!$keepDocument) {
+                $this->logger->debug(
+                    'Document not Relevant',
+                    ['relevanceData' => $relevanceData],
+                );
+
+                return null;
+            }
+        }
+
+        return new ExtractedData($url, $title, $introText, $dateTime);
     }
 
     private function extractTitleText(Crawler $crawler, TitleExtractConfig $config): ?string
     {
-        if (!$config->present) {
-            return null;
-        }
-
         // OG/Meta have priority
         foreach ($config->opengraph as $property) {
             $title = $this->findMetaTagContent($crawler, $property);
@@ -140,10 +245,6 @@ class Parser implements ParserInterface
 
     private function extractIntroductionText(Crawler $crawler, IntroExtractConfig $config): ?string
     {
-        if (!$config->present) {
-            return null;
-        }
-
         // OG/Meta have priority
         foreach ($config->opengraph as $property) {
             $introductionText = $this->findMetaTagContent($crawler, $property);
@@ -165,10 +266,6 @@ class Parser implements ParserInterface
 
     private function extractDateTime(Crawler $crawler, DateTimeExtractConfig $config): ?\DateTimeImmutable
     {
-        if (!$config->present) {
-            return null;
-        }
-
         $raw = $this->findDateTimeRaw($crawler, $config);
 
         if (null === $raw) {

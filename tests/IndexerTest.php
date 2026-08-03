@@ -61,6 +61,76 @@ final class IndexerTest extends TestCase
         );
     }
 
+    /**
+     * Builds an Indexer whose updater records every added Solr document into
+     * $added, so tests can inspect dedup and the generated id/url fields.
+     *
+     * @param array<int, Document> $added
+     * @param array<string, mixed> $configOverrides
+     */
+    private function makeCapturingIndexer(array &$added, array $configOverrides = []): Indexer
+    {
+        $updateResult = $this->createMock(SolrUpdateResult::class);
+        $updateResult->method('getStatus')->willReturn(0);
+
+        $updater = $this->createMock(SolrIndexUpdater::class);
+        $updater->method('createDocument')->willReturnCallback(static fn(): Document => new Document());
+        $updater->method('addDocument')->willReturnCallback(
+            static function (Document $document) use (&$added): void {
+                $added[] = $document;
+            },
+        );
+        $updater->method('update')->willReturn($updateResult);
+
+        $indexService = $this->createMock(SolrIndexService::class);
+        $indexService->method('updater')->willReturn($updater);
+
+        $progressHandler = $this->createStub(IndexerProgressHandler::class);
+        $progressHandler->method('getStatus')->willReturn(IndexerStatus::empty());
+
+        return new Indexer(
+            $progressHandler,
+            $indexService,
+            $this->makeConfig($configOverrides),
+            $this->createStub(LoggerInterface::class),
+        );
+    }
+
+    public function testDeduplicatesDocumentsWithIdenticalContent(): void
+    {
+        $added = [];
+        $indexer = $this->makeCapturingIndexer($added);
+
+        $indexer->doIndex([
+            new ExtractedData('https://example.com/a', 'Same Title'),
+            new ExtractedData('https://example.com/b', 'Same Title'), // same title/intro/date → duplicate
+            new ExtractedData('https://example.com/c', 'Other Title'),
+        ]);
+
+        $this->assertCount(2, $added);
+    }
+
+    public function testMultipleDocumentsFromSameUrlGetDistinctGeneratedIds(): void
+    {
+        $added = [];
+        $indexer = $this->makeCapturingIndexer($added);
+
+        $url = 'https://example.com/overview';
+        $indexer->doIndex([
+            new ExtractedData($url, 'Document One'),
+            new ExtractedData($url, 'Document Two'),
+        ]);
+
+        $this->assertCount(2, $added);
+
+        $ids = array_map(static fn(Document $d): mixed => $d->getFields()['id'], $added);
+        // The id is no longer the URL, and same-page documents get distinct ids.
+        $this->assertNotSame($url, $ids[0]);
+        $this->assertNotSame($ids[0], $ids[1]);
+        // The URL is still stored in its own field.
+        $this->assertSame($url, $added[0]->getFields()['url']);
+    }
+
     public function testDoIndexWithSuccessfulItemsReturnsStatus(): void
     {
         $indexer = $this->makeIndexer();
