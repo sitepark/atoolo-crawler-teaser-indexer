@@ -46,3 +46,6 @@ services:
             $progressHandler: "@atoolo_search.indexer.internal_resource_progress_state"
             $denyEndings: "%atoolo.crawler.deny_endings%"
             $retryStatusCodes: "%atoolo.crawler.retry_status_codes%"
+            # The Parser is not a container service - it is built per site - so the tagged services
+            # are collected here, in the singleton factory, and handed down.
+            $fieldExtractors: !tagged_iterator atoolo.crawler.field_extractor

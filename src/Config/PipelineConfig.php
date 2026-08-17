@@ -145,7 +145,8 @@ final class PipelineConfig
     // --- Parser: Document split (1:N) ---
 
     /**
-     * XPath selector that splits a page into multiple documents
+     * XPath selector that splits a page into multiple documents.
+     *
      * @return list<string>
      */
     public function splitHtmlDocumentSelector(): ?array
@@ -216,7 +217,7 @@ final class PipelineConfig
 
     public function relevanceContentSelector(): string
     {
-        return $this->crawlerConfigHelper->string('sp_relevance_content_selector', "");
+        return $this->crawlerConfigHelper->string('sp_relevance_content_selector', '');
     }
 
     public function contentScoringConfig(): ContentScoringConfig

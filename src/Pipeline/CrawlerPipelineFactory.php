@@ -10,6 +10,7 @@ use Atoolo\CrawlerIndexer\Pipeline\Collector\URLCollector;
 use Atoolo\CrawlerIndexer\Pipeline\Collector\URLNormalizer;
 use Atoolo\CrawlerIndexer\Pipeline\Fetcher\Fetcher;
 use Atoolo\CrawlerIndexer\Pipeline\Indexer\Indexer;
+use Atoolo\CrawlerIndexer\Pipeline\Parser\FieldExtractorInterface;
 use Atoolo\CrawlerIndexer\Pipeline\Parser\Parser;
 use Atoolo\CrawlerIndexer\Pipeline\RelevanceEvaluator\RelevanceEvaluator;
 use Atoolo\CrawlerIndexer\Pipeline\Processor\Processor;
@@ -33,8 +34,12 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 class CrawlerPipelineFactory
 {
     /**
-     * @param list<string> $denyEndings
-     * @param array<int>   $retryStatusCodes
+     * @param list<string>                      $denyEndings
+     * @param array<int>                        $retryStatusCodes
+     * @param iterable<FieldExtractorInterface> $fieldExtractors  Tagged project extractors. They are
+     *                                                            config-independent singletons, so unlike the
+     *                                                            per-site collaborators below they are collected once,
+     *                                                            here, and handed to every Parser instance.
      */
     public function __construct(
         private readonly LoggerInterface $logger,
@@ -43,6 +48,7 @@ class CrawlerPipelineFactory
         private readonly IndexerProgressHandler $progressHandler,
         private readonly array $denyEndings,
         private readonly array $retryStatusCodes,
+        private readonly iterable $fieldExtractors = [],
     ) {}
 
     public function create(PipelineConfig $config): CrawlerPipeline
@@ -66,7 +72,7 @@ class CrawlerPipelineFactory
         );
 
         $relevanceEvaluator = new RelevanceEvaluator($config);
-        $parser = new Parser($this->logger, $config, $relevanceEvaluator);
+        $parser = new Parser($this->logger, $config, $relevanceEvaluator, $this->fieldExtractors);
         $processor = new Processor($this->logger, $config);
         $indexer = new Indexer($this->progressHandler, $this->indexService, $config, $this->logger);
 

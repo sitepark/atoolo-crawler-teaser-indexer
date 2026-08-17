@@ -161,7 +161,7 @@ final class PipelineConfigHelper
         $v = $this->params[$key] ?? self::MISSING;
 
         if (self::MISSING === $v) {
-            if ($isLogged){
+            if ($isLogged) {
                 $this->logger->debug('Config missing string list, using empty list', ['key' => $key]);
             }
 
