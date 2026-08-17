@@ -200,10 +200,12 @@ class URLCollector implements URLCollectorInterface
     }
 
     /**
-     * Extracts absolute HTTPS URLs from the given DOM scope.
+     * Extracts absolute http(s) URLs from the given DOM scope.
      *
-     * Relative URLs are resolved against the provided base URL.
-     * Invalid or non-HTTPS links are ignored.
+     * Relative URLs are resolved against the provided base URL. Links that fail
+     * to parse are ignored, as are non-http(s) schemes: `mailto:`, `tel:` and
+     * `javascript:` resolve to URIs without a host, which the normalizer passes
+     * through unchanged - so they have to be dropped here.
      *
      * @param Crawler $crawler The scoped DOM crawler
      * @param string  $baseUrl The base URL used for resolving relative links
@@ -225,7 +227,7 @@ class URLCollector implements URLCollectorInterface
                     $link = new Link($domElement, $baseUrl);
                     $url = $link->getUri();
 
-                    return str_starts_with($url, 'https://') ? $url : null;
+                    return str_starts_with($url, 'https://') || str_starts_with($url, 'http://') ? $url : null;
                 } catch (\Throwable $e) {
                     $this->logger->debug('Failed to parse link', [
                         'baseUrl' => $baseUrl,
