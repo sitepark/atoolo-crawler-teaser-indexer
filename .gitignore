@@ -12,10 +12,7 @@ composer.lock
 /var/log/*
 !var/log/.gitkeep
 /var/test/*
-tools/composer-normalize
-tools/php-cs-fixer
-tools/phplint
-tools/phpstan
+/tools
 .phpactor.json
 .env*
 ###> phpunit/phpunit ###
