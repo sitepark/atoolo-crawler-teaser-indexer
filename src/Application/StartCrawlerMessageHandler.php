@@ -2,7 +2,7 @@
 
 namespace Atoolo\Crawler\Application;
 
-use Atoolo\Search\Service\Indexer\IndexerConfigurationLoader;
+use Atoolo\Index\Service\Indexer\IndexerConfigurationLoader;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 

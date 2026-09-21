@@ -10,14 +10,14 @@ use Atoolo\Crawler\Config\CrawlerConfigHelper;
 use Atoolo\Crawler\Domain\Crawler\Steps\Indexer;
 use Atoolo\Crawler\Exception\ThresholdNotMetException;
 use Atoolo\Resource\ResourceLanguage;
-use Atoolo\Search\Dto\Indexer\IndexerStatus;
-use Atoolo\Search\Service\Indexer\IndexerProgressHandler;
+use Atoolo\Index\Dto\Indexer\IndexerStatus;
+use Atoolo\Index\Service\Indexer\IndexerProgressHandler;
 use Atoolo\Search\Service\Indexer\SolrIndexService;
 use Atoolo\Search\Service\Indexer\SolrIndexUpdater;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
-use Solarium\QueryType\Update\Query\Document;
-use Solarium\QueryType\Update\Result as SolrUpdateResult;
+use Atoolo\Search\Service\Indexer\IndexSchema2xDocument;
+use Atoolo\Search\Service\Indexer\SolrUpdateResult;
 
 final class IndexerTest extends TestCase
 {
@@ -44,7 +44,7 @@ final class IndexerTest extends TestCase
         $updateResult->method('getStatus')->willReturn(0);
 
         $updater = $this->createMock(SolrIndexUpdater::class);
-        $updater->method('createDocument')->willReturn(new Document());
+        $updater->method('createDocument')->willReturn(new IndexSchema2xDocument());
         $updater->method('update')->willReturn($updateResult);
 
         $defaultIndexService = $this->createMock(SolrIndexService::class);
@@ -89,7 +89,7 @@ final class IndexerTest extends TestCase
         $updateResult = $this->createMock(SolrUpdateResult::class);
         $updateResult->method('getStatus')->willReturn(0);
 
-        $document = new Document();
+        $document = new IndexSchema2xDocument();
 
         $updater = $this->createMock(SolrIndexUpdater::class);
         $updater->method('createDocument')->willReturn($document);
@@ -165,7 +165,7 @@ final class IndexerTest extends TestCase
         );
 
         $updater = $this->createMock(SolrIndexUpdater::class);
-        $updater->method('createDocument')->willReturn(new Document());
+        $updater->method('createDocument')->willReturn(new IndexSchema2xDocument());
         $updater->method('update')->willReturn($updateResult);
 
         $indexService = $this->createMock(SolrIndexService::class);
@@ -190,7 +190,7 @@ final class IndexerTest extends TestCase
     public function testDoIndexRethrowsWhenSolrUpdateThrows(): void
     {
         $updater = $this->createMock(SolrIndexUpdater::class);
-        $updater->method('createDocument')->willReturn(new Document());
+        $updater->method('createDocument')->willReturn(new IndexSchema2xDocument());
         $updater->method('update')->willThrowException(new \RuntimeException('Solr not reachable'));
 
         $indexService = $this->createMock(SolrIndexService::class);
@@ -215,12 +215,12 @@ final class IndexerTest extends TestCase
     {
         $callCount = 0;
         $updater = $this->createMock(SolrIndexUpdater::class);
-        $updater->method('createDocument')->willReturnCallback(function () use (&$callCount): Document {
+        $updater->method('createDocument')->willReturnCallback(function () use (&$callCount): IndexSchema2xDocument {
             $callCount++;
             if ($callCount === 1) {
                 throw new \RuntimeException('document creation failed');
             }
-            return new Document();
+            return new IndexSchema2xDocument();
         });
 
         $updateResult = $this->createMock(SolrUpdateResult::class);

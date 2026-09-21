@@ -15,7 +15,7 @@ services:
     # Run in Development
     Atoolo\Crawler\Command\Index:
         arguments:
-            $indexerConfigurationLoader: '@atoolo_search.indexer.configuration_loader'
+            $indexerConfigurationLoader: '@atoolo_index.indexer.configuration_loader'
 
     # Run in Customer Projekt
     Atoolo\Crawler\Application\Schedule:
@@ -24,7 +24,7 @@ services:
 
     Atoolo\Crawler\Application\StartCrawlerMessageHandler:
         arguments:
-            $indexerConfigurationLoader: '@atoolo_search.indexer.configuration_loader'
+            $indexerConfigurationLoader: '@atoolo_index.indexer.configuration_loader'
 
     Atoolo\Crawler\Domain\Crawler\Ports\RequestExecutor:
         arguments:
