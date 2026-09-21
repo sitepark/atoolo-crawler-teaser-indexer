@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Atoolo\Crawler\Command;
 
 use Atoolo\Crawler\Application\CrawlSiteRunner;
-use Atoolo\Search\Service\Indexer\IndexerConfigurationLoader;
+use Atoolo\Index\Service\Indexer\IndexerConfigurationLoader;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;

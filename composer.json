@@ -7,21 +7,21 @@
     "minimum-stability": "dev",
     "prefer-stable": true,
     "require": {
-        "php": ">=8.1",
+        "php": ">=8.1 <8.6.0",
         "ext-ctype": "*",
         "ext-iconv": "*",
-        "atoolo/search-bundle": ">=1.14",
-        "spatie/robots-txt": ">=2.5.4",
-        "symfony/console": ">=6.4.41",
-        "symfony/css-selector": ">=6.4.34",
-        "symfony/dom-crawler": ">=6.4.40",
-        "symfony/dotenv": ">=6.4.39",
-        "symfony/flex": ">=2.10",
-        "symfony/framework-bundle": ">=6.4.41",
-        "symfony/http-client": ">=6.4.41",
-        "symfony/monolog-bundle": ">=3.11.2",
-        "symfony/runtime": ">=6.4.41",
-        "symfony/yaml": ">=6.4.41"
+        "atoolo/search-bundle": "dev-main",
+        "spatie/robots-txt": "^2.5.4",
+        "symfony/console": "^6.4.41 || ^7.4.7",
+        "symfony/css-selector": "^6.4.34 || ^7.4.7",
+        "symfony/dom-crawler": "^6.4.40 || ^7.4.7",
+        "symfony/dotenv": "^6.4.39 || ^7.4.7",
+        "symfony/flex": "^2.10",
+        "symfony/framework-bundle": "^6.4.41 || ^7.4.7",
+        "symfony/http-client": "^6.4.41 || ^7.4.7",
+        "symfony/monolog-bundle": "^3.11.2",
+        "symfony/runtime": "^6.4.41 || ^7.4.7",
+        "symfony/yaml": "^6.4.41 || ^7.4.7"
     },
     "config": {
         "allow-plugins": {
@@ -30,9 +30,6 @@
             "php-http/discovery": true,
             "symfony/flex": true,
             "symfony/runtime": true
-        },
-        "platform": {
-            "php": "8.1"
         },
         "bump-after-update": true,
         "sort-packages": true

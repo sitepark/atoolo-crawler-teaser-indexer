@@ -1,4 +1,7 @@
 {
+    "atoolo/index-bundle": {
+        "version": "dev-main"
+    },
     "atoolo/resource-bundle": {
         "version": "1.7.0"
     },

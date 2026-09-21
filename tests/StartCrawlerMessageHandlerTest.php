@@ -10,8 +10,8 @@ use Atoolo\Crawler\Application\StartCrawlerMessageHandler;
 use Atoolo\Crawler\Config\CrawlerConfigContext;
 use Atoolo\Crawler\Controller\CrawlerManager;
 use Atoolo\Resource\DataBag;
-use Atoolo\Search\Dto\Indexer\IndexerConfiguration;
-use Atoolo\Search\Service\Indexer\IndexerConfigurationLoader;
+use Atoolo\Index\Dto\Indexer\IndexerConfiguration;
+use Atoolo\Index\Service\Indexer\IndexerConfigurationLoader;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 

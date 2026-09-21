@@ -14,8 +14,8 @@ use Atoolo\Crawler\Domain\Crawler\Steps\Fetcher;
 use Atoolo\Crawler\Domain\Crawler\Steps\Parser;
 use Atoolo\Crawler\Domain\Crawler\Steps\Processor;
 use Atoolo\Crawler\Domain\Crawler\Steps\Indexer;
-use Atoolo\Search\Dto\Indexer\IndexerStatus;
-use Atoolo\Search\Dto\Indexer\IndexerStatusState;
+use Atoolo\Index\Dto\Indexer\IndexerStatus;
+use Atoolo\Index\Dto\Indexer\IndexerStatusState;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 

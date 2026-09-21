@@ -6,4 +6,5 @@ return [
     Atoolo\Search\AtooloSearchBundle::class => ['all' => true],
     Symfony\Bundle\MonologBundle\MonologBundle::class => ['all' => true],
     Atoolo\Crawler\AtooloCrawlerTeaserIndexerBundle::class => ['all' => true],
+    Atoolo\Index\AtooloIndexBundle::class => ['all' => true],
 ];

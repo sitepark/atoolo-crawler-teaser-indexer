@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Implementation of \Atoolo\Search\Indexer for RCE-based data sources.
+ * Implementation of \Atoolo\Index\Indexer for RCE-based data sources.
  * Only the indexing flow is used; other interface methods are no-ops.
  */
 
@@ -12,13 +12,13 @@ namespace Atoolo\Crawler\Domain\Crawler\Steps;
 use Atoolo\Crawler\Config\CrawlerConfig;
 use Atoolo\Crawler\Exception\ThresholdNotMetException;
 use Atoolo\Resource\ResourceLanguage;
-use Atoolo\Search\Dto\Indexer\IndexerStatus;
-use Atoolo\Search\Service\Indexer\IndexerProgressHandler;
+use Atoolo\Index\Dto\Indexer\IndexerStatus;
+use Atoolo\Index\Service\Indexer\IndexerProgressHandler;
 use Atoolo\Search\Service\Indexer\SolrIndexService;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 
-class Indexer implements \Atoolo\Search\Indexer
+class Indexer implements \Atoolo\Index\Indexer
 {
     private string $source = '';
     public function __construct(
