@@ -166,8 +166,8 @@ class Parser
 
         if (empty($raw)) {
             foreach ($config->css as $selector) {
-                $raw =
-                    $this->findAttrByCss($crawler, $selector, 'datetime')
+                $raw
+                    = $this->findAttrByCss($crawler, $selector, 'datetime')
                     ?? $this->findCssSelectorContent($crawler, $selector);
 
                 if (!empty($raw)) {
