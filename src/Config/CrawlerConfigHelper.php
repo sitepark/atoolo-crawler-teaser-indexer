@@ -294,7 +294,9 @@ final class CrawlerConfigHelper
                         'value' => $rule['sp_condition'],
                     ]);
                 } else {
-                    $condition = $this->readCondition($rule['sp_condition'], $key, $index);
+                    /** @var array<string, mixed> $conditionData */
+                    $conditionData = $rule['sp_condition'];
+                    $condition = $this->readCondition($conditionData, $key, $index);
                 }
             }
 

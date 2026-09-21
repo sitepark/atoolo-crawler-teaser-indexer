@@ -22,7 +22,6 @@ final class CrawlSiteRunner
     public function run(array $site): void
     {
         $this->configContext->set($site);
-        /** @var string $siteKey */
         $siteKey = $site['sp_id'] ?? null;
 
         if (!is_string($siteKey) || $siteKey === '') {

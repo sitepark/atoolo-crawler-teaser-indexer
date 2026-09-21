@@ -52,7 +52,7 @@ class CrawlerManager
             fn() => $this->urlCollector->findHrefUrlsByCssSelector(),
         );
 
-        $urls = iterator_to_array($urlsIterator);
+        $urls = array_values(iterator_to_array($urlsIterator));
 
         $rawTeaserStream = $this->storageHandlingFetcherParser($urls);
 
@@ -96,9 +96,11 @@ class CrawlerManager
 
             $teaserDataIterator = $this->executeStep(
                 'Parser',
-                fn($pages) => $this->parser->extractTeasers(
-                    is_array($pages) ? $pages : iterator_to_array($pages),
-                ),
+                function ($pages) {
+                    /** @var array<int, array{url: string, html: string}> $list */
+                    $list = is_array($pages) ? $pages : iterator_to_array($pages);
+                    return $this->parser->extractTeasers($list);
+                },
                 $htmlData,
             );
 

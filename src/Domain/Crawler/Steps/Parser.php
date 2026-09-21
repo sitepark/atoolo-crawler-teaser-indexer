@@ -60,7 +60,7 @@ class Parser
 
                 $teaserData = [
                     'url'   => $item['url'],
-                    'title' => ($titleConfig->prefix ?? '') . $title,
+                    'title' => $titleConfig->prefix . $title,
                 ];
 
                 $introText = $this->extractText($crawler, $introConfig);
