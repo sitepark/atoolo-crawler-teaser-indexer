@@ -12,9 +12,8 @@ use Atoolo\Crawler\Domain\Crawler\Services\ContentScoringConfig;
 final class CrawlerConfig
 {
     public function __construct(
-        private CrawlerConfigHelper $crawlerConfigHelper
-    ) {
-    }
+        private CrawlerConfigHelper $crawlerConfigHelper,
+    ) {}
 
     // --- Category ---
 

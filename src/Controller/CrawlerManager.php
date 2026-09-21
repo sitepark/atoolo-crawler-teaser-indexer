@@ -38,9 +38,8 @@ class CrawlerManager
         private readonly Processor $processor,
         private readonly CrawlerConfig $config,
         private readonly LoggerInterface $logger,
-        private readonly Indexer $indexer
-    ) {
-    }
+        private readonly Indexer $indexer,
+    ) {}
 
     /**
      * Starts the full crawling workflow.
@@ -50,7 +49,7 @@ class CrawlerManager
         /** @var \Iterator<int, string> $urlsIterator */
         $urlsIterator = $this->executeStep(
             'URLCollector',
-            fn() => $this->urlCollector->findHrefUrlsByCssSelector()
+            fn() => $this->urlCollector->findHrefUrlsByCssSelector(),
         );
 
         $urls = iterator_to_array($urlsIterator);
@@ -61,7 +60,7 @@ class CrawlerManager
         $teaserStream = $this->executeStep(
             'Processor',
             fn($rawData) => $this->processor->sanitizeText($rawData),
-            $rawTeaserStream
+            $rawTeaserStream,
         );
 
         /**
@@ -90,7 +89,7 @@ class CrawlerManager
             $htmlDataIterator = $this->executeStep(
                 'Fetcher',
                 fn($urls) => $this->fetcher->fetchUrls($urls),
-                $chunk
+                $chunk,
             );
 
             $htmlData = iterator_to_array($htmlDataIterator);
@@ -98,9 +97,9 @@ class CrawlerManager
             $teaserDataIterator = $this->executeStep(
                 'Parser',
                 fn($pages) => $this->parser->extractTeasers(
-                    is_array($pages) ? $pages : iterator_to_array($pages)
+                    is_array($pages) ? $pages : iterator_to_array($pages),
                 ),
-                $htmlData
+                $htmlData,
             );
 
             $teaserData = iterator_to_array($teaserDataIterator);

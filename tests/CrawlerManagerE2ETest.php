@@ -36,7 +36,7 @@ final class CrawlerManagerE2ETest extends TestCase
             $now,
             0,
             $errors,
-            ''
+            '',
         );
     }
 
@@ -110,7 +110,7 @@ final class CrawlerManagerE2ETest extends TestCase
                         ['url' => $this->url1, 'title' => $title1, 'date' => $date1],
                         ['url' => $this->url2, 'title' => $title2, 'date' => $date2],
                     ],
-                    $items
+                    $items,
                 );
 
                 return true;
@@ -129,7 +129,7 @@ final class CrawlerManagerE2ETest extends TestCase
             $processor,
             $config,
             $logger,
-            $indexer
+            $indexer,
         );
 
         $manager->startCrawler();
@@ -173,9 +173,9 @@ final class CrawlerManagerE2ETest extends TestCase
             array_reduce(
                 $warnings,
                 fn(bool $carry, string $m) => $carry || str_contains($m, '[URLCollector] Step returned no data.'),
-                false
+                false,
             ),
-            'Expected warning "[URLCollector] Step returned no data." not found. Got: ' . implode(' | ', $warnings)
+            'Expected warning "[URLCollector] Step returned no data." not found. Got: ' . implode(' | ', $warnings),
         );
 
         $this->assertStringNotContainsString('Title', $output);
@@ -220,16 +220,16 @@ final class CrawlerManagerE2ETest extends TestCase
 
         $this->assertNotNull(
             $thrownException,
-            'Expected StepExecution exception to be thrown'
+            'Expected StepExecution exception to be thrown',
         );
 
         $this->assertTrue(
             array_reduce(
                 $errors,
                 fn(bool $carry, string $m) => $carry || str_contains($m, '[URLCollector] Error: Collector failed'),
-                false
+                false,
             ),
-            'Expected error "[URLCollector] Error: Collector failed" not found. Got: ' . implode(' | ', $errors)
+            'Expected error "[URLCollector] Error: Collector failed" not found. Got: ' . implode(' | ', $errors),
         );
 
         $this->assertStringNotContainsString('Title', $output);
@@ -271,7 +271,7 @@ final class CrawlerManagerE2ETest extends TestCase
             $processor,
             $config,
             $logger,
-            $indexer
+            $indexer,
         );
 
         $manager->startCrawler();
@@ -280,9 +280,9 @@ final class CrawlerManagerE2ETest extends TestCase
             array_reduce(
                 $warnings,
                 fn(bool $carry, string $m) => $carry || str_contains($m, '[Fetcher] Step returned no data.'),
-                false
+                false,
             ),
-            'Expected warning "[Fetcher] Step returned no data." not found. Got: ' . implode(' | ', $warnings)
+            'Expected warning "[Fetcher] Step returned no data." not found. Got: ' . implode(' | ', $warnings),
         );
     }
 
@@ -332,7 +332,7 @@ final class CrawlerManagerE2ETest extends TestCase
             $processor,
             $config,
             $logger,
-            $indexer
+            $indexer,
         );
 
         $manager->startCrawler();

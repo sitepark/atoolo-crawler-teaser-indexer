@@ -22,8 +22,7 @@ final class URLNormalizer
 {
     public function __construct(
         private readonly CrawlerConfig $config,
-    ) {
-    }
+    ) {}
 
     /**
      * Applies the full URL normalization pipeline.
@@ -71,7 +70,7 @@ final class URLNormalizer
 
             return $this->rebuildUrlFromParts(
                 $parts,
-                $this->parseQueryParams($parts)
+                $this->parseQueryParams($parts),
             );
         }, $urls);
 

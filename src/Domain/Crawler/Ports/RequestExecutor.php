@@ -22,7 +22,7 @@ final class RequestExecutor implements RequestExecutorInterface
         private readonly array $retryStatusCodes,
         private readonly CrawlerConfig $config,
         private HttpClientInterface $httpClient,
-        private readonly LoggerInterface $logger
+        private readonly LoggerInterface $logger,
     ) {
         $this->httpClient = $httpClient->withOptions([
             'headers' => ['User-Agent' => $this->config->userAgent()],
@@ -86,9 +86,9 @@ final class RequestExecutor implements RequestExecutorInterface
                         $attempts,
                         $this->config->maxRetry(),
                         $url,
-                        $e->getMessage()
+                        $e->getMessage(),
                     ),
-                    ['exception' => $e]
+                    ['exception' => $e],
                 );
 
                 if ($attempts < $this->config->maxRetry()) {

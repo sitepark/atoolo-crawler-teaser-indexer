@@ -18,8 +18,7 @@ final class RobotsTxtChecker implements RobotsTxtCheckerInterface
         private readonly CrawlerConfig $config,
         private readonly RequestExecutorInterface $requestExecutor,
         private readonly LoggerInterface $logger,
-    ) {
-    }
+    ) {}
 
     /** @return array<int,string> */
     public function filterAllowed(array $urls): array

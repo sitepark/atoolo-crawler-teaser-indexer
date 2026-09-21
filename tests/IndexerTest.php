@@ -161,7 +161,7 @@ final class IndexerTest extends TestCase
         $updateResult = $this->createMock(SolrUpdateResult::class);
         $updateResult->method('getStatus')->willReturn(1);
         $updateResult->method('getResponse')->willReturn(
-            new \Solarium\Core\Client\Response('', ['HTTP/1.1 500 Internal Server Error'])
+            new \Solarium\Core\Client\Response('', ['HTTP/1.1 500 Internal Server Error']),
         );
 
         $updater = $this->createMock(SolrIndexUpdater::class);

@@ -8,6 +8,5 @@ final class LengthConditionConfig
 {
     public function __construct(
         public readonly ?int $bodyTextLengthLt = null,
-    ) {
-    }
+    ) {}
 }
