@@ -6,7 +6,6 @@ namespace Atoolo\CrawlerIndexer\Pipeline\RelevanceEvaluator;
 
 use Atoolo\CrawlerIndexer\Config\ContentScoringConfig;
 use Atoolo\CrawlerIndexer\Config\PipelineConfig;
-use Symfony\Component\DomCrawler\Crawler;
 
 final class RelevanceEvaluator implements RelevanceEvaluatorInterface
 {

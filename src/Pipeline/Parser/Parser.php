@@ -14,12 +14,17 @@ use Symfony\Component\DomCrawler\Crawler;
 
 class Parser implements ParserInterface
 {
+    /**
+     * @param iterable<FieldExtractorInterface> $fieldExtractors Project-supplied
+     *                                                           extractors, tagged via autoconfiguration and passed through by
+     *                                                           CrawlerPipelineFactory. Asked before the built-in extraction.
+     */
     public function __construct(
         private readonly LoggerInterface $logger,
         private readonly PipelineConfig $config,
         private readonly RelevanceEvaluatorInterface $relevanceEvaluator,
-    ) {
-    }
+        private readonly iterable $fieldExtractors = [],
+    ) {}
 
     /**
      * Extract documents from fetched HTML.
@@ -163,9 +168,14 @@ class Parser implements ParserInterface
         $dateTimeConfig = $this->config->dateTimeConfig();
         $scoringActive = $this->config->contentScoringActive();
 
+        // Bounded to this block: extractors never see the Crawler, so no
+        // reference to the page's parsed DOM can outlive the loop iteration.
+        $source = new FieldSource($crawler, $this->logger);
+
         $title = '';
         if ($titleConfig->present) {
-            $title = $this->extractTitleText($crawler, $titleConfig);
+            $title = $this->extractString(FieldExtractorInterface::FIELD_TITLE, $source)
+                ?? $this->extractTitleText($source, $titleConfig);
             if (null === $title || '' === $title) {
                 $this->logger->debug(
                     'Title Not found in Processor',
@@ -182,7 +192,8 @@ class Parser implements ParserInterface
 
         $introText = null;
         if ($introConfig->present) {
-            $introText = $this->extractIntroductionText($crawler, $introConfig);
+            $introText = $this->extractString(FieldExtractorInterface::FIELD_INTRO_TEXT, $source)
+                ?? $this->extractIntroductionText($source, $introConfig);
             if (null === $introText && $introConfig->requiredField) {
                 return null;
             }
@@ -190,18 +201,19 @@ class Parser implements ParserInterface
 
         $dateTime = null;
         if ($dateTimeConfig->present) {
-            $dateTime = $this->extractDateTime($crawler, $dateTimeConfig);
+            $dateTime = $this->extractDateTime($source, $dateTimeConfig);
             if (null === $dateTime && $dateTimeConfig->requiredField) {
                 return null;
             }
         }
 
         if ($scoringActive) {
+            $relevanceContentSelector = $this->config->relevanceContentSelector();
             $relevanceData = [
                 'url' => $url,
                 'title' => $title,
                 'introText' => $introText,
-                'html' => $this->findCssSelectorContent($crawler, $this->config->relevanceContentSelector()) ?? $crawler->outerHtml(),
+                'html' => $relevanceContentSelector ? ($source->text($relevanceContentSelector) ?? $crawler->outerHtml()) : $crawler->outerHtml(),
             ];
             $keepDocument = $this->relevanceEvaluator->relevant($relevanceData);
             if (!$keepDocument) {
@@ -221,11 +233,71 @@ class Parser implements ParserInterface
         return new ExtractedData($url, $title, $introText, $dateTime);
     }
 
-    private function extractTitleText(Crawler $crawler, TitleExtractConfig $config): ?string
+    /**
+     * Asks the registered extractors for a field. The first non-null value
+     * wins; null means fall through to the built-in extraction.
+     *
+     * An extractor that throws is logged and skipped rather than allowed to
+     * abort the block: a broken project extractor should degrade one field, not
+     * drop the document.
+     */
+    private function extractCustom(string $field, FieldSource $source): mixed
+    {
+        foreach ($this->fieldExtractors as $extractor) {
+            if (!$extractor->supports($field)) {
+                continue;
+            }
+
+            try {
+                $value = $extractor->extract($field, $source, $this->config);
+            } catch (\Throwable $e) {
+                $this->logger->error('[Parser] Field extractor failed, falling back', [
+                    'field' => $field,
+                    'extractor' => $extractor::class,
+                    'exception' => $e,
+                ]);
+                continue;
+            }
+
+            if (null !== $value) {
+                return $value;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * A custom string field. A non-string or empty value is a contract
+     * violation by the extractor, so it is logged and the built-in extraction
+     * takes over.
+     */
+    private function extractString(string $field, FieldSource $source): ?string
+    {
+        $value = $this->extractCustom($field, $source);
+
+        if (null === $value) {
+            return null;
+        }
+
+        if (is_string($value) && '' !== trim($value)) {
+            return trim($value);
+        }
+
+        $this->logger->error('[Parser] Field extractor returned unexpected value, ignoring', [
+            'field' => $field,
+            'expected' => 'non-empty string',
+            'actual' => get_debug_type($value),
+        ]);
+
+        return null;
+    }
+
+    private function extractTitleText(FieldSource $source, TitleExtractConfig $config): ?string
     {
         // OG/Meta have priority
         foreach ($config->opengraph as $property) {
-            $title = $this->findMetaTagContent($crawler, $property);
+            $title = $source->meta($property);
             if (null !== $title && '' !== $title) {
                 return $title;
             }
@@ -233,7 +305,7 @@ class Parser implements ParserInterface
 
         // CSS Fallbacks
         foreach ($config->css as $selector) {
-            $title = $this->findCssSelectorContent($crawler, $selector);
+            $title = $source->text($selector);
             if (null !== $title && '' !== $title) {
                 return $title;
             }
@@ -247,11 +319,11 @@ class Parser implements ParserInterface
         return null;
     }
 
-    private function extractIntroductionText(Crawler $crawler, IntroExtractConfig $config): ?string
+    private function extractIntroductionText(FieldSource $source, IntroExtractConfig $config): ?string
     {
         // OG/Meta have priority
         foreach ($config->opengraph as $property) {
-            $introductionText = $this->findMetaTagContent($crawler, $property);
+            $introductionText = $source->meta($property);
             if (null !== $introductionText && '' !== $introductionText) {
                 return $introductionText;
             }
@@ -259,7 +331,7 @@ class Parser implements ParserInterface
 
         // CSS Fallbacks
         foreach ($config->css as $selector) {
-            $introductionText = $this->findCssSelectorContent($crawler, $selector);
+            $introductionText = $source->text($selector);
             if (null !== $introductionText && '' !== $introductionText) {
                 return $introductionText;
             }
@@ -268,9 +340,9 @@ class Parser implements ParserInterface
         return null;
     }
 
-    private function extractDateTime(Crawler $crawler, DateTimeExtractConfig $config): ?\DateTimeImmutable
+    private function extractDateTime(FieldSource $source, DateTimeExtractConfig $config): ?\DateTimeImmutable
     {
-        $raw = $this->findDateTimeRaw($crawler, $config);
+        $raw = $this->findDateTimeRaw($source, $config);
 
         if (null === $raw) {
             return null;
@@ -287,12 +359,12 @@ class Parser implements ParserInterface
         return $dt;
     }
 
-    private function findDateTimeRaw(Crawler $crawler, DateTimeExtractConfig $config): ?string
+    private function findDateTimeRaw(FieldSource $source, DateTimeExtractConfig $config): ?string
     {
         $raw = null;
 
         foreach ($config->opengraph as $property) {
-            $raw = $this->findMetaTagContent($crawler, $property);
+            $raw = $source->meta($property);
             if (!empty($raw)) {
                 break;
             }
@@ -301,8 +373,8 @@ class Parser implements ParserInterface
         if (empty($raw)) {
             foreach ($config->css as $selector) {
                 $raw
-                    = $this->findAttrByCss($crawler, $selector, 'datetime')
-                    ?? $this->findCssSelectorContent($crawler, $selector);
+                    = $source->attr($selector, 'datetime')
+                    ?? $source->text($selector);
 
                 if (!empty($raw)) {
                     break;
@@ -337,82 +409,6 @@ class Parser implements ParserInterface
         } catch (\Throwable $e) {
             $this->logger->warning('[Parser] Could not parse datetime', [
                 'raw' => $raw,
-                'exception' => $e,
-            ]);
-
-            return null;
-        }
-    }
-
-    private function findAttrByCss(Crawler $crawler, string $selector, string $attr): ?string
-    {
-        try {
-            $el = $crawler->filter($selector);
-            if ($el->count() > 0) {
-                $v = $el->first()->attr($attr);
-
-                return null !== $v ? trim((string) $v) : null;
-            }
-
-            return null;
-        } catch (\Throwable $e) {
-            $this->logger->error('Failed to parse CSS attr', [
-                'selector' => $selector,
-                'attr' => $attr,
-                'exception' => $e,
-            ]);
-
-            return null;
-        }
-    }
-
-    /**
-     * Extracts the text content of a meta tag by its property attribute.
-     *
-     * @param Crawler $crawler  The DomCrawler instance containing the HTML document
-     * @param string  $property The meat-tag property
-     *
-     * @return string|null The text content, or `null` if not found or on error
-     */
-    private function findMetaTagContent(Crawler $crawler, string $property): ?string
-    {
-        try {
-            $metaTag = $crawler->filterXPath("//meta[@property='$property']");
-            if ($metaTag->count() > 0) {
-                return trim((string) $metaTag->attr('content'));
-            }
-
-            return null;
-        } catch (\Throwable $e) {
-            $this->logger->error('Failed to parse meta tag', [
-                'property' => $property,
-                'exception' => $e,
-            ]);
-
-            return null;
-        }
-    }
-
-    /**
-     * Extracts the text content of the first element matching a given CSS selector.
-     *
-     * @param Crawler $crawler  The DomCrawler instance containing the HTML document
-     * @param string  $selector The CSS selector
-     *
-     * @return string|null The text content, or `null` if not found or on error
-     */
-    private function findCssSelectorContent(Crawler $crawler, string $selector): ?string
-    {
-        try {
-            $element = $crawler->filter($selector);
-            if ($element->count() > 0) {
-                return trim($element->first()->text());
-            }
-
-            return null;
-        } catch (\Throwable $e) {
-            $this->logger->error('Failed to parse CSS selector', [
-                'selector' => $selector,
                 'exception' => $e,
             ]);
 
