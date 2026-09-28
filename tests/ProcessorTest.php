@@ -46,12 +46,45 @@ final class ProcessorTest extends TestCase
             new ExtractedData('https://example.com/1', 'Hello World', 'Dies ist eine Einleitung.', $datetime),
             new ExtractedData('https://example.com/2', 'Test', 'Kurztext', $datetime),
             new ExtractedData('https://example.com/3', 'überzeugt', 'äußerst wichtig', $datetime),
-            new ExtractedData('https://example.com/6', str_repeat('a', 120) . '…', str_repeat('b', 120) . '…', $datetime),
+            new ExtractedData('https://example.com/6', str_repeat('a', 119) . '…', str_repeat('b', 119) . '…', $datetime),
             new ExtractedData('https://example.com/7', 'Red Text', 'Roter Intro Text', $datetime),
         ];
 
         $result = $this->processor->sanitizeText($input);
         $this->assertEquals($expected, iterator_to_array($result));
+    }
+
+    /**
+     * maxChars is the length of the result, the ellipsis included. Lengths are
+     * counted in characters, not bytes.
+     *
+     * @return iterable<string, array{string, string}>
+     */
+    public static function truncationProvider(): iterable
+    {
+        yield 'shorter than max' => [str_repeat('a', 9), str_repeat('a', 9)];
+        yield 'exactly max' => [str_repeat('a', 10), str_repeat('a', 10)];
+        yield 'one over max' => [str_repeat('a', 11), str_repeat('a', 9) . '…'];
+        yield 'multibyte' => [str_repeat('ä', 11), str_repeat('ä', 9) . '…'];
+    }
+
+    /**
+     * @dataProvider truncationProvider
+     */
+    public function testTruncatedTextIsAtMostMaxChars(string $text, string $expected): void
+    {
+        $logger = $this->createStub(LoggerInterface::class);
+        $ctx = ['sp_title_max_chars' => 10, 'sp_introText_max_chars' => 10];
+        $processor = new Processor($logger, new PipelineConfig(new PipelineConfigHelper($ctx, $logger)));
+
+        $result = iterator_to_array($processor->sanitizeText([
+            new ExtractedData('https://example.com/page', $text, $text),
+        ]));
+
+        $this->assertCount(1, $result);
+        $this->assertSame($expected, $result[0]->getTitle());
+        $this->assertSame($expected, $result[0]->getIntroText());
+        $this->assertLessThanOrEqual(10, mb_strlen($result[0]->getTitle()));
     }
 
     public function testItemWithoutIntroTextKeyOmitsIntroTextField(): void

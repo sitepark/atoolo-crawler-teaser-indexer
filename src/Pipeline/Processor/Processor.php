@@ -91,9 +91,11 @@ class Processor implements ProcessorInterface
     }
 
     /**
-     * Truncates a document string to a maximum length of 120 characters.
+     * Truncates a document string to at most $maxLength characters, the
+     * ellipsis included.
      *
-     * @param string $text the cleaned text
+     * @param string $text      the cleaned text
+     * @param int    $maxLength the configured maxChars of the field
      *
      * @return string the truncated text with Ellipsis "…" appended if cut
      */
@@ -106,7 +108,7 @@ class Processor implements ProcessorInterface
         }
 
         return mb_strlen($text) > $maxLength
-            ? mb_substr($text, 0, $maxLength) . '…'
+            ? mb_substr($text, 0, max(0, $maxLength - 1)) . '…'
             : $text;
     }
 }

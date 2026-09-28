@@ -10,7 +10,7 @@ Verifikation pro Ticket: `composer analyse`, `vendor/bin/phpunit --no-coverage`;
 | 02 | [XPath-Injection in FieldSource::meta()](02-xpath-injection-meta.md) | erledigt |
 | 03 | [User-Agent CRLF & SSRF-Hinweis](03-user-agent-crlf-ssrf.md) | erledigt |
 | 04 | [Cron-Ausdrücke früh validieren](04-schedule-cron-validation.md) | erledigt |
-| 05 | [Truncation-Länge](05-truncation-length.md) | offen |
+| 05 | [Truncation-Länge](05-truncation-length.md) | erledigt |
 | 06 | [Indexer-Fehler gehen nicht verloren](06-indexer-errors-not-lost.md) | offen |
 | 07 | [ExtractedDataInterface in eigene Datei](07-extracted-data-interface-file.md) | offen |
 | 08 | [Steps dekorierbar machen](08-decoratable-steps.md) | offen |
