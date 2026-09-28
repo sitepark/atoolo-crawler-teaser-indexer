@@ -7,7 +7,8 @@ namespace Atoolo\CrawlerIndexer\Tests;
 use Atoolo\CrawlerIndexer\Config\PipelineConfig;
 use Atoolo\CrawlerIndexer\Config\PipelineConfigHelper;
 use Atoolo\CrawlerIndexer\Pipeline\Collector\RobotsTxtCheckerInterface;
-use Atoolo\CrawlerIndexer\Pipeline\Collector\URLNormalizer;
+use Atoolo\CrawlerIndexer\Pipeline\Collector\LinkFilter;
+use Atoolo\CrawlerIndexer\Pipeline\Collector\UrlCanonicalizer;
 use Atoolo\CrawlerIndexer\Pipeline\Fetcher\FetcherInterface;
 use Atoolo\CrawlerIndexer\Pipeline\Collector\URLCollector;
 use PHPUnit\Framework\TestCase;
@@ -73,9 +74,13 @@ final class URLCollectorTest extends TestCase
 
         $helper = new PipelineConfigHelper($ctx, $logger);
         $this->config = new PipelineConfig($helper);
-        $urlNormalizer = new URLNormalizer([]);
 
-        return new URLCollector($urlNormalizer, $logger, $robotsTxtChecker, $fetcher);
+        return new URLCollector(
+            new UrlCanonicalizer(),
+            new LinkFilter($robotsTxtChecker, []),
+            $logger,
+            $fetcher,
+        );
     }
 
     /**
@@ -133,6 +138,34 @@ final class URLCollectorTest extends TestCase
         // depth 1 fetches levels 0..2: start, section, article - each once.
         $this->assertSame(
             [$this->urlPrefix, 'https://example.com/section', 'https://example.com/article'],
+            $this->fetchedUrls($collector->collect($this->config)),
+        );
+    }
+
+    /**
+     * Links are canonicalized before the visited check, so different
+     * spellings of the same page - including a link back to the start page -
+     * are fetched only once.
+     */
+    public function testDifferentSpellingsOfAUrlAreFetchedOnlyOnce(): void
+    {
+        $indexHtml = '<div id="content">'
+            . '<a href="https://example.com/page">Page</a>'
+            . '<a href="https://EXAMPLE.com:443/page">Same page</a>'
+            . '<a href="HTTPS://example.com">Start page again</a>'
+            . '</div>';
+
+        $collector = $this->createCollector(
+            $this->stubFetcher([
+                $this->urlPrefix => $indexHtml,
+                'https://example.com/page' => '<div id="content"></div>',
+            ]),
+            $this->createStub(LoggerInterface::class),
+            $this->createStub(RobotsTxtCheckerInterface::class),
+        );
+
+        $this->assertSame(
+            [$this->urlPrefix, 'https://example.com/page'],
             $this->fetchedUrls($collector->collect($this->config)),
         );
     }

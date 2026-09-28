@@ -13,9 +13,9 @@ use Symfony\Component\DomCrawler\Link;
 class URLCollector implements URLCollectorInterface
 {
     public function __construct(
-        private readonly URLNormalizer $urlNormalizer,
+        private readonly UrlCanonicalizer $canonicalizer,
+        private readonly LinkFilterInterface $linkFilter,
         private readonly LoggerInterface $logger,
-        private readonly RobotsTxtCheckerInterface $robotsTxtChecker,
         private readonly FetcherInterface $fetcher,
     ) {}
 
@@ -50,7 +50,7 @@ class URLCollector implements URLCollectorInterface
         foreach ($config->startUrls() as $start) {
             $maxDepth = (int) $start['extraction_depth'];
             /** @var list<string> $currentLevel */
-            $currentLevel = [(string) $start['url']];
+            $currentLevel = $this->canonicalizer->canonicalize([(string) $start['url']], $config);
             $depth = 0;
 
             while ([] !== $currentLevel) {
@@ -149,8 +149,11 @@ class URLCollector implements URLCollectorInterface
     }
 
     /**
-     * Extracts, filters and deduplicates the links found on the given
-     * fetched pages, skipping anything already visited.
+     * Extracts the links found on the given fetched pages, canonicalizes and
+     * filters them, and skips anything already visited.
+     *
+     * Canonicalizing comes first, so the filter rules and the visited check
+     * always see the same form of a URL.
      *
      * @param array<int, array{url: string, html: string}> $fetchedPages
      * @param array<string, true>                          $visited
@@ -161,41 +164,20 @@ class URLCollector implements URLCollectorInterface
     {
         $links = [];
         foreach ($fetchedPages as $page) {
-            foreach ($this->findHrefUrlsByCssSelector([$page], $page['url'], $config) as $link) {
+            $crawler = new Crawler($page['html'], $page['url']);
+            $pageLinks = $this->canonicalizer->canonicalize(
+                $this->extractAbsoluteUrlsFromScope($crawler, $page['url'], $config),
+                $config,
+            );
+
+            foreach ($this->linkFilter->filter($pageLinks, $config) as $link) {
                 if (!isset($visited[$link])) {
                     $links[] = $link;
                 }
             }
         }
 
-        return $links;
-    }
-
-    /**
-     * Collects and filters all discoverable href URLs from the given fetched pages.
-     *
-     * Resolves absolute URLs, removes duplicates and applies allow/deny
-     * path filtering (via URLNormalizer) as well as robots.txt filtering.
-     *
-     * @param array<int, array{url: string, html: string}> $htmlData
-     *
-     * @return list<string> A list of unique, filtered absolute URLs
-     */
-    private function findHrefUrlsByCssSelector(array $htmlData, string $baseUrl, PipelineConfig $config): array
-    {
-        $urls = [];
-        foreach ($htmlData as $html) {
-            $crawler = new Crawler($html['html'], $baseUrl);
-            $pageUrls = $this->extractAbsoluteUrlsFromScope($crawler, $baseUrl, $config);
-
-            array_push($urls, ...$this->urlNormalizer->normalize($pageUrls, $config));
-
-            if ($config->respectRobotsTxt()) {
-                $urls = $this->robotsTxtChecker->filterAllowed(array_values($urls), $config);
-            }
-        }
-
-        return array_values(array_unique(array_filter($urls, 'is_string')));
+        return array_values(array_unique($links));
     }
 
     /**
@@ -209,7 +191,7 @@ class URLCollector implements URLCollectorInterface
      * @param Crawler $crawler The scoped DOM crawler
      * @param string  $baseUrl The base URL used for resolving relative links
      *
-     * @return array<int, string> A list of extracted absolute URLs
+     * @return list<string> A list of extracted absolute URLs
      */
     private function extractAbsoluteUrlsFromScope(Crawler $crawler, string $baseUrl, PipelineConfig $config): array
     {

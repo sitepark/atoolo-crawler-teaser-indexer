@@ -15,7 +15,7 @@ Verifikation pro Ticket: `composer analyse`, `vendor/bin/phpunit --no-coverage`;
 | 07 | [ExtractedDataInterface in eigene Datei](07-extracted-data-interface-file.md) | erledigt |
 | 08 | [Steps dekorierbar machen (Variante A: Decorator)](08-decoratable-steps.md) | erledigt |
 | 09 | [Pipeline durchgehend lazy](09-lazy-pipeline.md) | erledigt |
-| 10 | [URLNormalizer aufteilen](10-split-url-normalizer.md) | offen |
+| 10 | [URLNormalizer aufteilen](10-split-url-normalizer.md) | erledigt |
 | 11 | [RelevanceEvaluator typisieren](11-relevance-evaluator-typed.md) | offen |
 | 12 | [Extension-Bag & SolrFieldContributor](12-extension-bag.md) | offen |
 | 13 | [PipelineConfigFactoryTest](13-pipeline-config-factory-test.md) | offen |

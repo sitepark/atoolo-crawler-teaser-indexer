@@ -44,6 +44,7 @@ services:
     # Decorators of the same step stack (use decoration_priority for the order).
 
     Atoolo\CrawlerIndexer\Pipeline\Collector\URLCollectorInterface: '@Atoolo\CrawlerIndexer\Pipeline\Collector\URLCollector'
+    Atoolo\CrawlerIndexer\Pipeline\Collector\LinkFilterInterface: '@Atoolo\CrawlerIndexer\Pipeline\Collector\LinkFilter'
     Atoolo\CrawlerIndexer\Pipeline\Collector\RobotsTxtCheckerInterface: '@Atoolo\CrawlerIndexer\Pipeline\Collector\RobotsTxtChecker'
     Atoolo\CrawlerIndexer\Pipeline\Fetcher\FetcherInterface: '@Atoolo\CrawlerIndexer\Pipeline\Fetcher\Fetcher'
     Atoolo\CrawlerIndexer\Pipeline\Parser\ParserInterface: '@Atoolo\CrawlerIndexer\Pipeline\Parser\Parser'
@@ -56,7 +57,7 @@ services:
         arguments:
             $retryStatusCodes: "%atoolo.crawler.retry_status_codes%"
 
-    Atoolo\CrawlerIndexer\Pipeline\Collector\URLNormalizer:
+    Atoolo\CrawlerIndexer\Pipeline\Collector\LinkFilter:
         arguments:
             $denyEndings: "%atoolo.crawler.deny_endings%"
 
