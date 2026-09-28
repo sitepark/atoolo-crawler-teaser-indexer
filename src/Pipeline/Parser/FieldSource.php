@@ -26,6 +26,8 @@ use Symfony\Component\DomCrawler\Crawler;
  */
 final class FieldSource
 {
+    private const INVISIBLE_ELEMENTS = ['script', 'style', 'noscript', 'template'];
+
     public function __construct(
         private readonly Crawler $crawler,
         private readonly LoggerInterface $logger,
@@ -51,6 +53,52 @@ final class FieldSource
 
             return null;
         }
+    }
+
+    /**
+     * Human-visible text of the first element matching the CSS selector - or,
+     * without a selector, of the whole block. Unlike {@see text()} it leaves
+     * out the content of script, style, noscript and template elements, so
+     * no code ends up in e.g. keyword scoring. Like text(), the text nodes are
+     * joined as they are; whitespace is collapsed.
+     */
+    public function visibleText(?string $cssSelector = null): ?string
+    {
+        try {
+            $node = (null === $cssSelector ? $this->crawler : $this->crawler->filter($cssSelector))->getNode(0);
+            if (null === $node) {
+                return null;
+            }
+
+            $text = trim(preg_replace('/\s+/u', ' ', $this->collectVisibleText($node)) ?? '');
+
+            return '' !== $text ? $text : null;
+        } catch (\Throwable $e) {
+            $this->logger->error('Failed to parse CSS selector', [
+                'selector' => $cssSelector,
+                'exception' => $e,
+            ]);
+
+            return null;
+        }
+    }
+
+    private function collectVisibleText(\DOMNode $node): string
+    {
+        if ($node instanceof \DOMText) {
+            return $node->textContent;
+        }
+
+        if ($node instanceof \DOMElement && in_array(strtolower($node->nodeName), self::INVISIBLE_ELEMENTS, true)) {
+            return '';
+        }
+
+        $text = '';
+        foreach ($node->childNodes as $child) {
+            $text .= $this->collectVisibleText($child);
+        }
+
+        return $text;
     }
 
     /**

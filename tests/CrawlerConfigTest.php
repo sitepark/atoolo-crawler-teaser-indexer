@@ -309,6 +309,20 @@ final class CrawlerConfigTest extends TestCase
         $this->assertSame('Atoolo/Crawler-Teaser-Indexer', $config->userAgent());
     }
 
+    // --- content scoring: main content selectors ---
+
+    public function testRelevanceContentSelectorIsAList(): void
+    {
+        $config = $this->makeConfig(['sp_relevance_content_selector' => ['#content', 'main']]);
+
+        $this->assertSame(['#content', 'main'], $config->contentScoringConfig()->contentSelectors);
+    }
+
+    public function testRelevanceContentSelectorDefaultsToEmpty(): void
+    {
+        $this->assertSame([], $this->makeConfig([])->contentScoringConfig()->contentSelectors);
+    }
+
     // --- titleConfig ---
 
     public function testTitleConfigDefaults(): void

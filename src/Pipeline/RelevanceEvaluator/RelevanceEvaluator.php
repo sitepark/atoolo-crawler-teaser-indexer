@@ -6,71 +6,74 @@ namespace Atoolo\CrawlerIndexer\Pipeline\RelevanceEvaluator;
 
 use Atoolo\CrawlerIndexer\Config\ContentScoringConfig;
 use Atoolo\CrawlerIndexer\Config\PipelineConfig;
+use Atoolo\CrawlerIndexer\Dto\ExtractedDataInterface;
+use Atoolo\CrawlerIndexer\Pipeline\Parser\FieldSource;
 
+/**
+ * Keyword based relevance scoring: positive and negative rules are matched
+ * against title, intro and the main content of the page; `sp_forced_article_urls`
+ * are always relevant.
+ *
+ * Called by the Parser for every extracted document, on the block the Parser
+ * has already parsed: the main content is read through the {@see FieldSource}
+ * instead of parsing the HTML again. Which region counts as main content is a
+ * scoring decision, so the selector priority list `sp_relevance_content_selector`
+ * is applied here; without a configured or matching selector the whole block
+ * is used. Only visible text is scored,
+ * never markup or scripts.
+ */
 final class RelevanceEvaluator implements RelevanceEvaluatorInterface
 {
-    /**
-     * Evaluates whether a document is relevant based on its content (HTML, title, intro)
-     * and the defined scoring configuration.
-     *
-     * @param array{
-     * url: string,
-     * title: string,
-     * introText?: string,
-     * html?: string,
-     * datetime?: \DateTimeImmutable
-     * } $relevanceData
-     */
-    public function relevant(array $relevanceData, PipelineConfig $config): bool
+    public function relevant(ExtractedDataInterface $entry, FieldSource $source, PipelineConfig $config): bool
     {
+        if (in_array($entry->getUrl(), $config->forcedArticleUrls(), true)) {
+            return true;
+        }
+
         $scoringCfg = $config->contentScoringConfig();
-        $forcedArticleUrls = $config->forcedArticleUrls();
+        $evaluation = $this->evaluate($entry, $this->mainContent($source, $scoringCfg), $scoringCfg);
 
-        if (in_array($relevanceData['url'], $forcedArticleUrls, true)) {
-            return true;
-        }
-
-        $evaluation = $this->evaluate($relevanceData, $scoringCfg);
-
-        if ($evaluation['score'] >= $scoringCfg->minScore) {
-            return true;
-        }
-
-        return false;
+        return $evaluation['score'] >= $scoringCfg->minScore;
     }
 
     /**
-     * @param array{
-     * url: string,
-     * title: string,
-     * introText?: string,
-     * html?: string,
-     * datetime?: \DateTimeImmutable
-     * } $t
-     *
+     * Visible text of the first matching content selector, else of the block.
+     */
+    private function mainContent(FieldSource $source, ContentScoringConfig $cfg): string
+    {
+        foreach ($cfg->contentSelectors as $selector) {
+            $text = $source->visibleText($selector);
+            if (null !== $text) {
+                return $text;
+            }
+        }
+
+        return $source->visibleText() ?? '';
+    }
+
+    /**
      * @return array{score:int,reasons:array<int,string>}
      */
-    private function evaluate(array $t, ContentScoringConfig $cfg): array
+    private function evaluate(ExtractedDataInterface $entry, string $content, ContentScoringConfig $cfg): array
     {
         $score = 0;
         $reasons = [];
 
-        $title = (string) $t['title'];
-        $intro = (string) ($t['introText'] ?? '');
-        $url = (string) $t['url'];
-        $html = (string) ($t['html'] ?? '');
+        $title = $entry->getTitle();
+        $intro = $entry->getIntroText() ?? '';
+        $url = $entry->getUrl();
 
-        $haystack = $this->normalize($title . "\n" . $intro . "\n" . $html);
+        $haystack = $this->normalize($title . "\n" . $intro . "\n" . $content);
 
         foreach ($cfg->positive as $rule) {
-            if ($this->ruleMatches($rule, $haystack, $intro, $html)) {
+            if ($this->ruleMatches($rule, $haystack, $intro, $content)) {
                 $score += $rule->score;
                 $reasons[] = '+' . $rule->score . ' "' . ($rule->matchAny[0] ?? 'rule') . '"';
             }
         }
 
         foreach ($cfg->negative as $rule) {
-            if ($this->ruleMatches($rule, $haystack, $intro, $html)) {
+            if ($this->ruleMatches($rule, $haystack, $intro, $content)) {
                 $score += $rule->score;
                 $reasons[] = $rule->score . ' "' . ($rule->matchAny[0] ?? 'rule') . '"';
             }
@@ -88,7 +91,7 @@ final class RelevanceEvaluator implements RelevanceEvaluatorInterface
         ScoreRuleConfig $rule,
         string $haystack,
         string $intro,
-        string $body,
+        string $content,
     ): bool {
         foreach ($rule->matchAny as $needle) {
             if ($this->contains($haystack, $needle)) {
@@ -97,7 +100,7 @@ final class RelevanceEvaluator implements RelevanceEvaluatorInterface
         }
 
         if (null !== $rule->condition?->bodyTextLengthLt) {
-            $len = mb_strlen(trim($intro . ' ' . $body));
+            $len = mb_strlen(trim($intro . ' ' . $content));
 
             return $len > 0 && $len < $rule->condition->bodyTextLengthLt;
         }

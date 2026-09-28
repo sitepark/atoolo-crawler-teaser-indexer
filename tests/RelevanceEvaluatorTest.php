@@ -6,9 +6,13 @@ namespace Atoolo\CrawlerIndexer\Tests;
 
 use Atoolo\CrawlerIndexer\Config\PipelineConfig;
 use Atoolo\CrawlerIndexer\Config\PipelineConfigHelper;
+use Atoolo\CrawlerIndexer\Dto\ExtractedData;
+use Atoolo\CrawlerIndexer\Pipeline\Parser\FieldSource;
 use Atoolo\CrawlerIndexer\Pipeline\RelevanceEvaluator\RelevanceEvaluator;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
+use Symfony\Component\DomCrawler\Crawler;
 
 final class RelevanceEvaluatorTest extends TestCase
 {
@@ -22,6 +26,23 @@ final class RelevanceEvaluatorTest extends TestCase
         $this->config = new PipelineConfig($helper);
 
         return new RelevanceEvaluator();
+    }
+
+    /**
+     * The evaluator reads the main content from the parsed page, so the test
+     * data's `html` becomes a FieldSource; without it the page is empty.
+     *
+     * @param array{url: string, title: string, introText?: string, html?: string} $data
+     */
+    private function relevant(RelevanceEvaluator $evaluator, array $data): bool
+    {
+        $entry = new ExtractedData($data['url'], $data['title'], $data['introText'] ?? null);
+        $source = new FieldSource(
+            new Crawler($data['html'] ?? '<html><body></body></html>'),
+            new NullLogger(),
+        );
+
+        return $evaluator->relevant($entry, $source, $this->config);
     }
 
     private function baseConfig(array $overrides = []): array
@@ -41,10 +62,10 @@ final class RelevanceEvaluatorTest extends TestCase
             'sp_content_scoring_min_score' => 999,
         ]));
 
-        $result = $evaluator->relevant([
+        $result = $this->relevant($evaluator, [
             'url' => 'https://example.com/forced',
             'title' => 'Test',
-        ], $this->config);
+        ]);
 
         $this->assertTrue($result);
     }
@@ -56,10 +77,10 @@ final class RelevanceEvaluatorTest extends TestCase
             'sp_content_scoring_positive' => [],
         ]));
 
-        $result = $evaluator->relevant([
+        $result = $this->relevant($evaluator, [
             'url' => 'https://example.com/page',
             'title' => 'Test',
-        ], $this->config);
+        ]);
 
         $this->assertFalse($result);
     }
@@ -73,10 +94,10 @@ final class RelevanceEvaluatorTest extends TestCase
             ],
         ]));
 
-        $result = $evaluator->relevant([
+        $result = $this->relevant($evaluator, [
             'url' => 'https://example.com/page',
             'title' => 'Breaking News',
-        ], $this->config);
+        ]);
 
         $this->assertTrue($result);
     }
@@ -90,10 +111,10 @@ final class RelevanceEvaluatorTest extends TestCase
             ],
         ]));
 
-        $result = $evaluator->relevant([
+        $result = $this->relevant($evaluator, [
             'url' => 'https://example.com/page',
             'title' => 'Product Page',
-        ], $this->config);
+        ]);
 
         $this->assertFalse($result);
     }
@@ -110,10 +131,10 @@ final class RelevanceEvaluatorTest extends TestCase
             ],
         ]));
 
-        $result = $evaluator->relevant([
+        $result = $this->relevant($evaluator, [
             'url' => 'https://example.com/page',
             'title' => 'Sponsored article',
-        ], $this->config);
+        ]);
 
         $this->assertFalse($result);
     }
@@ -128,10 +149,10 @@ final class RelevanceEvaluatorTest extends TestCase
         ]));
 
         // score = 5 (positive) - 2 (fragment) = 3 < 4 → not relevant
-        $result = $evaluator->relevant([
+        $result = $this->relevant($evaluator, [
             'url' => 'https://example.com/page#section',
             'title' => 'Breaking News',
-        ], $this->config);
+        ]);
 
         $this->assertFalse($result);
     }
@@ -146,10 +167,10 @@ final class RelevanceEvaluatorTest extends TestCase
         ]));
 
         // score = 10 (positive) - 2 (fragment) = 8 >= 4 → relevant
-        $result = $evaluator->relevant([
+        $result = $this->relevant($evaluator, [
             'url' => 'https://example.com/page#section',
             'title' => 'Breaking News',
-        ], $this->config);
+        ]);
 
         $this->assertTrue($result);
     }
@@ -163,10 +184,10 @@ final class RelevanceEvaluatorTest extends TestCase
             ],
         ]));
 
-        $result = $evaluator->relevant([
+        $result = $this->relevant($evaluator, [
             'url' => 'https://example.com/page',
             'title' => 'breaking news',
-        ], $this->config);
+        ]);
 
         $this->assertTrue($result);
     }
@@ -180,11 +201,11 @@ final class RelevanceEvaluatorTest extends TestCase
             ],
         ]));
 
-        $result = $evaluator->relevant([
+        $result = $this->relevant($evaluator, [
             'url' => 'https://example.com/page',
             'title' => 'Generic Title',
             'introText' => 'This contains the keyword here',
-        ], $this->config);
+        ]);
 
         $this->assertTrue($result);
     }
@@ -202,11 +223,11 @@ final class RelevanceEvaluatorTest extends TestCase
         ]));
 
         // Short body text (less than 50 chars) triggers negative rule
-        $result = $evaluator->relevant([
+        $result = $this->relevant($evaluator, [
             'url' => 'https://example.com/page',
             'title' => 'Test',
             'introText' => 'Short.',
-        ], $this->config);
+        ]);
 
         $this->assertFalse($result);
     }
@@ -227,11 +248,11 @@ final class RelevanceEvaluatorTest extends TestCase
         ]));
 
         // Long enough intro text → condition does NOT match → only positive rule applies
-        $result = $evaluator->relevant([
+        $result = $this->relevant($evaluator, [
             'url' => 'https://example.com/page',
             'title' => 'article',
             'introText' => 'This is a long enough text that exceeds the threshold.',
-        ], $this->config);
+        ]);
 
         $this->assertTrue($result);
     }
@@ -247,11 +268,11 @@ final class RelevanceEvaluatorTest extends TestCase
             ],
         ]));
 
-        $result = $evaluator->relevant([
+        $result = $this->relevant($evaluator, [
             'url' => 'https://example.com/page',
             'title' => 'Generic Title',
             'html' => $html,
-        ], $this->config);
+        ]);
 
         $this->assertTrue($result);
     }
@@ -265,11 +286,130 @@ final class RelevanceEvaluatorTest extends TestCase
             ],
         ]));
 
-        $result = $evaluator->relevant([
+        $result = $this->relevant($evaluator, [
             'url' => 'https://example.com/page',
             'title' => 'Breaking News',
-        ], $this->config);
+        ]);
 
         $this->assertTrue($result);
+    }
+
+    // --- Main content: visible text only, selector priority ---
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function invisibleKeywordProvider(): iterable
+    {
+        yield 'attribute' => ['<html><body><main><div class="technology">Hallo</div></main></body></html>'];
+        yield 'script' => ['<html><body><main>Hallo<script>var technology = 1;</script></main></body></html>'];
+        yield 'style' => ['<html><body><main><style>.technology{}</style>Hallo</main></body></html>'];
+    }
+
+    /**
+     * The old fallback scored the raw HTML, so keywords matched class names,
+     * scripts and styles.
+     *
+     * @dataProvider invisibleKeywordProvider
+     */
+    public function testKeywordsInMarkupOrScriptsDoNotCount(string $html): void
+    {
+        $evaluator = $this->makeEvaluator($this->baseConfig([
+            'sp_content_scoring_min_score' => 1,
+            'sp_content_scoring_positive' => [['sp_match_any' => ['technology'], 'sp_score' => 5]],
+        ]));
+
+        $this->assertFalse($this->relevant($evaluator, [
+            'url' => 'https://example.com/page',
+            'title' => 'Generic Title',
+            'html' => $html,
+        ]));
+    }
+
+    /**
+     * Navigation and footer stay out when the configured content region exists.
+     */
+    public function testContentSelectorScoresOnlyTheMainContent(): void
+    {
+        $evaluator = $this->makeEvaluator($this->baseConfig([
+            'sp_relevance_content_selector' => ['main'],
+            'sp_content_scoring_min_score' => 1,
+            'sp_content_scoring_positive' => [['sp_match_any' => ['technology'], 'sp_score' => 5]],
+        ]));
+
+        $this->assertFalse($this->relevant($evaluator, [
+            'url' => 'https://example.com/page',
+            'title' => 'Generic Title',
+            'html' => '<html><body><nav>technology</nav><main>Sport</main><footer>technology</footer></body></html>',
+        ]));
+    }
+
+    public function testFallsBackToTheWholeBlockWithoutMatchingSelector(): void
+    {
+        $evaluator = $this->makeEvaluator($this->baseConfig([
+            'sp_relevance_content_selector' => ['main'],
+            'sp_content_scoring_min_score' => 1,
+            'sp_content_scoring_positive' => [['sp_match_any' => ['technology'], 'sp_score' => 5]],
+        ]));
+
+        $this->assertTrue($this->relevant($evaluator, [
+            'url' => 'https://example.com/page',
+            'title' => 'Generic Title',
+            'html' => '<html><body><div>technology news</div></body></html>',
+        ]));
+    }
+
+    public function testWithoutContentSelectorTheWholeBlockIsScored(): void
+    {
+        $evaluator = $this->makeEvaluator($this->baseConfig([
+            'sp_content_scoring_min_score' => 1,
+            'sp_content_scoring_positive' => [['sp_match_any' => ['technology'], 'sp_score' => 5]],
+        ]));
+
+        $this->assertTrue($this->relevant($evaluator, [
+            'url' => 'https://example.com/page',
+            'title' => 'Generic Title',
+            'html' => '<html><body><nav>technology</nav><main>Sport</main></body></html>',
+        ]));
+    }
+
+    /**
+     * The first selector of the priority list that matches wins.
+     */
+    public function testFirstMatchingContentSelectorWins(): void
+    {
+        $evaluator = $this->makeEvaluator($this->baseConfig([
+            'sp_relevance_content_selector' => ['.does-not-exist', '.content', 'main'],
+            'sp_content_scoring_min_score' => 1,
+            'sp_content_scoring_positive' => [['sp_match_any' => ['technology'], 'sp_score' => 5]],
+        ]));
+
+        // .content comes before main in the list.
+        $this->assertTrue($this->relevant($evaluator, [
+            'url' => 'https://example.com/page',
+            'title' => 'Generic Title',
+            'html' => '<html><body><main>Sport</main><div class="content">technology</div></body></html>',
+        ]));
+    }
+
+    /**
+     * The length condition counts visible text, not markup.
+     */
+    public function testBodyTextLengthConditionIgnoresMarkup(): void
+    {
+        $evaluator = $this->makeEvaluator($this->baseConfig([
+            'sp_content_scoring_min_score' => 0,
+            'sp_content_scoring_negative' => [
+                ['sp_match_any' => [], 'sp_score' => -5, 'sp_condition' => ['sp_body_text_length' => 20]],
+            ],
+        ]));
+
+        $markup = str_repeat('<span class="very-long-class-name"></span>', 10);
+
+        $this->assertFalse($this->relevant($evaluator, [
+            'url' => 'https://example.com/page',
+            'title' => 'Test',
+            'html' => '<html><body><main>Kurz.' . $markup . '</main></body></html>',
+        ]));
     }
 }

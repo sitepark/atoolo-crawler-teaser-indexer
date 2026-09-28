@@ -115,6 +115,29 @@ final class FieldSourceTest extends TestCase
         $this->assertSame('Erster', $this->makeSource($html)->meta('og:title'));
     }
 
+    public function testVisibleTextLeavesOutScriptsAndStyles(): void
+    {
+        $source = $this->makeSource('<html><head><style>p{}</style></head><body>'
+            . '<main>Sichtbar <script>var x = 1;</script>und <noscript>kein JS</noscript>lesbar'
+            . '<template><p>Vorlage</p></template></main></body></html>');
+
+        $this->assertSame('Sichtbar und lesbar', $source->visibleText('main'));
+    }
+
+    public function testVisibleTextWithoutSelectorCoversTheWholeBlock(): void
+    {
+        $this->assertSame(
+            'Block Titel 14. Januar 2026 Einleitung mit Rand',
+            $this->makeSource()->visibleText(),
+        );
+    }
+
+    public function testVisibleTextReturnsNullWithoutMatchOrText(): void
+    {
+        $this->assertNull($this->makeSource()->visibleText('.does-not-exist'));
+        $this->assertNull($this->makeSource('<html><body><main> <script>x</script> </main></body></html>')->visibleText('main'));
+    }
+
     /**
      * A malformed selector must not abort the block - it is logged and treated
      * like "no match", so a single bad config entry cannot lose a document.

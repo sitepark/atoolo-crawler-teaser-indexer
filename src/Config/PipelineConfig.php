@@ -222,11 +222,6 @@ final class PipelineConfig
         return $this->crawlerConfigHelper->bool('sp_content_scoring_active', false);
     }
 
-    public function relevanceContentSelector(): string
-    {
-        return $this->crawlerConfigHelper->string('sp_relevance_content_selector', '');
-    }
-
     public function contentScoringConfig(): ContentScoringConfig
     {
         $minScore = $this->crawlerConfigHelper->int('sp_content_scoring_min_score', 4);
@@ -238,6 +233,7 @@ final class PipelineConfig
             minScore: $minScore,
             positive: $positive,
             negative: $negative,
+            contentSelectors: $this->crawlerConfigHelper->stringList('sp_relevance_content_selector', false),
         );
     }
 }

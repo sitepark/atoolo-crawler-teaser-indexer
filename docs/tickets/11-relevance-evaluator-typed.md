@@ -11,8 +11,8 @@
 
 ## Umsetzung
 - Signatur: `relevant(ExtractedDataInterface $entry, FieldSource $source, PipelineConfig|ContentScoringConfig $config): bool`. `FieldSource` statt `Crawler` → kein DOM-Leak (gleiches Argument wie bei 7.1).
-- Region-Wahl im Evaluator: erste nicht-leere `$source->text($selector)` aus einer Selektor-Liste; Default-Liste z.B. `main`, `article`, `[role=main]`, `body`.
-- `sp_relevance_content_selector` akzeptiert string oder list (Config-Feld in `ContentScoringConfig`).
+- Region-Wahl im Evaluator: erster nicht-leerer sichtbarer Text (`FieldSource::visibleText()`) aus der konfigurierten Selektor-Liste; keine Defaults – ohne (passenden) Selektor wird der ganze Block bewertet.
+- `sp_relevance_content_selector` ist eine Liste wie alle Listen-Keys (einheitliches Schema), Config-Feld `ContentScoringConfig::$contentSelectors`.
 - Parser übergibt nur noch Entry + Source; `ExtractedData` wird für den Evaluator vor der Relevanzprüfung gebaut.
 - Klassen-Kommentar: „wird pragmatisch aus dem Parser aufgerufen, arbeitet auf geparstem DOM, keine erneute HTML-Analyse".
 

@@ -210,30 +210,19 @@ class Parser implements ParserInterface
             }
         }
 
-        if ($scoringActive) {
-            $relevanceContentSelector = $config->relevanceContentSelector();
-            $relevanceData = [
+        $entry = new ExtractedData($url, $title, $introText, $dateTime);
+
+        if ($scoringActive && !$this->relevanceEvaluator->relevant($entry, $source, $config)) {
+            $this->logger->debug('Document not Relevant', [
                 'url' => $url,
                 'title' => $title,
                 'introText' => $introText,
-                'html' => $relevanceContentSelector ? ($source->text($relevanceContentSelector) ?? $crawler->outerHtml()) : $crawler->outerHtml(),
-            ];
-            $keepDocument = $this->relevanceEvaluator->relevant($relevanceData, $config);
-            if (!$keepDocument) {
-                $this->logger->debug(
-                    'Document not Relevant',
-                    [
-                        'url' => $relevanceData['url'],
-                        'title' => $relevanceData['title'],
-                        'introText' => $relevanceData['introText'],
-                    ],
-                );
+            ]);
 
-                return null;
-            }
+            return null;
         }
 
-        return new ExtractedData($url, $title, $introText, $dateTime);
+        return $entry;
     }
 
     /**
