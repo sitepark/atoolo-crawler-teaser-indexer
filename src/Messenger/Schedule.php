@@ -21,29 +21,32 @@ final class Schedule implements ScheduleProviderInterface
         private readonly LoggerInterface $logger,
     ) {}
 
+    /**
+     * An invalid cron expression is not caught: it would otherwise be logged
+     * once and the crawler would silently never run. Failing here surfaces
+     * the misconfiguration as soon as the scheduler is started.
+     *
+     * @throws \InvalidArgumentException on an invalid cron expression
+     */
     public function getSchedule(): SymfonySchedule
     {
         $schedule = (new SymfonySchedule())
             ->stateful($this->cache);
 
-        try {
-            $successCount = 0;
-            foreach ($this->schedule as $scheduleTime) {
-                $schedule->add(
-                    RecurringMessage::cron(
-                        $scheduleTime,
-                        new StartPipelineMessage(),
-                    ),
+        foreach ($this->schedule as $scheduleTime) {
+            try {
+                $recurringMessage = RecurringMessage::cron(
+                    $scheduleTime,
+                    new StartPipelineMessage(),
                 );
-                ++$successCount;
+            } catch (\Throwable $e) {
+                throw new \InvalidArgumentException(sprintf('Invalid cron expression "%s" in atoolo.crawler.schedule: %s', $scheduleTime, $e->getMessage()), 0, $e);
             }
 
-            $this->logger->info(sprintf('Crawler scheduled for %d sites', $successCount));
-        } catch (\Throwable $e) {
-            $this->logger->error(sprintf('Failed to load crawler schedule: %s', $e->getMessage()), [
-                'exception' => $e,
-            ]);
+            $schedule->add($recurringMessage);
         }
+
+        $this->logger->info(sprintf('Crawler scheduled with %d cron expression(s)', count($this->schedule)));
 
         return $schedule;
     }
