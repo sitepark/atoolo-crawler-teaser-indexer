@@ -13,6 +13,15 @@ Kundenspezifische Zusatzdaten gibt es heute nicht – auch nicht unter anderem N
 - Docblock von `FieldExtractorInterface` anpassen (Verweis auf Enricher für neue Felder).
 - Dedup-Signatur (Indexer) bewusst ohne Extensions lassen und dokumentieren.
 
+## Leitbeispiel: Bilder (erst bei Kundenanforderung umsetzen)
+Künftig sollen Bilder samt `alt` und Copyright extrahiert werden können. Die Nähte dieses Tickets müssen das ohne Austausch von Parser oder Indexer tragen: Enricher liest Bilder aus der `FieldSource` → `ImageExtension` (Liste von URL/alt/Copyright) → `contribute()` schreibt die Solr-Felder.
+
+Dafür braucht die `FieldSource`:
+- die **Seiten-URL**, um relative `src` aufzulösen (`/img/a.jpg` → absolut);
+- Zugriff auf **mehrere Treffer** (heute nur der erste), z.B. `all(string $cssSelector): list<…>` mit Text und Attributen je Element – ohne DOM-Objekte herauszugeben (Speicher-Garantie der Klasse).
+
+Einen fertigen Bild-Enricher liefert das Bundle nicht mit; er entsteht erst bei Kundenbedarf (im Bundle oder im Commons-Projekt).
+
 ## Akzeptanzkriterien
 - Beispiel-Extension im Test: Enricher hängt `PriceExtension` an → Solr-Doc hat `sp_price`.
 - Extension überlebt Processor.

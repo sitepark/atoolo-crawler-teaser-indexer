@@ -13,7 +13,7 @@ Verifikation pro Ticket: `composer analyse`, `vendor/bin/phpunit --no-coverage`;
 | 05 | [Truncation-Länge](05-truncation-length.md) | erledigt |
 | 06 | [Indexer-Fehler gehen nicht verloren](06-indexer-errors-not-lost.md) | erledigt |
 | 07 | [ExtractedDataInterface in eigene Datei](07-extracted-data-interface-file.md) | erledigt |
-| 08 | [Steps dekorierbar machen](08-decoratable-steps.md) | offen |
+| 08 | [Steps dekorierbar machen (Variante A: Decorator)](08-decoratable-steps.md) | offen |
 | 09 | [Pipeline durchgehend lazy](09-lazy-pipeline.md) | offen |
 | 10 | [URLNormalizer aufteilen](10-split-url-normalizer.md) | offen |
 | 11 | [RelevanceEvaluator typisieren](11-relevance-evaluator-typed.md) | offen |
@@ -21,3 +21,4 @@ Verifikation pro Ticket: `composer analyse`, `vendor/bin/phpunit --no-coverage`;
 | 13 | [PipelineConfigFactoryTest](13-pipeline-config-factory-test.md) | offen |
 | 14 | [Echtes E2E mit MockHttpClient](14-e2e-mock-http.md) | offen |
 | 15 | [Doku-Cutover](15-docs-cutover.md) | offen |
+| 16 | [Indizierungszeiten pro Kunde](16-schedule-per-customer.md) | offen (unabhängig) |
