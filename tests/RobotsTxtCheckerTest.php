@@ -14,6 +14,8 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
 
 final class RobotsTxtCheckerTest extends TestCase
 {
+    private PipelineConfig $config;
+
     private function makeChecker(
         array $config,
         RequestExecutorInterface $requestExecutor,
@@ -21,9 +23,9 @@ final class RobotsTxtCheckerTest extends TestCase
     ): RobotsTxtChecker {
         $ctx = $config;
         $helper = new PipelineConfigHelper($ctx, $logger);
-        $crawlerConfig = new PipelineConfig($helper);
+        $this->config = new PipelineConfig($helper);
 
-        return new RobotsTxtChecker($crawlerConfig, $requestExecutor, $logger);
+        return new RobotsTxtChecker($requestExecutor, $logger);
     }
 
     public function testReturnsAllUrlsWhenNoRobotsUrlConfigured(): void
@@ -35,7 +37,7 @@ final class RobotsTxtCheckerTest extends TestCase
         $checker = $this->makeChecker([], $requestExecutor, $logger);
 
         $urls = ['https://example.com/page1', 'https://example.com/page2'];
-        $result = $checker->filterAllowed($urls);
+        $result = $checker->filterAllowed($urls, $this->config);
 
         $this->assertSame($urls, $result);
     }
@@ -49,7 +51,7 @@ final class RobotsTxtCheckerTest extends TestCase
         $checker = $this->makeChecker(['sp_robots_url' => ''], $requestExecutor, $logger);
 
         $urls = ['https://example.com/page1'];
-        $result = $checker->filterAllowed($urls);
+        $result = $checker->filterAllowed($urls, $this->config);
 
         $this->assertSame($urls, $result);
     }
@@ -78,7 +80,7 @@ ROBOTS;
             'https://example.com/page',
             'https://example.com/private/secret',
         ];
-        $result = $checker->filterAllowed($urls);
+        $result = $checker->filterAllowed($urls, $this->config);
 
         $this->assertSame(['https://example.com/page'], $result);
     }
@@ -104,7 +106,7 @@ ROBOTS;
         );
 
         $urls = ['https://example.com/page1', 'https://example.com/page2'];
-        $result = $checker->filterAllowed($urls);
+        $result = $checker->filterAllowed($urls, $this->config);
 
         $this->assertSame($urls, $result);
     }
@@ -126,7 +128,7 @@ ROBOTS;
         );
 
         $urls = ['https://example.com/page1', 'https://example.com/page2'];
-        $result = $checker->filterAllowed($urls);
+        $result = $checker->filterAllowed($urls, $this->config);
 
         $this->assertSame($urls, $result);
     }
@@ -150,8 +152,62 @@ ROBOTS;
             $logger,
         );
 
-        $checker->filterAllowed(['https://example.com/page1']);
-        $checker->filterAllowed(['https://example.com/page2']);
+        $checker->filterAllowed(['https://example.com/page1'], $this->config);
+        $checker->filterAllowed(['https://example.com/page2'], $this->config);
+    }
+
+    /**
+     * The checker lives for the whole worker process; reset() between runs
+     * makes every run read the current robots.txt.
+     */
+    public function testResetForgetsCachedRobotsTxt(): void
+    {
+        $response = $this->createStub(ResponseInterface::class);
+        $response->method('getContent')->willReturn("User-agent: *\nAllow: /");
+
+        $requestExecutor = $this->createMock(RequestExecutorInterface::class);
+        $requestExecutor->expects($this->exactly(2))
+            ->method('request')
+            ->willReturn($response);
+
+        $checker = $this->makeChecker(
+            ['sp_robots_url' => 'https://example.com/robots.txt'],
+            $requestExecutor,
+            $this->createStub(LoggerInterface::class),
+        );
+
+        $checker->filterAllowed(['https://example.com/page1'], $this->config);
+        $checker->reset();
+        $checker->filterAllowed(['https://example.com/page1'], $this->config);
+    }
+
+    /**
+     * The config is passed per call, so one checker instance serves sites with
+     * different user agents.
+     */
+    public function testUsesUserAgentOfTheConfigPassedPerCall(): void
+    {
+        $response = $this->createStub(ResponseInterface::class);
+        $response->method('getContent')->willReturn("User-agent: BadBot\nDisallow: /");
+
+        $requestExecutor = $this->createStub(RequestExecutorInterface::class);
+        $requestExecutor->method('request')->willReturn($response);
+
+        $logger = $this->createStub(LoggerInterface::class);
+        $checker = new RobotsTxtChecker($requestExecutor, $logger);
+        $url = ['https://example.com/page'];
+
+        $badBot = new PipelineConfig(new PipelineConfigHelper([
+            'sp_robots_url' => 'https://example.com/robots.txt',
+            'sp_user_agent' => 'BadBot',
+        ], $logger));
+        $goodBot = new PipelineConfig(new PipelineConfigHelper([
+            'sp_robots_url' => 'https://example.com/robots.txt',
+            'sp_user_agent' => 'GoodBot',
+        ], $logger));
+
+        $this->assertSame([], $checker->filterAllowed($url, $badBot));
+        $this->assertSame($url, $checker->filterAllowed($url, $goodBot));
     }
 
     public function testReturnsAllUrlsWhenRobotsRequestReturnsNull(): void
@@ -167,7 +223,7 @@ ROBOTS;
         );
 
         $urls = ['https://example.com/page1'];
-        $result = $checker->filterAllowed($urls);
+        $result = $checker->filterAllowed($urls, $this->config);
 
         $this->assertSame($urls, $result);
     }
@@ -181,7 +237,7 @@ ROBOTS;
         $checker = $this->makeChecker([], $requestExecutor, $logger);
 
         $urls = ['https://example.com/page', 'https://example.com/page'];
-        $result = $checker->filterAllowed($urls);
+        $result = $checker->filterAllowed($urls, $this->config);
 
         $this->assertSame(['https://example.com/page'], $result);
     }

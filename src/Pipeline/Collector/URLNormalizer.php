@@ -24,7 +24,6 @@ final class URLNormalizer
      * @param array<string> $denyEndings
      */
     public function __construct(
-        private readonly PipelineConfig $config,
         private readonly array $denyEndings,
     ) {}
 
@@ -43,15 +42,15 @@ final class URLNormalizer
      *
      * @return array<int,string> Normalized and filtered URLs
      */
-    public function normalize(array $rawUrls): array
+    public function normalize(array $rawUrls, PipelineConfig $config): array
     {
-        $urls = $this->filterDenyedAlowedUrls($rawUrls);
+        $urls = $this->filterDenyedAlowedUrls($rawUrls, $config);
         $urls = $this->canonicalizeUrls($urls);
-        $urls = $this->stripConfiguredQueryParams($urls);
-        $urls = $this->stripConfiguredFragments($urls);
-        $urls = $this->filterAllowedUrlPath($urls);
-        $urls = $this->filterUnneededUrls($urls);
-        $urls = $this->filterDeniedEndings($urls);
+        $urls = $this->stripConfiguredQueryParams($urls, $config);
+        $urls = $this->stripConfiguredFragments($urls, $config);
+        $urls = $this->filterAllowedUrlPath($urls, $config);
+        $urls = $this->filterUnneededUrls($urls, $config);
+        $urls = $this->filterDeniedEndings($urls, $config);
 
         // Final deduplication while preserving original order
         return array_values(array_unique($urls));
@@ -68,12 +67,12 @@ final class URLNormalizer
      *
      * @return array<int,string> Remaining URLs
      */
-    private function filterDenyedAlowedUrls(array $urls): array
+    private function filterDenyedAlowedUrls(array $urls, PipelineConfig $config): array
     {
         /** @var list<string> $denyPrefixes */
-        $denyPrefixes = $this->config->denyPrefixes();
+        $denyPrefixes = $config->denyPrefixes();
         /** @var list<string> $allowPrefixes */
-        $allowPrefixes = $this->config->allowPrefixes();
+        $allowPrefixes = $config->allowPrefixes();
 
         $filtered = array_filter($urls, function (string $url) use ($denyPrefixes, $allowPrefixes): bool {
             if ($this->startsWithAny($url, $denyPrefixes)) {
@@ -140,13 +139,13 @@ final class URLNormalizer
      *
      * @return array<int,string> URLs with unwanted query parameters removed
      */
-    private function stripConfiguredQueryParams(array $urls): array
+    private function stripConfiguredQueryParams(array $urls, PipelineConfig $config): array
     {
-        if (false === $this->config->stripQueryParamsActive()) {
+        if (false === $config->stripQueryParamsActive()) {
             return $urls;
         }
 
-        $paramNamesToRemove = array_flip($this->config->stripQueryParams());
+        $paramNamesToRemove = array_flip($config->stripQueryParams());
 
         $stripped = array_map(function (string $url) use ($paramNamesToRemove): string {
             $parts = parse_url($url);
@@ -179,9 +178,9 @@ final class URLNormalizer
      *
      * @return array<int,string> URLs with matching fragments removed
      */
-    private function stripConfiguredFragments(array $urls): array
+    private function stripConfiguredFragments(array $urls, PipelineConfig $config): array
     {
-        $prefixes = $this->config->stripFragments();
+        $prefixes = $config->stripFragments();
 
         if ([] === $prefixes) {
             return $urls;
@@ -270,14 +269,14 @@ final class URLNormalizer
      *
      * @return array<int,string> Allowed URLs
      */
-    private function filterAllowedUrlPath(array $rawUrls): array
+    private function filterAllowedUrlPath(array $rawUrls, PipelineConfig $config): array
     {
-        if ([] === $this->config->allowPrefixes()) {
+        if ([] === $config->allowPrefixes()) {
             return array_values($rawUrls);
         }
 
-        $filtered = array_filter($rawUrls, function (string $url): bool {
-            foreach ($this->config->allowPrefixes() as $prefix) {
+        $filtered = array_filter($rawUrls, function (string $url) use ($config): bool {
+            foreach ($config->allowPrefixes() as $prefix) {
                 if (is_string($prefix) && str_starts_with($url, $prefix)) {
                     return true;
                 }
@@ -299,14 +298,14 @@ final class URLNormalizer
      *
      * @return array<int,string> URLs with denied prefixes removed
      */
-    private function filterUnneededUrls(array $rawUrls): array
+    private function filterUnneededUrls(array $rawUrls, PipelineConfig $config): array
     {
-        if ([] === $this->config->denyPrefixes()) {
+        if ([] === $config->denyPrefixes()) {
             return array_values($rawUrls);
         }
 
-        $filtered = array_filter($rawUrls, function (string $url): bool {
-            foreach ($this->config->denyPrefixes() as $prefix) {
+        $filtered = array_filter($rawUrls, function (string $url) use ($config): bool {
+            foreach ($config->denyPrefixes() as $prefix) {
                 if (str_starts_with($url, $prefix)) {
                     return false;
                 }
@@ -325,9 +324,9 @@ final class URLNormalizer
      *
      * @return array<int,string>
      */
-    private function filterDeniedEndings(array $urls): array
+    private function filterDeniedEndings(array $urls, PipelineConfig $config): array
     {
-        $denyEndings = array_unique(array_merge($this->denyEndings, $this->config->denyEndings()));
+        $denyEndings = array_unique(array_merge($this->denyEndings, $config->denyEndings()));
 
         if (empty($denyEndings)) {
             return $urls;

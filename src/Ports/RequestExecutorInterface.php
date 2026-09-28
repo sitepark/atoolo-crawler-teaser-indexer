@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace Atoolo\CrawlerIndexer\Ports;
 
+use Atoolo\CrawlerIndexer\Config\PipelineConfig;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
 interface RequestExecutorInterface
 {
-    public function request(string $url): ?ResponseInterface;
+    public function request(string $url, PipelineConfig $config): ?ResponseInterface;
 
     /**
      * Executes all requests of a chunk concurrently and returns the final
@@ -24,5 +25,5 @@ interface RequestExecutorInterface
      *
      * @return array<string, ResponseInterface> Responses keyed by URL
      */
-    public function requestChunk(array $urls): array;
+    public function requestChunk(array $urls, PipelineConfig $config): array;
 }

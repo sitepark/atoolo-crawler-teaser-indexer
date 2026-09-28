@@ -8,7 +8,7 @@ use Atoolo\CrawlerIndexer\Config\PipelineConfig;
 use Atoolo\CrawlerIndexer\Config\PipelineConfigHelper;
 use Atoolo\CrawlerIndexer\Pipeline\Collector\RobotsTxtCheckerInterface;
 use Atoolo\CrawlerIndexer\Pipeline\Collector\URLNormalizer;
-use Atoolo\CrawlerIndexer\Pipeline\Fetcher\Fetcher;
+use Atoolo\CrawlerIndexer\Pipeline\Fetcher\FetcherInterface;
 use Atoolo\CrawlerIndexer\Pipeline\Collector\URLCollector;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
@@ -30,9 +30,9 @@ final class URLCollectorTest extends TestCase
     /**
      * @param array<string, string> $htmlByUrl
      */
-    private function stubFetcher(array $htmlByUrl): Fetcher
+    private function stubFetcher(array $htmlByUrl): FetcherInterface
     {
-        $fetcher = $this->createStub(Fetcher::class);
+        $fetcher = $this->createStub(FetcherInterface::class);
         $fetcher->method('fetchUrls')->willReturnCallback(
             function (array $urls) use ($htmlByUrl): array {
                 $result = [];
@@ -53,7 +53,7 @@ final class URLCollectorTest extends TestCase
      * @param array<string, mixed> $overrides
      */
     private function createCollector(
-        Fetcher $fetcher,
+        FetcherInterface $fetcher,
         LoggerInterface $logger,
         RobotsTxtCheckerInterface $robotsTxtChecker,
         array $overrides = [],
@@ -71,7 +71,7 @@ final class URLCollectorTest extends TestCase
 
         $helper = new PipelineConfigHelper($ctx, $logger);
         $crawlerConfig = new PipelineConfig($helper);
-        $urlNormalizer = new URLNormalizer($crawlerConfig, []);
+        $urlNormalizer = new URLNormalizer([]);
 
         return new URLCollector($crawlerConfig, $urlNormalizer, $logger, $robotsTxtChecker, $fetcher);
     }
@@ -296,7 +296,7 @@ final class URLCollectorTest extends TestCase
 
     public function testFetcherFailurePropagatesWhileIterating(): void
     {
-        $fetcher = $this->createStub(Fetcher::class);
+        $fetcher = $this->createStub(FetcherInterface::class);
         $fetcher->method('fetchUrls')->willThrowException(new \RuntimeException('Connection failed'));
 
         $collector = $this->createCollector(

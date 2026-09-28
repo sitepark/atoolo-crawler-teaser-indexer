@@ -15,11 +15,12 @@ declare(strict_types=1);
 
 namespace Atoolo\CrawlerIndexer\Pipeline\Fetcher;
 
+use Atoolo\CrawlerIndexer\Config\PipelineConfig;
 use Atoolo\CrawlerIndexer\Ports\RequestExecutorInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
-class Fetcher
+class Fetcher implements FetcherInterface
 {
     public function __construct(
         private readonly RequestExecutorInterface $requestExecutor,
@@ -37,9 +38,9 @@ class Fetcher
      *
      * @return array<int, array{url: string, html: string}>
      */
-    public function fetchUrls(array $urlChunk): array
+    public function fetchUrls(array $urlChunk, PipelineConfig $config): array
     {
-        $responses = $this->requestExecutor->requestChunk($urlChunk);
+        $responses = $this->requestExecutor->requestChunk($urlChunk, $config);
 
         return $this->processResponses($responses);
     }

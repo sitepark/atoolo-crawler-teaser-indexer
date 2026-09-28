@@ -12,12 +12,14 @@ use Psr\Log\LoggerInterface;
 
 final class URLNormalizerTest extends TestCase
 {
+    private PipelineConfig $config;
+
     private function makeNormalizer(array $config): URLNormalizer
     {
         $logger = $this->createStub(LoggerInterface::class);
         $ctx = $config;
         $helper = new PipelineConfigHelper($ctx, $logger);
-        $crawlerConfig = new PipelineConfig($helper);
+        $this->config = new PipelineConfig($helper);
         $denyEndings = [
             '.jpg',
             '.jpeg',
@@ -30,7 +32,7 @@ final class URLNormalizerTest extends TestCase
             '.tiff',
         ];
 
-        return new URLNormalizer($crawlerConfig, $denyEndings);
+        return new URLNormalizer($denyEndings);
     }
 
     private function baseConfig(array $overrides = []): array
@@ -47,7 +49,7 @@ final class URLNormalizerTest extends TestCase
     public function testNormalizeReturnsCleanUrl(): void
     {
         $normalizer = $this->makeNormalizer($this->baseConfig());
-        $result = $normalizer->normalize(['https://example.com/page']);
+        $result = $normalizer->normalize(['https://example.com/page'], $this->config);
         $this->assertSame(['https://example.com/page'], $result);
     }
 
@@ -57,7 +59,7 @@ final class URLNormalizerTest extends TestCase
         $result = $normalizer->normalize([
             'https://example.com/page',
             'https://example.com/page',
-        ]);
+        ], $this->config);
         $this->assertSame(['https://example.com/page'], $result);
     }
 
@@ -67,42 +69,42 @@ final class URLNormalizerTest extends TestCase
         $result = $normalizer->normalize([
             'https://example.com/a',
             'https://example.com/b',
-        ]);
+        ], $this->config);
         $this->assertSame(['https://example.com/a', 'https://example.com/b'], $result);
     }
 
     public function testSanitizeUrlWithPort(): void
     {
         $normalizer = $this->makeNormalizer($this->baseConfig());
-        $result = $normalizer->normalize(['https://example.com:8080/page']);
+        $result = $normalizer->normalize(['https://example.com:8080/page'], $this->config);
         $this->assertSame(['https://example.com:8080/page'], $result);
     }
 
     public function testSanitizeUrlWithFragment(): void
     {
         $normalizer = $this->makeNormalizer($this->baseConfig());
-        $result = $normalizer->normalize(['https://example.com/page#section']);
+        $result = $normalizer->normalize(['https://example.com/page#section'], $this->config);
         $this->assertSame(['https://example.com/page#section'], $result);
     }
 
     public function testSanitizeUrlWithQueryString(): void
     {
         $normalizer = $this->makeNormalizer($this->baseConfig());
-        $result = $normalizer->normalize(['https://example.com/page?foo=bar']);
+        $result = $normalizer->normalize(['https://example.com/page?foo=bar'], $this->config);
         $this->assertSame(['https://example.com/page?foo=bar'], $result);
     }
 
     public function testSanitizeInvalidUrlPassedThrough(): void
     {
         $normalizer = $this->makeNormalizer($this->baseConfig());
-        $result = $normalizer->normalize(['not-a-url']);
+        $result = $normalizer->normalize(['not-a-url'], $this->config);
         $this->assertSame(['not-a-url'], $result);
     }
 
     public function testSanitizeUrlWithoutSchemePassedThrough(): void
     {
         $normalizer = $this->makeNormalizer($this->baseConfig());
-        $result = $normalizer->normalize(['//example.com/page']);
+        $result = $normalizer->normalize(['//example.com/page'], $this->config);
         $this->assertSame(['//example.com/page'], $result);
     }
 
@@ -112,7 +114,7 @@ final class URLNormalizerTest extends TestCase
             'sp_strip_query_params_active' => false,
             'sp_strip_query_params' => ['utm_source'],
         ]));
-        $result = $normalizer->normalize(['https://example.com/page?utm_source=google&id=1']);
+        $result = $normalizer->normalize(['https://example.com/page?utm_source=google&id=1'], $this->config);
         $this->assertStringContainsString('utm_source', $result[0]);
     }
 
@@ -122,7 +124,7 @@ final class URLNormalizerTest extends TestCase
             'sp_strip_query_params_active' => true,
             'sp_strip_query_params' => ['utm_source'],
         ]));
-        $result = $normalizer->normalize(['https://example.com/page?utm_source=google&id=1']);
+        $result = $normalizer->normalize(['https://example.com/page?utm_source=google&id=1'], $this->config);
         $this->assertCount(1, $result);
         $this->assertStringNotContainsString('utm_source', $result[0]);
         $this->assertStringContainsString('id=1', $result[0]);
@@ -134,7 +136,7 @@ final class URLNormalizerTest extends TestCase
             'sp_strip_query_params_active' => true,
             'sp_strip_query_params' => ['utm_source', 'utm_medium'],
         ]));
-        $result = $normalizer->normalize(['https://example.com/page?utm_source=a&utm_medium=b&id=1']);
+        $result = $normalizer->normalize(['https://example.com/page?utm_source=a&utm_medium=b&id=1'], $this->config);
         $this->assertStringNotContainsString('utm_source', $result[0]);
         $this->assertStringNotContainsString('utm_medium', $result[0]);
         $this->assertStringContainsString('id=1', $result[0]);
@@ -146,7 +148,7 @@ final class URLNormalizerTest extends TestCase
             'sp_strip_query_params_active' => true,
             'sp_strip_query_params' => ['utm_source'],
         ]));
-        $result = $normalizer->normalize(['https://example.com/page']);
+        $result = $normalizer->normalize(['https://example.com/page'], $this->config);
         $this->assertSame(['https://example.com/page'], $result);
     }
 
@@ -158,7 +160,7 @@ final class URLNormalizerTest extends TestCase
         $result = $normalizer->normalize([
             'https://example.com/a',
             'https://other.com/b',
-        ]);
+        ], $this->config);
         $this->assertCount(2, $result);
     }
 
@@ -170,7 +172,7 @@ final class URLNormalizerTest extends TestCase
         $result = $normalizer->normalize([
             'https://example.com/page',
             'https://other.com/page',
-        ]);
+        ], $this->config);
         $this->assertSame(['https://example.com/page'], $result);
     }
 
@@ -182,7 +184,7 @@ final class URLNormalizerTest extends TestCase
         $result = $normalizer->normalize([
             'https://example.com/allowed/page1',
             'https://example.com/denied/page2',
-        ]);
+        ], $this->config);
         $this->assertSame(['https://example.com/allowed/page1'], $result);
     }
 
@@ -194,7 +196,7 @@ final class URLNormalizerTest extends TestCase
         $result = $normalizer->normalize([
             'https://example.com/a',
             'https://example.com/b',
-        ]);
+        ], $this->config);
         $this->assertCount(2, $result);
     }
 
@@ -206,7 +208,7 @@ final class URLNormalizerTest extends TestCase
         $result = $normalizer->normalize([
             'https://example.com/page',
             'https://example.com/admin/secret',
-        ]);
+        ], $this->config);
         $this->assertSame(['https://example.com/page'], $result);
     }
 
@@ -215,7 +217,7 @@ final class URLNormalizerTest extends TestCase
         $normalizer = $this->makeNormalizer($this->baseConfig([
             'sp_deny_endings' => [],
         ]));
-        $result = $normalizer->normalize(['https://example.com/file.pdf']);
+        $result = $normalizer->normalize(['https://example.com/file.pdf'], $this->config);
         $this->assertSame(['https://example.com/file.pdf'], $result);
     }
 
@@ -228,7 +230,7 @@ final class URLNormalizerTest extends TestCase
             'https://example.com/page',
             'https://example.com/file.pdf',
             'https://example.com/archive.zip',
-        ]);
+        ], $this->config);
         $this->assertSame(['https://example.com/page'], $result);
     }
 
@@ -237,7 +239,7 @@ final class URLNormalizerTest extends TestCase
         $normalizer = $this->makeNormalizer($this->baseConfig([
             'sp_deny_endings' => ['.pdf'],
         ]));
-        $result = $normalizer->normalize(['https://example.com/File.PDF']);
+        $result = $normalizer->normalize(['https://example.com/File.PDF'], $this->config);
         $this->assertSame([], $result);
     }
 
@@ -246,7 +248,7 @@ final class URLNormalizerTest extends TestCase
         $normalizer = $this->makeNormalizer($this->baseConfig([
             'sp_deny_endings' => ['.pdf'],
         ]));
-        $result = $normalizer->normalize(['https://example.com']);
+        $result = $normalizer->normalize(['https://example.com'], $this->config);
         $this->assertSame(['https://example.com'], $result);
     }
 
@@ -266,7 +268,7 @@ final class URLNormalizerTest extends TestCase
             'https://other.com/page',                // not in allow list
             'https://example.com/file.pdf',          // denied ending
         ];
-        $result = $normalizer->normalize($urls);
+        $result = $normalizer->normalize($urls, $this->config);
         $this->assertSame(['https://example.com/page'], $result);
     }
 
@@ -277,7 +279,7 @@ final class URLNormalizerTest extends TestCase
             'sp_strip_query_params_active' => true,
             'sp_strip_query_params' => ['utm_source'],
         ]));
-        $result = $normalizer->normalize(['//']);
+        $result = $normalizer->normalize(['//'], $this->config);
         $this->assertSame(['//'], $result);
     }
 }

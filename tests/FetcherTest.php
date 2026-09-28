@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Atoolo\CrawlerIndexer\Tests;
 
+use Atoolo\CrawlerIndexer\Config\PipelineConfig;
+use Atoolo\CrawlerIndexer\Config\PipelineConfigHelper;
 use Atoolo\CrawlerIndexer\Ports\RequestExecutorInterface;
 use Atoolo\CrawlerIndexer\Pipeline\Fetcher\Fetcher;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -16,6 +18,7 @@ final class FetcherTest extends TestCase
     /** @var MockObject&LoggerInterface */
     private LoggerInterface $logger;
     private Fetcher $fetcher;
+    private PipelineConfig $config;
     /** @var MockObject&RequestExecutorInterface */
     private $requestExecutorInterfaceMock;
 
@@ -26,6 +29,7 @@ final class FetcherTest extends TestCase
     protected function setUp(): void
     {
         $this->logger = $this->createMock(LoggerInterface::class);
+        $this->config = new PipelineConfig(new PipelineConfigHelper([], $this->createStub(LoggerInterface::class)));
         $this->requestExecutorInterfaceMock = $this->createMock(RequestExecutorInterface::class);
 
         $this->fetcher = new Fetcher(
@@ -44,12 +48,12 @@ final class FetcherTest extends TestCase
         $this->requestExecutorInterfaceMock
             ->expects($this->once())
             ->method('requestChunk')
-            ->with([$url])
+            ->with([$url], $this->config)
             ->willReturn([]);
 
         $this->logger->expects($this->never())->method('error');
 
-        $result = $this->fetcher->fetchUrls([$url]);
+        $result = $this->fetcher->fetchUrls([$url], $this->config);
 
         $this->assertSame([], $result);
     }
@@ -68,7 +72,7 @@ final class FetcherTest extends TestCase
         $this->requestExecutorInterfaceMock
             ->expects($this->once())
             ->method('requestChunk')
-            ->with([$url])
+            ->with([$url], $this->config)
             ->willReturn([$url => $response]);
 
         $this->logger
@@ -79,7 +83,7 @@ final class FetcherTest extends TestCase
                 $this->arrayHasKey('exception'),
             );
 
-        $result = $this->fetcher->fetchUrls([$url]);
+        $result = $this->fetcher->fetchUrls([$url], $this->config);
 
         $this->assertSame([], $result);
     }
@@ -97,12 +101,12 @@ final class FetcherTest extends TestCase
         $this->requestExecutorInterfaceMock
             ->expects($this->once())
             ->method('requestChunk')
-            ->with([$url])
+            ->with([$url], $this->config)
             ->willReturn([$url => $response]);
 
         $this->logger->expects($this->never())->method('error');
 
-        $result = $this->fetcher->fetchUrls([$url]);
+        $result = $this->fetcher->fetchUrls([$url], $this->config);
 
         $this->assertSame([], $result);
     }

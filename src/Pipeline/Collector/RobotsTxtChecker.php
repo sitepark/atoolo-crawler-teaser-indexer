@@ -8,33 +8,42 @@ use Atoolo\CrawlerIndexer\Config\PipelineConfig;
 use Atoolo\CrawlerIndexer\Ports\RequestExecutorInterface;
 use Psr\Log\LoggerInterface;
 use Spatie\Robots\RobotsTxt;
+use Symfony\Contracts\Service\ResetInterface;
 
-final class RobotsTxtChecker implements RobotsTxtCheckerInterface
+final class RobotsTxtChecker implements RobotsTxtCheckerInterface, ResetInterface
 {
     /** @var array<string, RobotsTxt|null> */
     private array $cache = [];
 
     public function __construct(
-        private readonly PipelineConfig $config,
         private readonly RequestExecutorInterface $requestExecutor,
         private readonly LoggerInterface $logger,
     ) {}
 
-    /** @return array<int,string> */
-    public function filterAllowed(array $urls): array
+    /**
+     * Forgets the cached robots.txt files, so every crawl run reads the
+     * current version.
+     */
+    public function reset(): void
     {
-        $robotsUrl = $this->config->robotsUrl();
+        $this->cache = [];
+    }
+
+    /** @return array<int,string> */
+    public function filterAllowed(array $urls, PipelineConfig $config): array
+    {
+        $robotsUrl = $config->robotsUrl();
         if (null == $robotsUrl || '' == $robotsUrl) {
             return array_values(array_unique($urls));
         }
 
-        $robots = $this->getRobots($robotsUrl);
+        $robots = $this->getRobots($robotsUrl, $config);
         if (null === $robots) {
             return array_values(array_unique($urls));
         }
 
         $allowed = [];
-        $ua = $this->config->userAgent();
+        $ua = $config->userAgent();
 
         foreach ($urls as $url) {
             if ($robots->allows($url, $ua)) {
@@ -45,7 +54,7 @@ final class RobotsTxtChecker implements RobotsTxtCheckerInterface
         return array_values(array_unique($allowed));
     }
 
-    private function getRobots(string $robotsUrl): ?RobotsTxt
+    private function getRobots(string $robotsUrl, PipelineConfig $config): ?RobotsTxt
     {
         if (array_key_exists($robotsUrl, $this->cache)) {
             return $this->cache[$robotsUrl];
@@ -54,7 +63,7 @@ final class RobotsTxtChecker implements RobotsTxtCheckerInterface
         $robots = null;
 
         try {
-            $response = $this->requestExecutor->request($robotsUrl);
+            $response = $this->requestExecutor->request($robotsUrl, $config);
 
             if (null !== $response) {
                 $content = $response->getContent(false);

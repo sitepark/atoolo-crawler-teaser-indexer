@@ -9,8 +9,9 @@ use Psr\Log\LoggerInterface;
 use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
+use Symfony\Contracts\Service\ResetInterface;
 
-final class RequestExecutor implements RequestExecutorInterface
+final class RequestExecutor implements RequestExecutorInterface, ResetInterface
 {
     /** @var array<string, int> */
     private array $lastRequestPerHost = [];
@@ -20,13 +21,17 @@ final class RequestExecutor implements RequestExecutorInterface
      */
     public function __construct(
         private readonly array $retryStatusCodes,
-        private readonly PipelineConfig $config,
-        private HttpClientInterface $httpClient,
+        private readonly HttpClientInterface $httpClient,
         private readonly LoggerInterface $logger,
-    ) {
-        $this->httpClient = $httpClient->withOptions([
-            'headers' => ['User-Agent' => $this->config->userAgent()],
-        ]);
+    ) {}
+
+    /**
+     * Forgets the per-host throttle timestamps, so a new crawl run does not
+     * inherit the timing of the previous one.
+     */
+    public function reset(): void
+    {
+        $this->lastRequestPerHost = [];
     }
 
     /**
@@ -43,17 +48,17 @@ final class RequestExecutor implements RequestExecutorInterface
      *
      * @return ResponseInterface|null The response or null if all retries failed due to transport errors
      */
-    public function request(string $url): ?ResponseInterface
+    public function request(string $url, PipelineConfig $config): ?ResponseInterface
     {
         $attempts = 0;
-        $backoffMs = $this->config->backoffMs();
+        $backoffMs = $config->backoffMs();
         $response = null;
 
-        while ($attempts < $this->config->maxRetry()) {
+        while ($attempts < $config->maxRetry()) {
             try {
-                $this->throttle($url);
+                $this->throttle($url, $config);
 
-                $response = $this->httpClient->request('GET', $url);
+                $response = $this->httpClient->request('GET', $url, $this->requestOptions($config));
                 $status = $response->getStatusCode();
 
                 $isSuccess = ($status >= 200 && $status < 300);
@@ -69,10 +74,10 @@ final class RequestExecutor implements RequestExecutorInterface
                     'url' => $url,
                     'status' => $status,
                     'attempt' => $attempts,
-                    'maxRetry' => $this->config->maxRetry(),
+                    'maxRetry' => $config->maxRetry(),
                 ]);
 
-                if ($attempts < $this->config->maxRetry()) {
+                if ($attempts < $config->maxRetry()) {
                     $waitMs = $this->retryDelayMsFromHeadersOrBackoff($response, $backoffMs);
                     usleep($waitMs * 1000);
                     $backoffMs *= 2;
@@ -84,14 +89,14 @@ final class RequestExecutor implements RequestExecutorInterface
                     sprintf(
                         'Transport error on attempt %d/%d for %s: %s',
                         $attempts,
-                        $this->config->maxRetry(),
+                        $config->maxRetry(),
                         $url,
                         $e->getMessage(),
                     ),
                     ['exception' => $e],
                 );
 
-                if ($attempts < $this->config->maxRetry()) {
+                if ($attempts < $config->maxRetry()) {
                     if ($backoffMs <= 50) {
                         $waitMs = 200;
                     }
@@ -128,7 +133,7 @@ final class RequestExecutor implements RequestExecutorInterface
      *
      * @return array<string, ResponseInterface> Responses keyed by URL
      */
-    public function requestChunk(array $urls): array
+    public function requestChunk(array $urls, PipelineConfig $config): array
     {
         /** @var array<string, ResponseInterface> $results */
         $results = [];
@@ -136,7 +141,7 @@ final class RequestExecutor implements RequestExecutorInterface
         $pending = array_values(array_unique($urls));
         /** @var array<string, int> $attempts */
         $attempts = array_fill_keys($pending, 0);
-        $backoffMs = $this->config->backoffMs();
+        $backoffMs = $config->backoffMs();
 
         while ([] !== $pending) {
             // Fire all requests of this wave; responses are lazy and start
@@ -144,7 +149,7 @@ final class RequestExecutor implements RequestExecutorInterface
             /** @var array<string, ResponseInterface> $responses */
             $responses = [];
             foreach ($pending as $url) {
-                $responses[$url] = $this->httpClient->request('GET', $url);
+                $responses[$url] = $this->httpClient->request('GET', $url, $this->requestOptions($config));
             }
 
             /** @var list<string> $retry */
@@ -166,7 +171,7 @@ final class RequestExecutor implements RequestExecutorInterface
 
                     ++$attempts[$url];
 
-                    if ($attempts[$url] >= $this->config->maxRetry()) {
+                    if ($attempts[$url] >= $config->maxRetry()) {
                         // Retries exhausted: keep the last (non-2xx) response so
                         // the caller can decide how to handle it.
                         $results[$url] = $response;
@@ -182,7 +187,7 @@ final class RequestExecutor implements RequestExecutorInterface
                         'url' => $url,
                         'status' => $status,
                         'attempt' => $attempts[$url],
-                        'maxRetry' => $this->config->maxRetry(),
+                        'maxRetry' => $config->maxRetry(),
                     ]);
 
                     $retry[] = $url;
@@ -190,7 +195,7 @@ final class RequestExecutor implements RequestExecutorInterface
                 } catch (TransportExceptionInterface $e) {
                     ++$attempts[$url];
 
-                    if ($attempts[$url] >= $this->config->maxRetry()) {
+                    if ($attempts[$url] >= $config->maxRetry()) {
                         $this->logger->error('Request failed after all retries', [
                             'url' => $url,
                             'exception' => $e,
@@ -203,7 +208,7 @@ final class RequestExecutor implements RequestExecutorInterface
                         sprintf(
                             'Transport error on attempt %d/%d for %s: %s',
                             $attempts[$url],
-                            $this->config->maxRetry(),
+                            $config->maxRetry(),
                             $url,
                             $e->getMessage(),
                         ),
@@ -224,6 +229,17 @@ final class RequestExecutor implements RequestExecutorInterface
         }
 
         return $results;
+    }
+
+    /**
+     * The User-Agent is sent per request, because the executor is shared across
+     * sites while the user agent is a per-site setting.
+     *
+     * @return array{headers: array{User-Agent: string}}
+     */
+    private function requestOptions(PipelineConfig $config): array
+    {
+        return ['headers' => ['User-Agent' => $config->userAgent()]];
     }
 
     /**
@@ -250,7 +266,7 @@ final class RequestExecutor implements RequestExecutorInterface
      *
      * @param string $url The target URL (used to extract the host for throttling)
      */
-    public function throttle(string $url): void
+    public function throttle(string $url, PipelineConfig $config): void
     {
         $host = parse_url($url, PHP_URL_HOST);
         if (!$host) {
@@ -258,7 +274,7 @@ final class RequestExecutor implements RequestExecutorInterface
         }
 
         $nowUs = (int) (microtime(true) * 1_000_000);
-        $delayUs = $this->config->delayMs() * 1000;
+        $delayUs = $config->delayMs() * 1000;
 
         if (isset($this->lastRequestPerHost[$host])) {
             $elapsedUs = $nowUs - $this->lastRequestPerHost[$host];

@@ -32,7 +32,6 @@ final class RequestExecutorTest extends TestCase
     private function makeHttpClient(ResponseInterface $response): HttpClientInterface
     {
         $httpClient = $this->createStub(HttpClientInterface::class);
-        $httpClient->method('withOptions')->willReturnSelf();
         $httpClient->method('request')->willReturn($response);
 
         return $httpClient;
@@ -47,8 +46,8 @@ final class RequestExecutorTest extends TestCase
         $config = $this->makeConfig();
         $logger = $this->createStub(LoggerInterface::class);
 
-        $executor = new RequestExecutor([], $config, $httpClient, $logger);
-        $result = $executor->request('https://example.com/');
+        $executor = new RequestExecutor([], $httpClient, $logger);
+        $result = $executor->request('https://example.com/', $config);
 
         $this->assertSame($response, $result);
     }
@@ -58,14 +57,13 @@ final class RequestExecutorTest extends TestCase
         $transportException = new class ('timeout') extends \Exception implements TransportExceptionInterface {};
 
         $httpClient = $this->createStub(HttpClientInterface::class);
-        $httpClient->method('withOptions')->willReturnSelf();
         $httpClient->method('request')->willThrowException($transportException);
 
         $config = $this->makeConfig(['sp_max_retry' => 2, 'sp_backoff_ms' => 0]);
         $logger = $this->createStub(LoggerInterface::class);
 
-        $executor = new RequestExecutor([], $config, $httpClient, $logger);
-        $result = $executor->request('https://example.com/');
+        $executor = new RequestExecutor([], $httpClient, $logger);
+        $result = $executor->request('https://example.com/', $config);
 
         $this->assertNull($result);
     }
@@ -80,14 +78,13 @@ final class RequestExecutorTest extends TestCase
         $successResponse->method('getStatusCode')->willReturn(200);
 
         $httpClient = $this->createStub(HttpClientInterface::class);
-        $httpClient->method('withOptions')->willReturnSelf();
         $httpClient->method('request')->willReturnOnConsecutiveCalls($failResponse, $successResponse);
 
         $config = $this->makeConfig(['sp_max_retry' => 3, 'sp_backoff_ms' => 0]);
         $logger = $this->createStub(LoggerInterface::class);
 
-        $executor = new RequestExecutor([500], $config, $httpClient, $logger);
-        $result = $executor->request('https://example.com/');
+        $executor = new RequestExecutor([500], $httpClient, $logger);
+        $result = $executor->request('https://example.com/', $config);
 
         $this->assertSame($successResponse, $result);
     }
@@ -102,8 +99,8 @@ final class RequestExecutorTest extends TestCase
         $logger = $this->createStub(LoggerInterface::class);
 
         // 404 is not in retryStatusCodes, so it should return after first attempt
-        $executor = new RequestExecutor([500, 503], $config, $httpClient, $logger);
-        $result = $executor->request('https://example.com/');
+        $executor = new RequestExecutor([500, 503], $httpClient, $logger);
+        $result = $executor->request('https://example.com/', $config);
 
         $this->assertSame($response, $result);
     }
@@ -111,29 +108,27 @@ final class RequestExecutorTest extends TestCase
     public function testThrottleDoesNotThrowForValidUrl(): void
     {
         $httpClient = $this->createStub(HttpClientInterface::class);
-        $httpClient->method('withOptions')->willReturnSelf();
 
         $config = $this->makeConfig(['sp_delay_ms' => 0]);
         $logger = $this->createStub(LoggerInterface::class);
-        $executor = new RequestExecutor([], $config, $httpClient, $logger);
+        $executor = new RequestExecutor([], $httpClient, $logger);
 
         // Should not throw
-        $executor->throttle('https://example.com/page');
-        $executor->throttle('https://example.com/page2'); // second call to same host
+        $executor->throttle('https://example.com/page', $config);
+        $executor->throttle('https://example.com/page2', $config); // second call to same host
         $this->assertTrue(true); // reached here without exception
     }
 
     public function testThrottleWithInvalidUrlReturnsEarly(): void
     {
         $httpClient = $this->createStub(HttpClientInterface::class);
-        $httpClient->method('withOptions')->willReturnSelf();
 
         $config = $this->makeConfig();
         $logger = $this->createStub(LoggerInterface::class);
-        $executor = new RequestExecutor([], $config, $httpClient, $logger);
+        $executor = new RequestExecutor([], $httpClient, $logger);
 
         // 'not-a-url' has no host, throttle should return early without error
-        $executor->throttle('not-a-url');
+        $executor->throttle('not-a-url', $config);
         $this->assertTrue(true);
     }
 
@@ -147,14 +142,13 @@ final class RequestExecutorTest extends TestCase
         $successResponse->method('getStatusCode')->willReturn(200);
 
         $httpClient = $this->createStub(HttpClientInterface::class);
-        $httpClient->method('withOptions')->willReturnSelf();
         $httpClient->method('request')->willReturnOnConsecutiveCalls($failResponse, $successResponse);
 
         $config = $this->makeConfig(['sp_max_retry' => 3, 'sp_backoff_ms' => 0]);
         $logger = $this->createStub(LoggerInterface::class);
 
-        $executor = new RequestExecutor([429], $config, $httpClient, $logger);
-        $result = $executor->request('https://example.com/');
+        $executor = new RequestExecutor([429], $httpClient, $logger);
+        $result = $executor->request('https://example.com/', $config);
 
         $this->assertSame($successResponse, $result);
     }
@@ -168,11 +162,11 @@ final class RequestExecutorTest extends TestCase
         $config = $this->makeConfig(['sp_backoff_ms' => 0]);
         $logger = $this->createStub(LoggerInterface::class);
 
-        $executor = new RequestExecutor([], $config, $httpClient, $logger);
+        $executor = new RequestExecutor([], $httpClient, $logger);
         $result = $executor->requestChunk([
             'https://example.com/a',
             'https://example.com/b',
-        ]);
+        ], $config);
 
         $this->assertSame(
             ['https://example.com/a', 'https://example.com/b'],
@@ -191,11 +185,11 @@ final class RequestExecutorTest extends TestCase
         $config = $this->makeConfig(['sp_backoff_ms' => 0]);
         $logger = $this->createStub(LoggerInterface::class);
 
-        $executor = new RequestExecutor([], $config, $httpClient, $logger);
+        $executor = new RequestExecutor([], $httpClient, $logger);
         $result = $executor->requestChunk([
             'https://example.com/a',
             'https://example.com/a',
-        ]);
+        ], $config);
 
         $this->assertCount(1, $result);
         $this->assertArrayHasKey('https://example.com/a', $result);
@@ -211,14 +205,13 @@ final class RequestExecutorTest extends TestCase
         $successResponse->method('getStatusCode')->willReturn(200);
 
         $httpClient = $this->createStub(HttpClientInterface::class);
-        $httpClient->method('withOptions')->willReturnSelf();
         $httpClient->method('request')->willReturnOnConsecutiveCalls($failResponse, $successResponse);
 
         $config = $this->makeConfig(['sp_max_retry' => 3, 'sp_backoff_ms' => 0]);
         $logger = $this->createStub(LoggerInterface::class);
 
-        $executor = new RequestExecutor([500], $config, $httpClient, $logger);
-        $result = $executor->requestChunk(['https://example.com/']);
+        $executor = new RequestExecutor([500], $httpClient, $logger);
+        $result = $executor->requestChunk(['https://example.com/'], $config);
 
         $this->assertSame($successResponse, $result['https://example.com/']);
     }
@@ -233,8 +226,8 @@ final class RequestExecutorTest extends TestCase
         $config = $this->makeConfig(['sp_max_retry' => 2, 'sp_backoff_ms' => 0]);
         $logger = $this->createStub(LoggerInterface::class);
 
-        $executor = new RequestExecutor([500], $config, $httpClient, $logger);
-        $result = $executor->requestChunk(['https://example.com/']);
+        $executor = new RequestExecutor([500], $httpClient, $logger);
+        $result = $executor->requestChunk(['https://example.com/'], $config);
 
         // Non-2xx response is kept so the caller can decide how to handle it.
         $this->assertSame($failResponse, $result['https://example.com/']);
@@ -254,25 +247,68 @@ final class RequestExecutorTest extends TestCase
         $config = $this->makeConfig(['sp_max_retry' => 2, 'sp_backoff_ms' => 0]);
         $logger = $this->createStub(LoggerInterface::class);
 
-        $executor = new RequestExecutor([], $config, $httpClient, $logger);
-        $result = $executor->requestChunk(['https://example.com/']);
+        $executor = new RequestExecutor([], $httpClient, $logger);
+        $result = $executor->requestChunk(['https://example.com/'], $config);
 
         $this->assertSame([], $result);
+    }
+
+    /**
+     * The executor is shared across sites, so the per-site user agent has to
+     * travel with every request instead of being fixed on the client.
+     */
+    public function testSendsUserAgentOfTheConfigPassedPerCall(): void
+    {
+        $response = $this->createStub(ResponseInterface::class);
+        $response->method('getStatusCode')->willReturn(200);
+
+        /** @var list<mixed> $sentUserAgents */
+        $sentUserAgents = [];
+        $httpClient = $this->createStub(HttpClientInterface::class);
+        $httpClient->method('request')->willReturnCallback(
+            static function (string $method, string $url, array $options) use (&$sentUserAgents, $response): ResponseInterface {
+                $sentUserAgents[] = $options['headers']['User-Agent'] ?? null;
+
+                return $response;
+            },
+        );
+
+        $executor = new RequestExecutor([], $httpClient, $this->createStub(LoggerInterface::class));
+        $executor->request('https://example.com/', $this->makeConfig(['sp_user_agent' => 'SiteA/1.0']));
+        $executor->requestChunk(['https://example.com/b'], $this->makeConfig(['sp_user_agent' => 'SiteB/1.0']));
+
+        $this->assertSame(['SiteA/1.0', 'SiteB/1.0'], $sentUserAgents);
+    }
+
+    public function testResetForgetsThrottleTimestamps(): void
+    {
+        $httpClient = $this->createStub(HttpClientInterface::class);
+
+        $config = $this->makeConfig(['sp_delay_ms' => 200]);
+        $executor = new RequestExecutor([], $httpClient, $this->createStub(LoggerInterface::class));
+
+        $executor->throttle('https://example.com/page', $config);
+        $executor->reset();
+
+        $start = microtime(true);
+        $executor->throttle('https://example.com/page', $config); // no previous request known → no sleep
+        $elapsed = microtime(true) - $start;
+
+        $this->assertLessThan(0.1, $elapsed);
     }
 
     public function testThrottleSleedsWhenSecondCallIsTooFastForSameHost(): void
     {
         $httpClient = $this->createStub(HttpClientInterface::class);
-        $httpClient->method('withOptions')->willReturnSelf();
 
         // 50ms delay: second call within 50ms of first → usleep is triggered
         $config = $this->makeConfig(['sp_delay_ms' => 50]);
         $logger = $this->createStub(LoggerInterface::class);
-        $executor = new RequestExecutor([], $config, $httpClient, $logger);
+        $executor = new RequestExecutor([], $httpClient, $logger);
 
         $start = microtime(true);
-        $executor->throttle('https://example.com/page');
-        $executor->throttle('https://example.com/page'); // same URL / same host → triggers sleep
+        $executor->throttle('https://example.com/page', $config);
+        $executor->throttle('https://example.com/page', $config); // same URL / same host → triggers sleep
         $elapsed = microtime(true) - $start;
 
         // At least some throttle delay was applied (50ms = 0.05s)

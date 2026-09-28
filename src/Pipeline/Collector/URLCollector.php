@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Atoolo\CrawlerIndexer\Pipeline\Collector;
 
 use Atoolo\CrawlerIndexer\Config\PipelineConfig;
-use Atoolo\CrawlerIndexer\Pipeline\Fetcher\Fetcher;
+use Atoolo\CrawlerIndexer\Pipeline\Fetcher\FetcherInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\DomCrawler\Link;
@@ -17,7 +17,7 @@ class URLCollector implements URLCollectorInterface
         private readonly URLNormalizer $urlNormalizer,
         private readonly LoggerInterface $logger,
         private RobotsTxtCheckerInterface $robotsTxtChecker,
-        private readonly Fetcher $fetcher,
+        private readonly FetcherInterface $fetcher,
     ) {}
 
     /**
@@ -73,7 +73,7 @@ class URLCollector implements URLCollectorInterface
                         return;
                     }
 
-                    $fetched = $this->fetcher->fetchUrls($chunk);
+                    $fetched = $this->fetcher->fetchUrls($chunk, $this->config);
                     if ([] === $fetched) {
                         continue;
                     }
@@ -140,7 +140,7 @@ class URLCollector implements URLCollectorInterface
     {
         $chunks = [];
         foreach (array_chunk($urls, max(1, $this->config->parallelRequests())) as $chunk) {
-            $fetched = $this->fetcher->fetchUrls($chunk);
+            $fetched = $this->fetcher->fetchUrls($chunk, $this->config);
             if ([] !== $fetched) {
                 $chunks[] = $fetched;
             }
@@ -189,10 +189,10 @@ class URLCollector implements URLCollectorInterface
             $crawler = new Crawler($html['html'], $baseUrl);
             $pageUrls = $this->extractAbsoluteUrlsFromScope($crawler, $baseUrl);
 
-            array_push($urls, ...$this->urlNormalizer->normalize($pageUrls));
+            array_push($urls, ...$this->urlNormalizer->normalize($pageUrls, $this->config));
 
             if ($this->config->respectRobotsTxt()) {
-                $urls = $this->robotsTxtChecker->filterAllowed(array_values($urls));
+                $urls = $this->robotsTxtChecker->filterAllowed(array_values($urls), $this->config);
             }
         }
 

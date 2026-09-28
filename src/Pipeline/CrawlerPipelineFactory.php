@@ -55,14 +55,13 @@ class CrawlerPipelineFactory
     {
         $requestExecutor = new RequestExecutor(
             $this->retryStatusCodes,
-            $config,
             $this->httpClient,
             $this->logger,
         );
         $fetcher = new Fetcher($requestExecutor, $this->logger);
 
-        $urlNormalizer = new URLNormalizer($config, $this->denyEndings);
-        $robotsTxtChecker = new RobotsTxtChecker($config, $requestExecutor, $this->logger);
+        $urlNormalizer = new URLNormalizer($this->denyEndings);
+        $robotsTxtChecker = new RobotsTxtChecker($requestExecutor, $this->logger);
         $urlCollector = new URLCollector(
             $config,
             $urlNormalizer,
