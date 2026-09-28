@@ -7,8 +7,8 @@ Verifikation pro Ticket: `composer analyse`, `vendor/bin/phpunit --no-coverage`;
 | # | Ticket | Status |
 |---|--------|--------|
 | 01 | [Datetime-FieldExtractor wird nie gefragt](01-datetime-field-extractor.md) | erledigt |
-| 02 | [XPath-Injection in FieldSource::meta()](02-xpath-injection-meta.md) | offen |
-| 03 | [User-Agent CRLF & SSRF-Hinweis](03-user-agent-crlf-ssrf.md) | offen |
+| 02 | [XPath-Injection in FieldSource::meta()](02-xpath-injection-meta.md) | erledigt |
+| 03 | [User-Agent CRLF & SSRF-Hinweis](03-user-agent-crlf-ssrf.md) | erledigt |
 | 04 | [Cron-Ausdrücke früh validieren](04-schedule-cron-validation.md) | offen |
 | 05 | [Truncation-Länge](05-truncation-length.md) | offen |
 | 06 | [Indexer-Fehler gehen nicht verloren](06-indexer-errors-not-lost.md) | offen |

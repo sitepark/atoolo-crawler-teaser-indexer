@@ -283,6 +283,32 @@ final class CrawlerConfigTest extends TestCase
         $this->assertSame('MyBot/1.0', $config->userAgent());
     }
 
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function userAgentWithControlCharsProvider(): iterable
+    {
+        yield 'CRLF' => ["MyBot/1.0\r\nX-Evil: 1"];
+        yield 'LF only' => ["MyBot/1.0\nX-Evil: 1"];
+        yield 'CR only' => ["MyBot/1.0\rX-Evil: 1"];
+        yield 'NUL' => ["MyBot/1.0\0X-Evil: 1"];
+    }
+
+    /**
+     * @dataProvider userAgentWithControlCharsProvider
+     */
+    public function testUserAgentStripsHeaderInjectionCharacters(string $userAgent): void
+    {
+        $config = $this->makeConfig(['sp_user_agent' => $userAgent]);
+        $this->assertSame('MyBot/1.0X-Evil: 1', $config->userAgent());
+    }
+
+    public function testUserAgentFallsBackToDefaultWhenOnlyControlChars(): void
+    {
+        $config = $this->makeConfig(['sp_user_agent' => "\r\n "]);
+        $this->assertSame('Atoolo/Crawler-Teaser-Indexer', $config->userAgent());
+    }
+
     // --- titleConfig ---
 
     public function testTitleConfigDefaults(): void

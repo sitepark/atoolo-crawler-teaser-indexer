@@ -137,9 +137,16 @@ final class PipelineConfig
         return $this->crawlerConfigHelper->int('sp_parallel_requests', 1);
     }
 
+    /**
+     * The value is sent verbatim as an HTTP header, so CR, LF and NUL are
+     * stripped: a line break would let the config inject further headers.
+     */
     public function userAgent(): string
     {
-        return $this->crawlerConfigHelper->string('sp_user_agent', 'Atoolo/Crawler-Teaser-Indexer');
+        $default = 'Atoolo/Crawler-Teaser-Indexer';
+        $userAgent = trim(str_replace(["\r", "\n", "\0"], '', $this->crawlerConfigHelper->string('sp_user_agent', $default)));
+
+        return '' !== $userAgent ? $userAgent : $default;
     }
 
     // --- Parser: Document split (1:N) ---
