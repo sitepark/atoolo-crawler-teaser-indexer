@@ -4,17 +4,6 @@ declare(strict_types=1);
 
 namespace Atoolo\CrawlerIndexer\Dto;
 
-interface ExtractedDataInterface
-{
-    public function getUrl(): string;
-
-    public function getTitle(): string;
-
-    public function getIntroText(): ?string;
-
-    public function getDate(): ?\DateTimeInterface;
-}
-
 final class ExtractedData implements ExtractedDataInterface
 {
     public function __construct(

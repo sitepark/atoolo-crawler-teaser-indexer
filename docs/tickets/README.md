@@ -12,7 +12,7 @@ Verifikation pro Ticket: `composer analyse`, `vendor/bin/phpunit --no-coverage`;
 | 04 | [Cron-Ausdrücke früh validieren](04-schedule-cron-validation.md) | erledigt |
 | 05 | [Truncation-Länge](05-truncation-length.md) | erledigt |
 | 06 | [Indexer-Fehler gehen nicht verloren](06-indexer-errors-not-lost.md) | erledigt |
-| 07 | [ExtractedDataInterface in eigene Datei](07-extracted-data-interface-file.md) | offen |
+| 07 | [ExtractedDataInterface in eigene Datei](07-extracted-data-interface-file.md) | erledigt |
 | 08 | [Steps dekorierbar machen](08-decoratable-steps.md) | offen |
 | 09 | [Pipeline durchgehend lazy](09-lazy-pipeline.md) | offen |
 | 10 | [URLNormalizer aufteilen](10-split-url-normalizer.md) | offen |
