@@ -201,7 +201,8 @@ class Parser implements ParserInterface
 
         $dateTime = null;
         if ($dateTimeConfig->present) {
-            $dateTime = $this->extractDateTime($source, $dateTimeConfig);
+            $dateTime = $this->extractCustomDateTime($source)
+                ?? $this->extractDateTime($source, $dateTimeConfig);
             if (null === $dateTime && $dateTimeConfig->requiredField) {
                 return null;
             }
@@ -287,6 +288,32 @@ class Parser implements ParserInterface
         $this->logger->error('[Parser] Field extractor returned unexpected value, ignoring', [
             'field' => $field,
             'expected' => 'non-empty string',
+            'actual' => get_debug_type($value),
+        ]);
+
+        return null;
+    }
+
+    /**
+     * A custom datetime field. Anything but a \DateTimeInterface is a contract
+     * violation by the extractor, so it is logged and the built-in extraction
+     * takes over.
+     */
+    private function extractCustomDateTime(FieldSource $source): ?\DateTimeImmutable
+    {
+        $value = $this->extractCustom(FieldExtractorInterface::FIELD_DATETIME, $source);
+
+        if (null === $value) {
+            return null;
+        }
+
+        if ($value instanceof \DateTimeInterface) {
+            return \DateTimeImmutable::createFromInterface($value);
+        }
+
+        $this->logger->error('[Parser] Field extractor returned unexpected value, ignoring', [
+            'field' => FieldExtractorInterface::FIELD_DATETIME,
+            'expected' => \DateTimeInterface::class,
             'actual' => get_debug_type($value),
         ]);
 

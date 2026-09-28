@@ -204,12 +204,12 @@ Die Architektur setzt auf Symfony-Decoration (ganze Steps). Für die zwei häufi
 +
 +**7.5 Bewusst geschlossen halten:** Solr-Kopplung nicht generalisieren; `IndexEntry`-Kernfelder nicht Map-basiert machen (dafür ist die Bag da); die 4 Steps bleiben fest — keine generische ETL-Engine.
 +
-## 8. Wiring & Einstiegspunkte
-
-- **Doppelte Site-Lade-Logik zusammenführen:** `Command\Index` und `StartCrawlerMessageHandler` laden beide Config iterieren Sites. Gemeinsamer `CrawlerRunner`; beide werden dünne Wrapper (Exit-Code bzw. Message).
-- **`CrawlSiteRunner`** baut per Factory die Config, ruft `CrawlerPipeline::run()`, fängt Fehler pro Site. Kein `configContext` mehr.
-- **`services.yaml`:** Step-Interfaces auf Default-Implementierungen mappen (damit Decorators andocken). `retry_status_codes` etc. in den `HttpFetcher`.
-- **Scheduler:** `Schedule` baut die `RecurringMessage`; Cron-Ausdrücke früh (beim Boot) validieren statt still abzufangen.
++## 8. Wiring & Einstiegspunkte
++
++- **Doppelte Site-Lade-Logik zusammenführen:** `Command\Index` und `StartCrawlerMessageHandler` laden beide Config iterieren Sites. Gemeinsamer `CrawlerRunner`; beide werden dünne Wrapper (Exit-Code bzw. Message).
++- **`CrawlSiteRunner`** baut per Factory die Config, ruft `CrawlerPipeline::run()`, fängt Fehler pro Site. Kein `configContext` mehr.
++- **`services.yaml`:** Step-Interfaces auf Default-Implementierungen mappen (damit Decorators andocken). `retry_status_codes` etc. in den `HttpFetcher`.
++- **Scheduler:** `Schedule` baut die `RecurringMessage`; Cron-Ausdrücke früh (beim Boot) validieren statt still abzufangen.
 
 +## 9. Textkürzung
 +

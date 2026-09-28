@@ -1,0 +1,23 @@
+# Tickets: Next Major – Restarbeiten
+
+Ergebnis des Abgleichs `docs/proposal-next_major.md` ↔ `src/` (2026-09-28). Reihenfolge = Abarbeitungsreihenfolge: erst kleine unabhängige Fixes, dann der Strukturumbau (08), danach alles, was auf den neuen Signaturen aufbaut.
+
+Verifikation pro Ticket: `composer analyse`, `vendor/bin/phpunit --no-coverage`; ab 08 zusätzlich `bin/console crawler:scheduler-atoolo-crawler-teaser-indexer -vvv` gegen eine Test-Site.
+
+| # | Ticket | Status |
+|---|--------|--------|
+| 01 | [Datetime-FieldExtractor wird nie gefragt](01-datetime-field-extractor.md) | erledigt |
+| 02 | [XPath-Injection in FieldSource::meta()](02-xpath-injection-meta.md) | offen |
+| 03 | [User-Agent CRLF & SSRF-Hinweis](03-user-agent-crlf-ssrf.md) | offen |
+| 04 | [Cron-Ausdrücke früh validieren](04-schedule-cron-validation.md) | offen |
+| 05 | [Truncation-Länge](05-truncation-length.md) | offen |
+| 06 | [Indexer-Fehler gehen nicht verloren](06-indexer-errors-not-lost.md) | offen |
+| 07 | [ExtractedDataInterface in eigene Datei](07-extracted-data-interface-file.md) | offen |
+| 08 | [Steps dekorierbar machen](08-decoratable-steps.md) | offen |
+| 09 | [Pipeline durchgehend lazy](09-lazy-pipeline.md) | offen |
+| 10 | [URLNormalizer aufteilen](10-split-url-normalizer.md) | offen |
+| 11 | [RelevanceEvaluator typisieren](11-relevance-evaluator-typed.md) | offen |
+| 12 | [Extension-Bag & SolrFieldContributor](12-extension-bag.md) | offen |
+| 13 | [PipelineConfigFactoryTest](13-pipeline-config-factory-test.md) | offen |
+| 14 | [Echtes E2E mit MockHttpClient](14-e2e-mock-http.md) | offen |
+| 15 | [Doku-Cutover](15-docs-cutover.md) | offen |

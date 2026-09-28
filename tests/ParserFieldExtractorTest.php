@@ -292,21 +292,141 @@ final class ParserFieldExtractorTest extends TestCase
     }
 
     /**
-     * FIELD_DATETIME extractors are not consulted by the Parser yet - parsing
-     * stays the built-in path's job for now, so a registered datetime
-     * extractor is simply never asked and the built-in date wins.
+     * Formats the built-in `new \DateTimeImmutable($raw)` cannot parse - German
+     * month names, surrounding text - are what a datetime extractor is for.
+     *
+     * @return iterable<string, array{string, string}>
      */
-    public function testDateTimeExtractorIsNotYetConsulted(): void
+    public static function unparseableDateProvider(): iterable
+    {
+        yield 'german month name' => ['14. Januar 2026', '2026-01-14'];
+        yield 'surrounding text' => ['Veröffentlicht am 14.01.2026', '2026-01-14'];
+    }
+
+    /**
+     * @dataProvider unparseableDateProvider
+     */
+    public function testDateTimeExtractorHandlesFormatsTheBuiltInPathCannot(string $raw, string $expected): void
+    {
+        $html = '<html><body><h1>Titel</h1><div class="date">' . $raw . '</div></body></html>';
+        $months = ['januar' => 1, 'februar' => 2, 'märz' => 3];
+
+        $extractor = $this->extractorFor(
+            FieldExtractorInterface::FIELD_DATETIME,
+            static function (FieldSource $source) use ($months): ?\DateTimeImmutable {
+                $text = mb_strtolower($source->text('.date') ?? '');
+                if (1 === preg_match('/(\d{1,2})\.\s*(\p{L}+)\s+(\d{4})/u', $text, $m) && isset($months[$m[2]])) {
+                    return new \DateTimeImmutable(sprintf('%04d-%02d-%02d', $m[3], $months[$m[2]], $m[1]));
+                }
+                if (1 === preg_match('/(\d{1,2})\.(\d{1,2})\.(\d{4})/', $text, $m)) {
+                    return new \DateTimeImmutable(sprintf('%04d-%02d-%02d', $m[3], $m[2], $m[1]));
+                }
+
+                return null;
+            },
+        );
+
+        // Without the extractor the built-in path finds no date.
+        $builtIn = $this->parseOne([], [], null, $html);
+        self::assertNotNull($builtIn);
+        $this->assertNull($builtIn->getDate());
+
+        $entry = $this->parseOne([$extractor], [], null, $html);
+
+        self::assertNotNull($entry);
+        $this->assertSame($expected, $entry->getDate()?->format('Y-m-d'));
+    }
+
+    public function testDateTimeExtractorOverridesBuiltInDate(): void
     {
         $extractor = $this->extractorFor(
             FieldExtractorInterface::FIELD_DATETIME,
-            static fn(): string => '2030-06-01',
+            static fn(): \DateTimeInterface => new \DateTime('2030-06-01 12:00:00'),
+        );
+
+        $entry = $this->parseOne([$extractor]);
+
+        self::assertNotNull($entry);
+        // A mutable DateTime is accepted and converted.
+        $this->assertInstanceOf(\DateTimeImmutable::class, $entry->getDate());
+        $this->assertSame('2030-06-01 12:00', $entry->getDate()->format('Y-m-d H:i'));
+    }
+
+    public function testDateTimeExtractorReturningNullFallsBackToBuiltInDate(): void
+    {
+        $extractor = $this->extractorFor(
+            FieldExtractorInterface::FIELD_DATETIME,
+            static fn(): ?\DateTimeInterface => null,
         );
 
         $entry = $this->parseOne([$extractor]);
 
         self::assertNotNull($entry);
         $this->assertSame('2026-01-14', $entry->getDate()?->format('Y-m-d'));
+    }
+
+    /**
+     * @return iterable<string, array{mixed}>
+     */
+    public static function invalidDateTimeValueProvider(): iterable
+    {
+        yield 'string' => ['2030-06-01'];
+        yield 'int' => [1_767_225_600];
+        yield 'object' => [new \stdClass()];
+    }
+
+    /**
+     * @dataProvider invalidDateTimeValueProvider
+     */
+    public function testInvalidDateTimeValueIsLoggedAndFallsBack(mixed $value): void
+    {
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->atLeastOnce())
+            ->method('error')
+            ->with('[Parser] Field extractor returned unexpected value, ignoring', $this->anything());
+
+        $extractor = $this->extractorFor(
+            FieldExtractorInterface::FIELD_DATETIME,
+            static fn(): mixed => $value,
+        );
+
+        $entry = $this->parseOne([$extractor], [], $logger);
+
+        self::assertNotNull($entry);
+        $this->assertSame('2026-01-14', $entry->getDate()?->format('Y-m-d'));
+    }
+
+    public function testCustomDateTimeSatisfiesRequiredField(): void
+    {
+        $extractor = $this->extractorFor(
+            FieldExtractorInterface::FIELD_DATETIME,
+            static fn(): \DateTimeInterface => new \DateTimeImmutable('2026-03-01'),
+        );
+
+        $entry = $this->parseOne(
+            [$extractor],
+            [
+                'sp_datetime_required_field' => true,
+                'sp_datetime_css' => ['.gibt-es-nicht'],
+            ],
+        );
+
+        self::assertNotNull($entry);
+        $this->assertSame('2026-03-01', $entry->getDate()?->format('Y-m-d'));
+    }
+
+    public function testDateTimeExtractorIsNotAskedWhenDateTimeIsNotPresent(): void
+    {
+        $extractor = $this->createMock(FieldExtractorInterface::class);
+        $extractor->method('supports')->willReturnCallback(
+            static fn(string $field): bool => FieldExtractorInterface::FIELD_DATETIME === $field,
+        );
+        $extractor->expects($this->never())->method('extract');
+
+        $entry = $this->parseOne([$extractor], ['sp_datetime_present' => false]);
+
+        self::assertNotNull($entry);
+        $this->assertNull($entry->getDate());
     }
 
     /**
