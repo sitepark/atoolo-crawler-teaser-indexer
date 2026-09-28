@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Atoolo\CrawlerIndexer\Pipeline\Collector;
 
+use Atoolo\CrawlerIndexer\Config\PipelineConfig;
+
 interface URLCollectorInterface
 {
     /**
@@ -12,5 +14,5 @@ interface URLCollectorInterface
      *
      * @return iterable<int, array<int, array{url: string, html: string}>>
      */
-    public function collect(): iterable;
+    public function collect(PipelineConfig $config): iterable;
 }

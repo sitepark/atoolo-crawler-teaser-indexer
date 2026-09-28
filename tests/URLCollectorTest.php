@@ -25,6 +25,8 @@ use Psr\Log\LoggerInterface;
  */
 final class URLCollectorTest extends TestCase
 {
+    private PipelineConfig $config;
+
     private string $urlPrefix = 'https://example.com';
 
     /**
@@ -70,10 +72,10 @@ final class URLCollectorTest extends TestCase
         ], $overrides);
 
         $helper = new PipelineConfigHelper($ctx, $logger);
-        $crawlerConfig = new PipelineConfig($helper);
+        $this->config = new PipelineConfig($helper);
         $urlNormalizer = new URLNormalizer([]);
 
-        return new URLCollector($crawlerConfig, $urlNormalizer, $logger, $robotsTxtChecker, $fetcher);
+        return new URLCollector($urlNormalizer, $logger, $robotsTxtChecker, $fetcher);
     }
 
     /**
@@ -103,7 +105,7 @@ final class URLCollectorTest extends TestCase
             $this->createStub(RobotsTxtCheckerInterface::class),
         );
 
-        $chunks = iterator_to_array($collector->collect());
+        $chunks = iterator_to_array($collector->collect($this->config));
 
         $this->assertSame(
             [[['url' => $this->urlPrefix, 'html' => $html]]],
@@ -131,7 +133,7 @@ final class URLCollectorTest extends TestCase
         // depth 1 fetches levels 0..2: start, section, article - each once.
         $this->assertSame(
             [$this->urlPrefix, 'https://example.com/section', 'https://example.com/article'],
-            $this->fetchedUrls($collector->collect()),
+            $this->fetchedUrls($collector->collect($this->config)),
         );
     }
 
@@ -154,7 +156,7 @@ final class URLCollectorTest extends TestCase
             ['sp_start_urls' => [['sp_url' => $this->urlPrefix, 'sp_extraction_depth' => 2]]],
         );
 
-        $urls = $this->fetchedUrls($collector->collect());
+        $urls = $this->fetchedUrls($collector->collect($this->config));
 
         // page-b is discovered from both the start page and page-a, but fetched once.
         $this->assertSame(1, array_count_values($urls)['https://example.com/page-b']);
@@ -190,7 +192,7 @@ final class URLCollectorTest extends TestCase
         // page2 is filtered out by robots.txt, so it is never fetched.
         $this->assertSame(
             [$this->urlPrefix, 'https://example.com/page1'],
-            $this->fetchedUrls($collector->collect()),
+            $this->fetchedUrls($collector->collect($this->config)),
         );
     }
 
@@ -215,7 +217,7 @@ final class URLCollectorTest extends TestCase
         );
 
         // start page + one discovered page = 2, then the limit stops the crawl.
-        $this->assertCount(2, $this->fetchedUrls($collector->collect()));
+        $this->assertCount(2, $this->fetchedUrls($collector->collect($this->config)));
     }
 
     public function testForcedArticleUrlsAreAlwaysFetched(): void
@@ -235,7 +237,7 @@ final class URLCollectorTest extends TestCase
             ],
         );
 
-        $urls = $this->fetchedUrls($collector->collect());
+        $urls = $this->fetchedUrls($collector->collect($this->config));
 
         $this->assertContains($forced, $urls);
         $this->assertContains($this->urlPrefix, $urls);
@@ -266,7 +268,7 @@ final class URLCollectorTest extends TestCase
         );
 
         // The article behind the forced category page must be discovered.
-        $this->assertContains('https://example.com/article', $this->fetchedUrls($collector->collect()));
+        $this->assertContains('https://example.com/article', $this->fetchedUrls($collector->collect($this->config)));
     }
 
     public function testBrokenLinkIsIgnored(): void
@@ -280,7 +282,7 @@ final class URLCollectorTest extends TestCase
         );
 
         // Only the start page is fetched; the broken link yields no next level.
-        $this->assertSame([$this->urlPrefix], $this->fetchedUrls($collector->collect()));
+        $this->assertSame([$this->urlPrefix], $this->fetchedUrls($collector->collect($this->config)));
     }
 
     public function testEmptyHtmlContentYieldsPageButNoLinks(): void
@@ -291,7 +293,7 @@ final class URLCollectorTest extends TestCase
             $this->createStub(RobotsTxtCheckerInterface::class),
         );
 
-        $this->assertSame([$this->urlPrefix], $this->fetchedUrls($collector->collect()));
+        $this->assertSame([$this->urlPrefix], $this->fetchedUrls($collector->collect($this->config)));
     }
 
     public function testFetcherFailurePropagatesWhileIterating(): void
@@ -308,6 +310,6 @@ final class URLCollectorTest extends TestCase
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Connection failed');
 
-        iterator_to_array($collector->collect());
+        iterator_to_array($collector->collect($this->config));
     }
 }

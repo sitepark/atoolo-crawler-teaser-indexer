@@ -5,14 +5,14 @@ declare(strict_types=1);
 namespace Atoolo\CrawlerIndexer\Application;
 
 use Atoolo\CrawlerIndexer\Config\PipelineConfigFactory;
-use Atoolo\CrawlerIndexer\Pipeline\CrawlerPipelineFactory;
+use Atoolo\CrawlerIndexer\Pipeline\CrawlerPipeline;
 use Psr\Log\LoggerInterface;
 
 final class PipelineRunner
 {
     public function __construct(
         private readonly PipelineConfigFactory $configFactory,
-        private readonly CrawlerPipelineFactory $pipelineFactory,
+        private readonly CrawlerPipeline $pipeline,
         private readonly LoggerInterface $logger,
     ) {}
 
@@ -28,7 +28,7 @@ final class PipelineRunner
         $siteKey = $config->id();
 
         $this->logger->info(sprintf('Processing site: %s', $siteKey));
-        $this->pipelineFactory->create($config)->startCrawler();
+        $this->pipeline->run($config);
         $this->logger->info(sprintf('Successfully crawled: %s', $siteKey));
     }
 }

@@ -21,12 +21,9 @@ use Psr\Log\NullLogger;
 
 class Indexer implements \Atoolo\Search\Indexer, IndexerInterface
 {
-    private string $source = '';
-
     public function __construct(
         private IndexerProgressHandler $progressHandler,
         private SolrIndexService $indexService,
-        private readonly PipelineConfig $config,
         private LoggerInterface $logger = new NullLogger(),
     ) {}
 
@@ -45,9 +42,10 @@ class Indexer implements \Atoolo\Search\Indexer, IndexerInterface
      *
      * @param ExtractedDataInterface[] $finalDocuments
      */
-    public function doIndex(array $finalDocuments): IndexerStatus
+    public function doIndex(array $finalDocuments, PipelineConfig $config): IndexerStatus
     {
-        $this->source = $this->config->id();
+        // Local, not a property: the indexer is shared across sites.
+        $source = $config->id();
 
         // A page can produce several documents (1:N); drop content-duplicates
         // (same title + intro + date) so redundant documents are not indexed.
@@ -64,15 +62,15 @@ class Indexer implements \Atoolo\Search\Indexer, IndexerInterface
             try {
                 $document = $updater->createDocument();
 
-                $document->setField('id', $this->buildDocumentId($finalDocument));
+                $document->setField('id', $this->buildDocumentId($finalDocument, $source));
                 $document->setField('title', $finalDocument->getTitle());
 
-                if (!empty($finalDocument->getIntroText()) && $this->config->introTextPresent()) {
+                if (!empty($finalDocument->getIntroText()) && $config->introTextPresent()) {
                     $intro = $finalDocument->getIntroText();
                     $document->setField('sp_intro', $intro);
                 }
 
-                if (!empty($finalDocument->getDate()) && $this->config->dateTimePresent()) {
+                if (!empty($finalDocument->getDate()) && $config->dateTimePresent()) {
                     try {
                         $date = $finalDocument->getDate();
                         $dateValue = $date;
@@ -86,12 +84,12 @@ class Indexer implements \Atoolo\Search\Indexer, IndexerInterface
                     }
                 }
 
-                $document->setField('sp_category', $this->config->categoriesId());
-                $document->setField('sp_category_path', $this->config->categoriesPathId());
+                $document->setField('sp_category', $config->categoriesId());
+                $document->setField('sp_category_path', $config->categoriesPathId());
                 $document->setField('url', $finalDocument->getUrl());
-                $document->setField('sp_objecttype', $this->source);
+                $document->setField('sp_objecttype', $source);
                 $document->setField('crawl_process_id', $processId);
-                $document->setField('sp_source', [$this->source]);
+                $document->setField('sp_source', [$source]);
 
                 $updater->addDocument($document);
                 $this->progressHandler->advance(1);
@@ -120,17 +118,17 @@ class Indexer implements \Atoolo\Search\Indexer, IndexerInterface
             );
         }
 
-        if ($successCount <= $this->config->cleanupThreshold()) {
+        if ($successCount <= $config->cleanupThreshold()) {
             $this->logger->critical('Cleanup threshold not met. Aborting.', [
                 'successCount' => $successCount,
-                'threshold' => $this->config->cleanupThreshold(),
+                'threshold' => $config->cleanupThreshold(),
             ]);
-            throw new ThresholdNotMetException($successCount, $this->config->cleanupThreshold());
+            throw new ThresholdNotMetException($successCount, $config->cleanupThreshold());
         }
 
         $this->indexService->deleteExcludingProcessId(
             $language,
-            $this->source,
+            $source,
             $processId,
         );
 
@@ -171,9 +169,9 @@ class Indexer implements \Atoolo\Search\Indexer, IndexerInterface
      * documents from one page get distinct ids while identical content maps to
      * the same id (id is no longer the URL).
      */
-    private function buildDocumentId(ExtractedDataInterface $document): string
+    private function buildDocumentId(ExtractedDataInterface $document, string $source): string
     {
-        return sha1($this->source . "\0" . $this->signature($document));
+        return sha1($source . "\0" . $this->signature($document));
     }
 
     private function signature(ExtractedDataInterface $document): string
@@ -209,9 +207,13 @@ class Indexer implements \Atoolo\Search\Indexer, IndexerInterface
         return 'rce-indexer';
     }
 
+    /**
+     * The source is a per-site value passed to doIndex(); the shared indexer
+     * has none of its own.
+     */
     public function getSource(): string
     {
-        return $this->source;
+        return '';
     }
 
     public function getProgressHandler(): IndexerProgressHandler

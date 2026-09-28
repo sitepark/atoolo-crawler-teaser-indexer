@@ -9,7 +9,6 @@ use Atoolo\CrawlerIndexer\Application\SitesRunner;
 use Atoolo\CrawlerIndexer\Config\PipelineConfigFactory;
 use Atoolo\CrawlerIndexer\Exception\IndexingErrorsException;
 use Atoolo\CrawlerIndexer\Pipeline\CrawlerPipeline;
-use Atoolo\CrawlerIndexer\Pipeline\CrawlerPipelineFactory;
 use Atoolo\Resource\DataBag;
 use Atoolo\Search\Dto\Indexer\IndexerConfiguration;
 use Atoolo\Search\Service\Indexer\IndexerConfigurationLoader;
@@ -41,12 +40,10 @@ final class SitesRunnerTest extends TestCase
         CrawlerPipeline $manager,
         ?LoggerInterface $logger = null,
     ): SitesRunner {
-        $pipelineFactory = $this->createMock(CrawlerPipelineFactory::class);
-        $pipelineFactory->method('create')->willReturn($manager);
 
         $runner = new PipelineRunner(
             new PipelineConfigFactory($this->createStub(LoggerInterface::class)),
-            $pipelineFactory,
+            $manager,
             $this->createStub(LoggerInterface::class),
         );
 
@@ -60,7 +57,7 @@ final class SitesRunnerTest extends TestCase
     public function testNoSitesLogsWarningAndIsSuccessful(): void
     {
         $manager = $this->createMock(CrawlerPipeline::class);
-        $manager->expects($this->never())->method('startCrawler');
+        $manager->expects($this->never())->method('run');
 
         $logger = $this->createMock(LoggerInterface::class);
         $logger->expects($this->once())->method('warning');
@@ -80,7 +77,7 @@ final class SitesRunnerTest extends TestCase
             $this->makeLoader([]),
             new PipelineRunner(
                 new PipelineConfigFactory($this->createStub(LoggerInterface::class)),
-                $this->createStub(CrawlerPipelineFactory::class),
+                $this->createStub(CrawlerPipeline::class),
                 $this->createStub(LoggerInterface::class),
             ),
             $logger,
@@ -92,7 +89,7 @@ final class SitesRunnerTest extends TestCase
     public function testCrawlsAllValidSites(): void
     {
         $manager = $this->createMock(CrawlerPipeline::class);
-        $manager->expects($this->exactly(2))->method('startCrawler');
+        $manager->expects($this->exactly(2))->method('run');
 
         $result = $this->makeSitesRunner(
             [['sp_id' => 'site-1'], ['sp_id' => 'site-2']],
@@ -107,7 +104,7 @@ final class SitesRunnerTest extends TestCase
     public function testSkipsSiteWithoutSpIdAndReportsItAsInvalid(): void
     {
         $manager = $this->createMock(CrawlerPipeline::class);
-        $manager->expects($this->once())->method('startCrawler');
+        $manager->expects($this->once())->method('run');
 
         $logger = $this->createMock(LoggerInterface::class);
         $logger->expects($this->once())
@@ -129,7 +126,7 @@ final class SitesRunnerTest extends TestCase
         $calls = 0;
         $manager = $this->createMock(CrawlerPipeline::class);
         $manager->expects($this->exactly(2))
-            ->method('startCrawler')
+            ->method('run')
             ->willReturnCallback(function () use (&$calls): void {
                 ++$calls;
                 if (1 === $calls) {
@@ -157,7 +154,7 @@ final class SitesRunnerTest extends TestCase
     public function testSiteWithIndexingErrorsIsReportedAsFailed(): void
     {
         $manager = $this->createMock(CrawlerPipeline::class);
-        $manager->method('startCrawler')
+        $manager->method('run')
             ->willThrowException(new IndexingErrorsException(2, '[FINISHED] errors: 2'));
 
         $logger = $this->createMock(LoggerInterface::class);
@@ -183,7 +180,7 @@ final class SitesRunnerTest extends TestCase
             $loader,
             new PipelineRunner(
                 new PipelineConfigFactory($this->createStub(LoggerInterface::class)),
-                $this->createStub(CrawlerPipelineFactory::class),
+                $this->createStub(CrawlerPipeline::class),
                 $this->createStub(LoggerInterface::class),
             ),
             $this->createStub(LoggerInterface::class),

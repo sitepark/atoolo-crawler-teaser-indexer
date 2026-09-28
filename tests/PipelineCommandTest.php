@@ -9,7 +9,6 @@ use Atoolo\CrawlerIndexer\Application\SitesRunner;
 use Atoolo\CrawlerIndexer\Command\PipelineCommand;
 use Atoolo\CrawlerIndexer\Config\PipelineConfigFactory;
 use Atoolo\CrawlerIndexer\Pipeline\CrawlerPipeline;
-use Atoolo\CrawlerIndexer\Pipeline\CrawlerPipelineFactory;
 use Atoolo\Resource\DataBag;
 use Atoolo\Search\Dto\Indexer\IndexerConfiguration;
 use Atoolo\Search\Service\Indexer\IndexerConfigurationLoader;
@@ -25,14 +24,12 @@ final class PipelineCommandTest extends TestCase
 {
     private function makeSitesRunner(IndexerConfigurationLoader $loader, CrawlerPipeline $manager): SitesRunner
     {
-        $pipelineFactory = $this->createMock(CrawlerPipelineFactory::class);
-        $pipelineFactory->method('create')->willReturn($manager);
 
         return new SitesRunner(
             $loader,
             new PipelineRunner(
                 new PipelineConfigFactory($this->createStub(LoggerInterface::class)),
-                $pipelineFactory,
+                $manager,
                 $this->createStub(LoggerInterface::class),
             ),
             $this->createStub(LoggerInterface::class),
@@ -62,7 +59,7 @@ final class PipelineCommandTest extends TestCase
     public function testSuccessfulRunReturnsSuccess(): void
     {
         $manager = $this->createMock(CrawlerPipeline::class);
-        $manager->expects($this->once())->method('startCrawler');
+        $manager->expects($this->once())->method('run');
 
         $command = new PipelineCommand(
             $this->makeSitesRunner($this->makeLoader([['sp_id' => 'site-1']]), $manager),
@@ -75,7 +72,7 @@ final class PipelineCommandTest extends TestCase
     public function testFailedSiteReturnsFailure(): void
     {
         $manager = $this->createMock(CrawlerPipeline::class);
-        $manager->method('startCrawler')->willThrowException(new \RuntimeException('crawl failed'));
+        $manager->method('run')->willThrowException(new \RuntimeException('crawl failed'));
 
         $command = new PipelineCommand(
             $this->makeSitesRunner($this->makeLoader([['sp_id' => 'site-1']]), $manager),

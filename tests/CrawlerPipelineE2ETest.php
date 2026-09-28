@@ -103,7 +103,6 @@ final class CrawlerPipelineE2ETest extends TestCase
             $processor,
             $indexer,
             $logger,
-            $this->createConfig($logger),
         );
     }
 
@@ -160,7 +159,7 @@ final class CrawlerPipelineE2ETest extends TestCase
             $processor,
             $indexer,
             $logger,
-        )->startCrawler();
+        )->run($this->createConfig($this->createStub(LoggerInterface::class)));
     }
 
     /**
@@ -201,7 +200,7 @@ final class CrawlerPipelineE2ETest extends TestCase
             $processor,
             $indexer,
             $logger,
-        )->startCrawler();
+        )->run($this->createConfig($this->createStub(LoggerInterface::class)));
     }
 
     public function testStopsWhenUrlCollectorYieldsNothing(): void
@@ -220,7 +219,7 @@ final class CrawlerPipelineE2ETest extends TestCase
             $this->createStub(Processor::class),
             $indexer,
             $logger,
-        )->startCrawler();
+        )->run($this->createConfig($this->createStub(LoggerInterface::class)));
     }
 
     public function testUrlCollectorFailurePropagatesDirectly(): void
@@ -248,7 +247,7 @@ final class CrawlerPipelineE2ETest extends TestCase
             $this->createStub(Processor::class),
             $indexer,
             $logger,
-        )->startCrawler();
+        )->run($this->createConfig($this->createStub(LoggerInterface::class)));
     }
 
     public function testIndexerReturnsError(): void
@@ -285,7 +284,7 @@ final class CrawlerPipelineE2ETest extends TestCase
             $processor,
             $indexer,
             $logger,
-        )->startCrawler();
+        )->run($this->createConfig($this->createStub(LoggerInterface::class)));
     }
 
     /**
@@ -321,6 +320,6 @@ final class CrawlerPipelineE2ETest extends TestCase
             $processor,
             $indexer,
             $logger,
-        )->startCrawler();
+        )->run($this->createConfig($this->createStub(LoggerInterface::class)));
     }
 }

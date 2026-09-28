@@ -44,14 +44,14 @@ final class MyParser implements ParserInterface
 - `CrawlerPipeline` wird Singleton-Service mit `run(PipelineConfig)`; `CrawlerPipelineFactory` entfällt, `PipelineRunner` ruft `CrawlerPipeline::run($config)`.
 - `services.yaml`: Excludes für die Steps entfernen, Interface → Default-Implementierung aliasen, Parameter (`denyEndings`, `retryStatusCodes`, Solr-Services, `!tagged_iterator` Field-Extractors) direkt an die jeweiligen Services binden.
 - Abhängigkeiten nur noch auf Interfaces (`URLCollector` → `FetcherInterface`, `RobotsTxtCheckerInterface`, …), damit ein dekorierter Baustein überall greift.
-- **Zustand eines Laufs an genau einer Stelle zurücksetzen:** `RequestExecutor` (`lastRequestPerHost`) und `RobotsTxtChecker` (Cache) implementieren `ResetInterface`; `CrawlerPipeline::run()` setzt sie am Anfang zurück. Damit gilt auch ein neuer robots.txt-Stand bei jedem Lauf im langlebigen Messenger-Worker.
+- **Zustand eines Laufs zurücksetzen:** `RequestExecutor` (`lastRequestPerHost`) und `RobotsTxtChecker` (Cache) implementieren `ResetInterface`. Symfony taggt sie damit automatisch mit `kernel.reset`, der Messenger-Worker setzt sie nach jeder Nachricht (= ein kompletter Lauf über alle Sites) zurück. Innerhalb eines Laufs teilen sich die Sites Throttle und robots-Cache bewusst (gleicher Host → gemeinsamer Abstand; Cache ist nach robots-URL geschlüsselt). *Umgesetzt statt eines manuellen Resets in `run()`.*
 - Keine per-Site-Werte als Properties auf Services (`Indexer::$source` → lokale Variable).
 - Bestehende Signaturen bleiben ansonsten gleich (`array` bleibt `array`) – die Umstellung auf `iterable` gehört zu Ticket 09.
 
 ## Akzeptanzkriterien
 - Kein Step wird mehr mit `new` in Produktionscode gebaut.
 - Container-Test: ein registrierter Decorator für `ParserInterface` wird im Lauf aufgerufen; zwei gestapelte Decorators (Commons + Kunde) greifen beide.
-- Zwei Sites hintereinander teilen keinen Throttle-/robots-State.
+- Zwischen zwei Läufen bleibt kein Throttle-/robots-State erhalten (`reset()` getestet, `kernel.reset` über Autoconfiguration).
 - Alle bestehenden Tests portiert, `composer analyse` grün, Crawler läuft lokal.
 
 ## Dateien

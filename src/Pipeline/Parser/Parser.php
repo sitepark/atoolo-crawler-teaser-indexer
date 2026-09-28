@@ -16,8 +16,8 @@ class Parser implements ParserInterface
 {
     /**
      * @param iterable<FieldExtractorInterface> $fieldExtractors Project-supplied
-     *                                                           extractors, tagged via autoconfiguration and passed through by
-     *                                                           CrawlerPipelineFactory. Asked before the built-in extraction.
+     *                                                           extractors, tagged via autoconfiguration and injected as a
+     *                                                           tagged iterator. Asked before the built-in extraction.
      */
     public function __construct(
         private readonly LoggerInterface $logger,

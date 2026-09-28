@@ -10,7 +10,6 @@ use Atoolo\CrawlerIndexer\Config\PipelineConfigFactory;
 use Atoolo\CrawlerIndexer\Messenger\StartPipelineMessage;
 use Atoolo\CrawlerIndexer\Messenger\StartPipelineMessageHandler;
 use Atoolo\CrawlerIndexer\Pipeline\CrawlerPipeline;
-use Atoolo\CrawlerIndexer\Pipeline\CrawlerPipelineFactory;
 use Atoolo\Resource\DataBag;
 use Atoolo\Search\Dto\Indexer\IndexerConfiguration;
 use Atoolo\Search\Service\Indexer\IndexerConfigurationLoader;
@@ -24,14 +23,12 @@ final class StartPipelineMessageHandlerTest extends TestCase
 {
     private function makeHandler(IndexerConfigurationLoader $loader, CrawlerPipeline $manager): StartPipelineMessageHandler
     {
-        $pipelineFactory = $this->createMock(CrawlerPipelineFactory::class);
-        $pipelineFactory->method('create')->willReturn($manager);
 
         return new StartPipelineMessageHandler(new SitesRunner(
             $loader,
             new PipelineRunner(
                 new PipelineConfigFactory($this->createStub(LoggerInterface::class)),
-                $pipelineFactory,
+                $manager,
                 $this->createStub(LoggerInterface::class),
             ),
             $this->createStub(LoggerInterface::class),
@@ -49,7 +46,7 @@ final class StartPipelineMessageHandlerTest extends TestCase
 
         $manager = $this->createMock(CrawlerPipeline::class);
         $manager->expects($this->exactly(2))
-            ->method('startCrawler')
+            ->method('run')
             ->willThrowException(new \RuntimeException('crawl failed'));
 
         // Must not throw: a failing site is not a failed message.

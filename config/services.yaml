@@ -11,18 +11,16 @@ services:
 
     Atoolo\CrawlerIndexer\:
         resource: "../src/"
-        # These are assembled per run by CrawlerPipelineFactory around an
-        # immutable PipelineConfig, so they are not container services.
+        # Values, not services: the per-site config, DTOs, exceptions and the
+        # per-block / per-rule objects the steps create themselves.
         exclude:
             - "../src/Config/PipelineConfig.php"
             - "../src/Config/PipelineConfigHelper.php"
-            - "../src/Ports/RequestExecutor.php"
-            - "../src/Pipeline/CrawlerPipeline.php"
-            - "../src/Pipeline/Collector"
-            - "../src/Pipeline/Fetcher"
-            - "../src/Pipeline/Parser"
-            - "../src/Pipeline/Processor"
-            - "../src/Pipeline/Indexer"
+            - "../src/Dto"
+            - "../src/Exception"
+            - "../src/Pipeline/Parser/FieldSource.php"
+            - "../src/Pipeline/Parser/ContentScoringRule.php"
+            - "../src/Pipeline/RelevanceEvaluator/ScoreRuleConfig.php"
 
     # Shared by PipelineCommand (development) and StartPipelineMessageHandler
     # (customer project, via Schedule).
@@ -35,14 +33,39 @@ services:
         arguments:
             $schedule: "%atoolo.crawler.schedule%"
 
-    # Assembles the per-run pipeline graph around an immutable PipelineConfig.
+    # --- Pipeline -----------------------------------------------------------
+    # The steps are shared services; the per-site PipelineConfig is passed per
+    # call. Each step is wired by its interface, so a project (or the commons
+    # project) can decorate it:
+    #
+    #   #[AsDecorator(ParserInterface::class)]
+    #   final class MyParser implements ParserInterface { ... }
+    #
+    # Decorators of the same step stack (use decoration_priority for the order).
+
+    Atoolo\CrawlerIndexer\Pipeline\Collector\URLCollectorInterface: '@Atoolo\CrawlerIndexer\Pipeline\Collector\URLCollector'
+    Atoolo\CrawlerIndexer\Pipeline\Collector\RobotsTxtCheckerInterface: '@Atoolo\CrawlerIndexer\Pipeline\Collector\RobotsTxtChecker'
+    Atoolo\CrawlerIndexer\Pipeline\Fetcher\FetcherInterface: '@Atoolo\CrawlerIndexer\Pipeline\Fetcher\Fetcher'
+    Atoolo\CrawlerIndexer\Pipeline\Parser\ParserInterface: '@Atoolo\CrawlerIndexer\Pipeline\Parser\Parser'
+    Atoolo\CrawlerIndexer\Pipeline\RelevanceEvaluator\RelevanceEvaluatorInterface: '@Atoolo\CrawlerIndexer\Pipeline\RelevanceEvaluator\RelevanceEvaluator'
+    Atoolo\CrawlerIndexer\Pipeline\Processor\ProcessorInterface: '@Atoolo\CrawlerIndexer\Pipeline\Processor\Processor'
+    Atoolo\CrawlerIndexer\Pipeline\Indexer\IndexerInterface: '@Atoolo\CrawlerIndexer\Pipeline\Indexer\Indexer'
+    Atoolo\CrawlerIndexer\Ports\RequestExecutorInterface: '@Atoolo\CrawlerIndexer\Ports\RequestExecutor'
+
+    Atoolo\CrawlerIndexer\Ports\RequestExecutor:
+        arguments:
+            $retryStatusCodes: "%atoolo.crawler.retry_status_codes%"
+
+    Atoolo\CrawlerIndexer\Pipeline\Collector\URLNormalizer:
+        arguments:
+            $denyEndings: "%atoolo.crawler.deny_endings%"
+
+    Atoolo\CrawlerIndexer\Pipeline\Parser\Parser:
+        arguments:
+            $fieldExtractors: !tagged_iterator atoolo.crawler.field_extractor
+
     # $indexService/$progressHandler gehören eigentlich ins Kunden-FEDS bzw. Commons-FEDS
-    Atoolo\CrawlerIndexer\Pipeline\CrawlerPipelineFactory:
+    Atoolo\CrawlerIndexer\Pipeline\Indexer\Indexer:
         arguments:
             $indexService: "@atoolo_search.indexer.solr_index_service"
             $progressHandler: "@atoolo_search.indexer.internal_resource_progress_state"
-            $denyEndings: "%atoolo.crawler.deny_endings%"
-            $retryStatusCodes: "%atoolo.crawler.retry_status_codes%"
-            # The Parser is not a container service - it is built per site - so the tagged services
-            # are collected here, in the singleton factory, and handed down.
-            $fieldExtractors: !tagged_iterator atoolo.crawler.field_extractor

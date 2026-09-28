@@ -7,7 +7,6 @@ namespace Atoolo\CrawlerIndexer\Tests;
 use Atoolo\CrawlerIndexer\Application\PipelineRunner;
 use Atoolo\CrawlerIndexer\Config\PipelineConfigFactory;
 use Atoolo\CrawlerIndexer\Pipeline\CrawlerPipeline;
-use Atoolo\CrawlerIndexer\Pipeline\CrawlerPipelineFactory;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 
@@ -17,12 +16,10 @@ final class PipelineRunnerTest extends TestCase
         CrawlerPipeline $manager,
         LoggerInterface $logger,
     ): PipelineRunner {
-        $pipelineFactory = $this->createMock(CrawlerPipelineFactory::class);
-        $pipelineFactory->method('create')->willReturn($manager);
 
         return new PipelineRunner(
             new PipelineConfigFactory($this->createStub(LoggerInterface::class)),
-            $pipelineFactory,
+            $manager,
             $logger,
         );
     }
@@ -30,7 +27,7 @@ final class PipelineRunnerTest extends TestCase
     public function testRunWithValidSiteCallsStartCrawler(): void
     {
         $manager = $this->createMock(CrawlerPipeline::class);
-        $manager->expects($this->once())->method('startCrawler');
+        $manager->expects($this->once())->method('run');
 
         $logger = $this->createStub(LoggerInterface::class);
         $this->makeRunner($manager, $logger)->run(['sp_id' => 'site-1']);
@@ -39,7 +36,7 @@ final class PipelineRunnerTest extends TestCase
     public function testRunWithMissingSiteIdThrowsInvalidArgumentException(): void
     {
         $manager = $this->createMock(CrawlerPipeline::class);
-        $manager->expects($this->never())->method('startCrawler');
+        $manager->expects($this->never())->method('run');
 
         $logger = $this->createStub(LoggerInterface::class);
 
@@ -62,7 +59,7 @@ final class PipelineRunnerTest extends TestCase
     public function testRunRethrowsWithoutLoggingWhenCrawlerThrows(): void
     {
         $manager = $this->createMock(CrawlerPipeline::class);
-        $manager->method('startCrawler')->willThrowException(new \RuntimeException('crawl error'));
+        $manager->method('run')->willThrowException(new \RuntimeException('crawl error'));
 
         $logger = $this->createMock(LoggerInterface::class);
         $logger->expects($this->never())->method('error');

@@ -37,7 +37,6 @@ class CrawlerPipeline
         private readonly ProcessorInterface $processor,
         private readonly IndexerInterface $indexer,
         private readonly LoggerInterface $logger,
-        private readonly PipelineConfig $config,
     ) {}
 
     /**
@@ -50,8 +49,13 @@ class CrawlerPipeline
      *
      * Each step is handled explicitly (empty/error/logging) rather than
      * through a generic wrapper, because the steps are not interchangeable.
+     *
+     * The pipeline and its steps are shared services; everything site specific
+     * travels in $config. State the steps keep within one run (throttle
+     * timestamps, robots.txt cache) is cleared between runs by Symfony's
+     * `kernel.reset` (the steps implement ResetInterface).
      */
-    public function startCrawler(): void
+    public function run(PipelineConfig $config): void
     {
         // Mark the start of the run so the indexer's reported duration spans
         // the whole crawl (crawling + parsing + indexing), not just indexing.
@@ -59,13 +63,13 @@ class CrawlerPipeline
 
         /** @var array<int, ExtractedDataInterface> $rawDocuments */
         $rawDocuments = [];
-        foreach ($this->urlCollector->collect() as $htmlChunk) {
-            foreach ($this->parse($htmlChunk) as $document) {
+        foreach ($this->urlCollector->collect($config) as $htmlChunk) {
+            foreach ($this->parse($htmlChunk, $config) as $document) {
                 $rawDocuments[] = $document;
             }
         }
 
-        $this->index($this->process($rawDocuments));
+        $this->index($this->process($rawDocuments, $config), $config);
     }
 
     /**
@@ -73,13 +77,13 @@ class CrawlerPipeline
      *
      * @return \Generator<int, ExtractedDataInterface>
      */
-    private function parse(array $htmlChunk): \Generator
+    private function parse(array $htmlChunk, PipelineConfig $config): \Generator
     {
         // A generator only runs (and can fail) while iterated, so the guard
         // has to wrap the iteration itself. Per-page/per-document errors are
         // already handled inside the Parser; this catches step-level failures.
         try {
-            yield from $this->parser->extractData($htmlChunk, $this->config);
+            yield from $this->parser->extractData($htmlChunk, $config);
         } catch (\Throwable $e) {
             $this->logger->error('[Parser] Error: ' . $e->getMessage(), ['exception' => $e]);
             throw new StepExecution('Parser', $e->getMessage(), $e);
@@ -91,10 +95,10 @@ class CrawlerPipeline
      *
      * @return ExtractedDataInterface[]
      */
-    private function process(array $rawDocuments): array
+    private function process(array $rawDocuments, PipelineConfig $config): array
     {
         try {
-            $sanitized = $this->processor->sanitizeText($rawDocuments, $this->config);
+            $sanitized = $this->processor->sanitizeText($rawDocuments, $config);
             $documents = is_array($sanitized) ? $sanitized : iterator_to_array($sanitized);
         } catch (\Throwable $e) {
             $this->logger->error('[Processor] Error: ' . $e->getMessage(), ['exception' => $e]);
@@ -117,9 +121,9 @@ class CrawlerPipeline
      *
      * @throws IndexingErrorsException when the indexer reported errors
      */
-    private function index(array $processedDocuments): void
+    private function index(array $processedDocuments, PipelineConfig $config): void
     {
-        $indexerStatus = $this->indexer->doIndex($processedDocuments);
+        $indexerStatus = $this->indexer->doIndex($processedDocuments, $config);
         $statusLine = $indexerStatus->getStatusLine();
         $this->logger->info('Indexer statusLine: ' . $statusLine);
 

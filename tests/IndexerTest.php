@@ -20,6 +20,8 @@ use Solarium\QueryType\Update\Result as SolrUpdateResult;
 
 final class IndexerTest extends TestCase
 {
+    private PipelineConfig $config;
+
     private function makeConfig(array $overrides = []): PipelineConfig
     {
         $ctx = array_merge([
@@ -53,10 +55,11 @@ final class IndexerTest extends TestCase
         $defaultProgressHandler = $this->createStub(IndexerProgressHandler::class);
         $defaultProgressHandler->method('getStatus')->willReturn(IndexerStatus::empty());
 
+        $this->config = $this->makeConfig($configOverrides);
+
         return new Indexer(
             $progressHandler ?? $defaultProgressHandler,
             $indexService ?? $defaultIndexService,
-            $this->makeConfig($configOverrides),
             $logger ?? $this->createStub(LoggerInterface::class),
         );
     }
@@ -88,10 +91,11 @@ final class IndexerTest extends TestCase
         $progressHandler = $this->createStub(IndexerProgressHandler::class);
         $progressHandler->method('getStatus')->willReturn(IndexerStatus::empty());
 
+        $this->config = $this->makeConfig($configOverrides);
+
         return new Indexer(
             $progressHandler,
             $indexService,
-            $this->makeConfig($configOverrides),
             $this->createStub(LoggerInterface::class),
         );
     }
@@ -105,7 +109,7 @@ final class IndexerTest extends TestCase
             new ExtractedData('https://example.com/a', 'Same Title'),
             new ExtractedData('https://example.com/b', 'Same Title'), // same title/intro/date → duplicate
             new ExtractedData('https://example.com/c', 'Other Title'),
-        ]);
+        ], $this->config);
 
         $this->assertCount(2, $added);
     }
@@ -119,7 +123,7 @@ final class IndexerTest extends TestCase
         $indexer->doIndex([
             new ExtractedData($url, 'Document One'),
             new ExtractedData($url, 'Document Two'),
-        ]);
+        ], $this->config);
 
         $this->assertCount(2, $added);
 
@@ -138,7 +142,7 @@ final class IndexerTest extends TestCase
         $status = $indexer->doIndex([
             new ExtractedData('https://example.com/page1', 'Page 1'),
             new ExtractedData('https://example.com/page2', 'Page 2'),
-        ]);
+        ], $this->config);
 
         $this->assertInstanceOf(IndexerStatus::class, $status);
     }
@@ -151,7 +155,7 @@ final class IndexerTest extends TestCase
         $this->expectException(ThresholdNotMetException::class);
 
         // Processing 0 items → successCount=0 ≤ threshold=5 → ThresholdNotMetException
-        $indexer->doIndex([]);
+        $indexer->doIndex([], $this->config);
     }
 
     public function testDoIndexWithIntroTextIncludesIntroField(): void
@@ -171,16 +175,16 @@ final class IndexerTest extends TestCase
         $progressHandler = $this->createStub(IndexerProgressHandler::class);
         $progressHandler->method('getStatus')->willReturn(IndexerStatus::empty());
 
+        $this->config = $this->makeConfig(['sp_introText_present' => true]);
         $indexer = new Indexer(
             $progressHandler,
             $indexService,
-            $this->makeConfig(['sp_introText_present' => true]),
             $this->createStub(LoggerInterface::class),
         );
 
         $status = $indexer->doIndex([
             new ExtractedData('https://example.com/', 'Title', 'Intro text here'),
-        ]);
+        ], $this->config);
 
         $this->assertInstanceOf(IndexerStatus::class, $status);
     }
@@ -191,7 +195,7 @@ final class IndexerTest extends TestCase
 
         $status = $indexer->doIndex([
             new ExtractedData('https://example.com/', 'Title', null, new \DateTimeImmutable('2026-01-01')),
-        ]);
+        ], $this->config);
 
         $this->assertInstanceOf(IndexerStatus::class, $status);
     }
@@ -202,7 +206,7 @@ final class IndexerTest extends TestCase
 
         $status = $indexer->doIndex([
             new ExtractedData('https://example.com/', 'Title', null, new \DateTimeImmutable('2026-01-01T00:00:00Z')),
-        ]);
+        ], $this->config);
 
         $this->assertInstanceOf(IndexerStatus::class, $status);
     }
@@ -216,7 +220,7 @@ final class IndexerTest extends TestCase
 
         $status = $indexer->doIndex([
             new ExtractedData('https://example.com/', 'Title', null, new \DateTimeImmutable('2026-01-01')),
-        ]);
+        ], $this->config);
 
         $this->assertInstanceOf(IndexerStatus::class, $status);
     }
@@ -240,16 +244,16 @@ final class IndexerTest extends TestCase
         $progressHandler->method('getStatus')->willReturn(IndexerStatus::empty());
         $progressHandler->expects($this->once())->method('error');
 
+        $this->config = $this->makeConfig();
         $indexer = new Indexer(
             $progressHandler,
             $indexService,
-            $this->makeConfig(),
             $this->createStub(LoggerInterface::class),
         );
 
         $indexer->doIndex([
             new ExtractedData('https://example.com/', 'Title'),
-        ]);
+        ], $this->config);
     }
 
     public function testDoIndexRethrowsWhenSolrUpdateThrows(): void
@@ -261,10 +265,10 @@ final class IndexerTest extends TestCase
         $indexService = $this->createMock(SolrIndexService::class);
         $indexService->method('updater')->willReturn($updater);
 
+        $this->config = $this->makeConfig();
         $indexer = new Indexer(
             $this->createStub(IndexerProgressHandler::class),
             $indexService,
-            $this->makeConfig(),
             $this->createStub(LoggerInterface::class),
         );
 
@@ -273,7 +277,7 @@ final class IndexerTest extends TestCase
 
         $indexer->doIndex([
             new ExtractedData('https://example.com/', 'Title'),
-        ]);
+        ], $this->config);
     }
 
     public function testDoIndexCatchesItemExceptionAndContinues(): void
@@ -302,13 +306,14 @@ final class IndexerTest extends TestCase
         $logger = $this->createMock(LoggerInterface::class);
         $logger->expects($this->once())->method('error');
 
-        $indexer = new Indexer($progressHandler, $indexService, $this->makeConfig(), $logger);
+        $this->config = $this->makeConfig();
+        $indexer = new Indexer($progressHandler, $indexService, $logger);
 
         // Item 1 throws, item 2 succeeds
         $status = $indexer->doIndex([
             new ExtractedData('https://example.com/bad', 'Bad'),
             new ExtractedData('https://example.com/good', 'Good'),
-        ]);
+        ], $this->config);
 
         $this->assertInstanceOf(IndexerStatus::class, $status);
     }

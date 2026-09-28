@@ -13,10 +13,9 @@ use Symfony\Component\DomCrawler\Link;
 class URLCollector implements URLCollectorInterface
 {
     public function __construct(
-        private readonly PipelineConfig $config,
         private readonly URLNormalizer $urlNormalizer,
         private readonly LoggerInterface $logger,
-        private RobotsTxtCheckerInterface $robotsTxtChecker,
+        private readonly RobotsTxtCheckerInterface $robotsTxtChecker,
         private readonly FetcherInterface $fetcher,
     ) {}
 
@@ -37,18 +36,18 @@ class URLCollector implements URLCollectorInterface
      *
      * @return \Generator<int, array<int, array{url: string, html: string}>>
      */
-    public function collect(): \Generator
+    public function collect(PipelineConfig $config): \Generator
     {
         /** @var array<string, true> $visited */
         $visited = [];
         $documentCount = 0;
-        $maxDocuments = $this->config->maxTeaser();
+        $maxDocuments = $config->maxTeaser();
 
-        foreach ($this->fetchInChunks($this->config->forcedArticleUrls()) as $chunk) {
+        foreach ($this->fetchInChunks($config->forcedArticleUrls(), $config) as $chunk) {
             yield $chunk;
         }
 
-        foreach ($this->config->startUrls() as $start) {
+        foreach ($config->startUrls() as $start) {
             $maxDepth = (int) $start['extraction_depth'];
             /** @var list<string> $currentLevel */
             $currentLevel = [(string) $start['url']];
@@ -68,12 +67,12 @@ class URLCollector implements URLCollectorInterface
                 $nextLevel = [];
                 $discover = $depth <= $maxDepth;
 
-                foreach (array_chunk($level, max(1, $this->config->parallelRequests())) as $chunk) {
+                foreach (array_chunk($level, max(1, $config->parallelRequests())) as $chunk) {
                     if ($documentCount >= $maxDocuments) {
                         return;
                     }
 
-                    $fetched = $this->fetcher->fetchUrls($chunk, $this->config);
+                    $fetched = $this->fetcher->fetchUrls($chunk, $config);
                     if ([] === $fetched) {
                         continue;
                     }
@@ -82,7 +81,7 @@ class URLCollector implements URLCollectorInterface
                     $documentCount += count($fetched);
 
                     if ($discover) {
-                        $nextLevel = [...$nextLevel, ...$this->discoverLinks($fetched, $visited)];
+                        $nextLevel = [...$nextLevel, ...$this->discoverLinks($fetched, $visited, $config)];
                     }
                 }
 
@@ -136,11 +135,11 @@ class URLCollector implements URLCollectorInterface
      *
      * @return list<array<int, array{url: string, html: string}>>
      */
-    private function fetchInChunks(array $urls): array
+    private function fetchInChunks(array $urls, PipelineConfig $config): array
     {
         $chunks = [];
-        foreach (array_chunk($urls, max(1, $this->config->parallelRequests())) as $chunk) {
-            $fetched = $this->fetcher->fetchUrls($chunk, $this->config);
+        foreach (array_chunk($urls, max(1, $config->parallelRequests())) as $chunk) {
+            $fetched = $this->fetcher->fetchUrls($chunk, $config);
             if ([] !== $fetched) {
                 $chunks[] = $fetched;
             }
@@ -158,11 +157,11 @@ class URLCollector implements URLCollectorInterface
      *
      * @return list<string>
      */
-    private function discoverLinks(array $fetchedPages, array $visited): array
+    private function discoverLinks(array $fetchedPages, array $visited, PipelineConfig $config): array
     {
         $links = [];
         foreach ($fetchedPages as $page) {
-            foreach ($this->findHrefUrlsByCssSelector([$page], $page['url']) as $link) {
+            foreach ($this->findHrefUrlsByCssSelector([$page], $page['url'], $config) as $link) {
                 if (!isset($visited[$link])) {
                     $links[] = $link;
                 }
@@ -182,17 +181,17 @@ class URLCollector implements URLCollectorInterface
      *
      * @return list<string> A list of unique, filtered absolute URLs
      */
-    private function findHrefUrlsByCssSelector(array $htmlData, string $baseUrl): array
+    private function findHrefUrlsByCssSelector(array $htmlData, string $baseUrl, PipelineConfig $config): array
     {
         $urls = [];
         foreach ($htmlData as $html) {
             $crawler = new Crawler($html['html'], $baseUrl);
-            $pageUrls = $this->extractAbsoluteUrlsFromScope($crawler, $baseUrl);
+            $pageUrls = $this->extractAbsoluteUrlsFromScope($crawler, $baseUrl, $config);
 
-            array_push($urls, ...$this->urlNormalizer->normalize($pageUrls, $this->config));
+            array_push($urls, ...$this->urlNormalizer->normalize($pageUrls, $config));
 
-            if ($this->config->respectRobotsTxt()) {
-                $urls = $this->robotsTxtChecker->filterAllowed(array_values($urls), $this->config);
+            if ($config->respectRobotsTxt()) {
+                $urls = $this->robotsTxtChecker->filterAllowed(array_values($urls), $config);
             }
         }
 
@@ -212,10 +211,10 @@ class URLCollector implements URLCollectorInterface
      *
      * @return array<int, string> A list of extracted absolute URLs
      */
-    private function extractAbsoluteUrlsFromScope(Crawler $crawler, string $baseUrl): array
+    private function extractAbsoluteUrlsFromScope(Crawler $crawler, string $baseUrl, PipelineConfig $config): array
     {
         $found = $crawler
-            ->filter($this->config->linkSelector())
+            ->filter($config->linkSelector())
             ->each(function (Crawler $node) use ($baseUrl): ?string {
                 $domElement = $node->getNode(0);
 
