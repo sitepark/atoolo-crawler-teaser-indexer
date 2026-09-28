@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Atoolo\CrawlerIndexer\Pipeline\Parser;
 
+use Atoolo\CrawlerIndexer\Config\PipelineConfig;
 use Atoolo\CrawlerIndexer\Dto\ExtractedDataInterface;
 
 interface ParserInterface
@@ -18,5 +19,5 @@ interface ParserInterface
      *
      * @return \Generator<int, ExtractedDataInterface>
      */
-    public function extractData(array $htmlData): \Generator;
+    public function extractData(array $htmlData, PipelineConfig $config): \Generator;
 }

@@ -15,6 +15,7 @@ use Psr\Log\LoggerInterface;
 final class ProcessorTest extends TestCase
 {
     private Processor $processor;
+    private PipelineConfig $config;
 
     protected function setUp(): void
     {
@@ -25,8 +26,8 @@ final class ProcessorTest extends TestCase
 
         $logger = $this->createStub(LoggerInterface::class);
         $helper = new PipelineConfigHelper($ctx, $logger);
-        $config = new PipelineConfig($helper);
-        $this->processor = new Processor($logger, $config);
+        $this->config = new PipelineConfig($helper);
+        $this->processor = new Processor($logger);
     }
 
     public function testTextLetterProcessorRemovesTagsScriptsAndWhitespace(): void
@@ -50,7 +51,7 @@ final class ProcessorTest extends TestCase
             new ExtractedData('https://example.com/7', 'Red Text', 'Roter Intro Text', $datetime),
         ];
 
-        $result = $this->processor->sanitizeText($input);
+        $result = $this->processor->sanitizeText($input, $this->config);
         $this->assertEquals($expected, iterator_to_array($result));
     }
 
@@ -75,11 +76,12 @@ final class ProcessorTest extends TestCase
     {
         $logger = $this->createStub(LoggerInterface::class);
         $ctx = ['sp_title_max_chars' => 10, 'sp_introText_max_chars' => 10];
-        $processor = new Processor($logger, new PipelineConfig(new PipelineConfigHelper($ctx, $logger)));
+        $config = new PipelineConfig(new PipelineConfigHelper($ctx, $logger));
+        $processor = new Processor($logger);
 
         $result = iterator_to_array($processor->sanitizeText([
             new ExtractedData('https://example.com/page', $text, $text),
-        ]));
+        ], $config));
 
         $this->assertCount(1, $result);
         $this->assertSame($expected, $result[0]->getTitle());
@@ -94,7 +96,7 @@ final class ProcessorTest extends TestCase
             new ExtractedData('https://example.com/page', 'Title', null, $datetime),
         ];
 
-        $result = iterator_to_array($this->processor->sanitizeText($input));
+        $result = iterator_to_array($this->processor->sanitizeText($input, $this->config));
 
         $this->assertCount(1, $result);
         $this->assertNull($result[0]->getIntroText());
@@ -107,7 +109,7 @@ final class ProcessorTest extends TestCase
             new ExtractedData('https://example.com/page', 'Title'),
         ];
 
-        $result = iterator_to_array($this->processor->sanitizeText($input));
+        $result = iterator_to_array($this->processor->sanitizeText($input, $this->config));
 
         $this->assertCount(1, $result);
         $this->assertNull($result[0]->getDate());
@@ -119,7 +121,7 @@ final class ProcessorTest extends TestCase
             new ExtractedData('https://example.com/page', '<script>alert(1)</script>'),
         ];
 
-        $result = iterator_to_array($this->processor->sanitizeText($input));
+        $result = iterator_to_array($this->processor->sanitizeText($input, $this->config));
 
         $this->assertSame([], $result);
     }
@@ -132,13 +134,13 @@ final class ProcessorTest extends TestCase
         $ctx = ['sp_title_max_chars' => 120];
         $helper = new PipelineConfigHelper($ctx, $logger);
         $config = new PipelineConfig($helper);
-        $processor = new Processor($logger, $config);
+        $processor = new Processor($logger);
 
         $input = [
             new ExtractedData('https://example.com/page', '   '),
         ];
 
-        $result = iterator_to_array($processor->sanitizeText($input));
+        $result = iterator_to_array($processor->sanitizeText($input, $config));
 
         $this->assertSame([], $result);
     }
@@ -149,7 +151,7 @@ final class ProcessorTest extends TestCase
             new ExtractedData('https://example.com/page', 'Title', ''),
         ];
 
-        $result = iterator_to_array($this->processor->sanitizeText($input));
+        $result = iterator_to_array($this->processor->sanitizeText($input, $this->config));
 
         $this->assertCount(1, $result);
         $this->assertNull($result[0]->getIntroText());
@@ -163,13 +165,30 @@ final class ProcessorTest extends TestCase
 
         $helper = new PipelineConfigHelper($ctx, $logger);
         $config = new PipelineConfig($helper);
-        $processor = new Processor($logger, $config);
+        $processor = new Processor($logger);
 
         $throwingItem = $this->createMock(ExtractedDataInterface::class);
         $throwingItem->method('getTitle')->willThrowException(new \RuntimeException('unexpected'));
 
-        $result = iterator_to_array($processor->sanitizeText([$throwingItem]));
+        $result = iterator_to_array($processor->sanitizeText([$throwingItem], $config));
 
         $this->assertSame([], $result);
+    }
+
+    /**
+     * The Processor is shared across sites, so each call truncates with the
+     * maxChars of the config it is given.
+     */
+    public function testOneProcessorServesSitesWithDifferentConfigs(): void
+    {
+        $logger = $this->createStub(LoggerInterface::class);
+        $processor = new Processor($logger);
+        $input = [new ExtractedData('https://example.com/', str_repeat('a', 20))];
+
+        $short = new PipelineConfig(new PipelineConfigHelper(['sp_title_max_chars' => 5], $logger));
+        $long = new PipelineConfig(new PipelineConfigHelper(['sp_title_max_chars' => 50], $logger));
+
+        $this->assertSame('aaaa…', iterator_to_array($processor->sanitizeText($input, $short))[0]->getTitle());
+        $this->assertSame(str_repeat('a', 20), iterator_to_array($processor->sanitizeText($input, $long))[0]->getTitle());
     }
 }

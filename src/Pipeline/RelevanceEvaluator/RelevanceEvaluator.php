@@ -9,10 +9,6 @@ use Atoolo\CrawlerIndexer\Config\PipelineConfig;
 
 final class RelevanceEvaluator implements RelevanceEvaluatorInterface
 {
-    public function __construct(
-        private readonly PipelineConfig $config,
-    ) {}
-
     /**
      * Evaluates whether a document is relevant based on its content (HTML, title, intro)
      * and the defined scoring configuration.
@@ -25,10 +21,10 @@ final class RelevanceEvaluator implements RelevanceEvaluatorInterface
      * datetime?: \DateTimeImmutable
      * } $relevanceData
      */
-    public function relevant(array $relevanceData): bool
+    public function relevant(array $relevanceData, PipelineConfig $config): bool
     {
-        $scoringCfg = $this->config->contentScoringConfig();
-        $forcedArticleUrls = $this->config->forcedArticleUrls();
+        $scoringCfg = $config->contentScoringConfig();
+        $forcedArticleUrls = $config->forcedArticleUrls();
 
         if (in_array($relevanceData['url'], $forcedArticleUrls, true)) {
             return true;

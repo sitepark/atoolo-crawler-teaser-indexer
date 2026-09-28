@@ -15,6 +15,7 @@ use Psr\Log\LoggerInterface;
 final class ParserTest extends TestCase
 {
     private Parser $parser;
+    private PipelineConfig $config;
 
     protected function setUp(): void
     {
@@ -69,12 +70,12 @@ final class ParserTest extends TestCase
         $ctx = array_merge($defaults, $ctxOverrides);
         $logger = $this->createStub(LoggerInterface::class);
         $helper = new PipelineConfigHelper($ctx, $logger);
-        $config = new PipelineConfig($helper);
+        $this->config = new PipelineConfig($helper);
 
         $evaluator = $this->createStub(RelevanceEvaluatorInterface::class);
         $evaluator->method('relevant')->willReturn($evaluatorReturns);
 
-        return new Parser($logger, $config, $evaluator);
+        return new Parser($logger, $evaluator);
     }
 
     /**
@@ -119,7 +120,7 @@ HTML;
 
         $result = $this->normalizeDatetime(iterator_to_array($this->parser->extractData([
             ['url' => 'https://example.com/page1', 'html' => $html],
-        ]), false));
+        ], $this->config), false));
 
         $this->assertSame([
             [
@@ -145,7 +146,7 @@ HTML;
 
         $result = $this->normalizeDatetime(iterator_to_array($this->parser->extractData([
             ['url' => 'https://example.com/page2', 'html' => $html],
-        ]), false));
+        ], $this->config), false));
 
         $this->assertSame([
             [
@@ -162,7 +163,7 @@ HTML;
         $html = '<html><body><p>No title here</p></body></html>';
         $result = iterator_to_array($this->parser->extractData([
             ['url' => 'https://example.com/page3', 'html' => $html],
-        ]), false);
+        ], $this->config), false);
         $this->assertSame([], $result);
     }
 
@@ -170,7 +171,7 @@ HTML;
     {
         $result = iterator_to_array($this->parser->extractData([
             ['url' => 'https://example.com/empty', 'html' => ''],
-        ]), false);
+        ], $this->config), false);
         $this->assertSame([], $result);
     }
 
@@ -182,7 +183,7 @@ HTML;
         $result = iterator_to_array($this->parser->extractData([
             ['url' => 'https://example.com/1', 'html' => $html1],
             ['url' => 'https://example.com/2', 'html' => $html2],
-        ]), false);
+        ], $this->config), false);
 
         $this->assertCount(2, $result);
         $this->assertSame('First', $result[0]->getTitle());
@@ -207,7 +208,7 @@ HTML;
 
         $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/overview', 'html' => $html],
-        ]), false);
+        ], $this->config), false);
 
         $this->assertCount(3, $result);
         $this->assertSame(
@@ -240,7 +241,7 @@ HTML;
 
         $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/ideas', 'html' => $html],
-        ]), false);
+        ], $this->config), false);
 
         $this->assertCount(2, $result);
         $this->assertSame('Idea One', $result[0]->getTitle());
@@ -261,7 +262,7 @@ HTML;
 
         $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]), false);
+        ], $this->config), false);
 
         $this->assertCount(1, $result);
         $this->assertSame('Single Page', $result[0]->getTitle());
@@ -303,7 +304,7 @@ HTML;
 
         $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/overview', 'html' => $html],
-        ]), false);
+        ], $this->config), false);
 
         $this->assertCount(3, $result);
         $this->assertSame(
@@ -344,7 +345,7 @@ HTML;
 
         $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/overview', 'html' => $html],
-        ]), false);
+        ], $this->config), false);
 
         // The wrapper (portlet-content-container) is an ancestor of both
         // teasers and is dropped; only the two innermost teasers remain.
@@ -370,7 +371,7 @@ HTML;
 
         $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/mixed', 'html' => $html],
-        ]), false);
+        ], $this->config), false);
 
         $this->assertCount(2, $result);
         $this->assertSame(
@@ -388,7 +389,7 @@ HTML;
 
         $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]), false);
+        ], $this->config), false);
 
         $this->assertSame([], $result);
     }
@@ -402,7 +403,7 @@ HTML;
 
         $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]), false);
+        ], $this->config), false);
 
         $this->assertSame('PREFIX: News', $result[0]->getTitle());
     }
@@ -416,7 +417,7 @@ HTML;
 
         $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]), false);
+        ], $this->config), false);
 
         $this->assertCount(1, $result);
         $this->assertNull($result[0]->getIntroText());
@@ -432,7 +433,7 @@ HTML;
 
         $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]), false);
+        ], $this->config), false);
 
         $this->assertSame('Lead text', $result[0]->getIntroText());
     }
@@ -448,7 +449,7 @@ HTML;
 
         $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]), false);
+        ], $this->config), false);
 
         $this->assertSame([], $result);
     }
@@ -464,7 +465,7 @@ HTML;
 
         $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]), false);
+        ], $this->config), false);
 
         $this->assertCount(1, $result);
         $this->assertNull($result[0]->getIntroText());
@@ -486,7 +487,7 @@ HTML;
 
         $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]), false);
+        ], $this->config), false);
 
         $this->assertSame('OG intro text', $result[0]->getIntroText());
     }
@@ -500,7 +501,7 @@ HTML;
 
         $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]), false);
+        ], $this->config), false);
 
         $this->assertCount(1, $result);
         $this->assertNull($result[0]->getDate());
@@ -517,7 +518,7 @@ HTML;
 
         $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]), false);
+        ], $this->config), false);
 
         $this->assertSame([], $result);
     }
@@ -533,7 +534,7 @@ HTML;
 
         $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]), false);
+        ], $this->config), false);
 
         $this->assertCount(1, $result);
         $this->assertNull($result[0]->getDate());
@@ -555,7 +556,7 @@ HTML;
 
         $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]), false);
+        ], $this->config), false);
 
         $this->assertCount(1, $result);
         $this->assertInstanceOf(\DateTimeImmutable::class, $result[0]->getDate());
@@ -580,7 +581,7 @@ HTML;
 
         $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]), false);
+        ], $this->config), false);
 
         $this->assertCount(1, $result);
         $this->assertInstanceOf(\DateTimeImmutable::class, $result[0]->getDate());
@@ -598,7 +599,7 @@ HTML;
 
         $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]), false);
+        ], $this->config), false);
 
         $this->assertCount(1, $result);
         $this->assertSame('2026-07-04', $result[0]->getDate()->format('Y-m-d'));
@@ -616,7 +617,7 @@ HTML;
 
         $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]), false);
+        ], $this->config), false);
 
         $this->assertCount(1, $result);
         $this->assertSame('2026-01-14', $result[0]->getDate()->format('Y-m-d'));
@@ -636,7 +637,7 @@ HTML;
 
         $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]), false);
+        ], $this->config), false);
 
         $this->assertCount(1, $result);
         $this->assertSame('2026-01-14', $result[0]->getDate()->format('Y-m-d'));
@@ -656,7 +657,7 @@ HTML;
 
         $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]), false);
+        ], $this->config), false);
 
         $this->assertSame([], $result);
     }
@@ -671,7 +672,7 @@ HTML;
 
         $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]), false);
+        ], $this->config), false);
 
         $this->assertCount(1, $result);
         $this->assertSame('Title', $result[0]->getTitle());
@@ -692,7 +693,7 @@ HTML;
 
         $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]), false);
+        ], $this->config), false);
 
         $this->assertCount(1, $result);
         $this->assertNull($result[0]->getIntroText());
@@ -710,7 +711,7 @@ HTML;
 
         $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]), false);
+        ], $this->config), false);
 
         $this->assertCount(1, $result);
         $this->assertNull($result[0]->getDate());
@@ -729,7 +730,7 @@ HTML;
 
         $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]), false);
+        ], $this->config), false);
 
         $this->assertCount(1, $result);
         $this->assertNull($result[0]->getDate());
@@ -761,11 +762,11 @@ HTML;
             'sp_content_scoring_active' => true,
         ]);
         $helper = new PipelineConfigHelper($ctx, $logger);
-        $config = new PipelineConfig($helper);
-        $parser = new Parser($logger, $config, $evaluator);
+        $this->config = new PipelineConfig($helper);
+        $parser = new Parser($logger, $evaluator);
 
         $html = '<html><body><h1>Title</h1></body></html>';
-        $result = iterator_to_array($parser->extractData([['url' => 'https://example.com/', 'html' => $html]]), false);
+        $result = iterator_to_array($parser->extractData([['url' => 'https://example.com/', 'html' => $html]], $this->config), false);
 
         $this->assertSame([], $result);
     }
@@ -780,8 +781,37 @@ HTML;
         ]);
         $html = '<html><body><h1>Title</h1><div class="date">@invalid</div></body></html>';
 
-        $result = iterator_to_array($parser->extractData([['url' => 'https://example.com/', 'html' => $html]]), false);
+        $result = iterator_to_array($parser->extractData([['url' => 'https://example.com/', 'html' => $html]], $this->config), false);
 
         $this->assertSame([], $result);
+    }
+
+    /**
+     * The Parser is shared across sites, so the config passed per call - not
+     * the one of an earlier call - decides how a page is parsed.
+     */
+    public function testOneParserServesSitesWithDifferentConfigs(): void
+    {
+        $logger = $this->createStub(LoggerInterface::class);
+        $evaluator = $this->createStub(RelevanceEvaluatorInterface::class);
+        $evaluator->method('relevant')->willReturn(true);
+        $parser = new Parser($logger, $evaluator);
+
+        $siteA = new PipelineConfig(new PipelineConfigHelper([
+            'sp_title_css' => ['h1'],
+            'sp_title_prefix' => 'A: ',
+        ], $logger));
+        $siteB = new PipelineConfig(new PipelineConfigHelper([
+            'sp_title_css' => ['h2'],
+            'sp_title_prefix' => 'B: ',
+        ], $logger));
+
+        $page = [['url' => 'https://example.com/', 'html' => '<html><body><h1>Eins</h1><h2>Zwei</h2></body></html>']];
+
+        $resultA = iterator_to_array($parser->extractData($page, $siteA), false);
+        $resultB = iterator_to_array($parser->extractData($page, $siteB), false);
+
+        $this->assertSame('A: Eins', $resultA[0]->getTitle());
+        $this->assertSame('B: Zwei', $resultB[0]->getTitle());
     }
 }

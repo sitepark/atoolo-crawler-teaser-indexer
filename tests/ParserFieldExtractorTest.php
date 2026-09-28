@@ -21,6 +21,8 @@ use Psr\Log\LoggerInterface;
  */
 final class ParserFieldExtractorTest extends TestCase
 {
+    private PipelineConfig $config;
+
     private const HTML = <<<'HTML'
         <html>
           <head><meta property="og:title" content="Meta Titel"></head>
@@ -64,12 +66,12 @@ final class ParserFieldExtractorTest extends TestCase
         ], $ctxOverrides);
 
         $logger ??= $this->createStub(LoggerInterface::class);
-        $config = new PipelineConfig(new PipelineConfigHelper($ctx, $logger));
+        $this->config = new PipelineConfig(new PipelineConfigHelper($ctx, $logger));
 
         $evaluator = $this->createStub(RelevanceEvaluatorInterface::class);
         $evaluator->method('relevant')->willReturn(true);
 
-        return new Parser($logger, $config, $evaluator, $fieldExtractors);
+        return new Parser($logger, $evaluator, $fieldExtractors);
     }
 
     /**
@@ -85,7 +87,7 @@ final class ParserFieldExtractorTest extends TestCase
         $result = iterator_to_array(
             $this->makeParser($fieldExtractors, $ctxOverrides, $logger)->extractData([
                 ['url' => 'https://example.com/seite', 'html' => $html],
-            ]),
+            ], $this->config),
             false,
         );
 
@@ -215,7 +217,7 @@ final class ParserFieldExtractorTest extends TestCase
         $parser = $this->makeParser([$extractor], ['sp_id' => 'site-a']);
         iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => self::HTML],
-        ]), false);
+        ], $this->config), false);
 
         $this->assertInstanceOf(PipelineConfig::class, $seen);
         $this->assertSame('site-a', $seen->id());
@@ -503,7 +505,7 @@ final class ParserFieldExtractorTest extends TestCase
                 'sp_title_opengraph' => [],
                 'sp_introText_present' => false,
                 'sp_datetime_present' => false,
-            ])->extractData([['url' => 'https://example.com/', 'html' => $html]]),
+            ])->extractData([['url' => 'https://example.com/', 'html' => $html]], $this->config),
             false,
         );
 

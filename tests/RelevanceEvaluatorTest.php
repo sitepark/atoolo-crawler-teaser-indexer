@@ -12,14 +12,16 @@ use Psr\Log\LoggerInterface;
 
 final class RelevanceEvaluatorTest extends TestCase
 {
+    private PipelineConfig $config;
+
     private function makeEvaluator(array $config): RelevanceEvaluator
     {
         $logger = $this->createStub(LoggerInterface::class);
         $ctx = $config;
         $helper = new PipelineConfigHelper($ctx, $logger);
-        $crawlerConfig = new PipelineConfig($helper);
+        $this->config = new PipelineConfig($helper);
 
-        return new RelevanceEvaluator($crawlerConfig);
+        return new RelevanceEvaluator();
     }
 
     private function baseConfig(array $overrides = []): array
@@ -42,7 +44,7 @@ final class RelevanceEvaluatorTest extends TestCase
         $result = $evaluator->relevant([
             'url' => 'https://example.com/forced',
             'title' => 'Test',
-        ]);
+        ], $this->config);
 
         $this->assertTrue($result);
     }
@@ -57,7 +59,7 @@ final class RelevanceEvaluatorTest extends TestCase
         $result = $evaluator->relevant([
             'url' => 'https://example.com/page',
             'title' => 'Test',
-        ]);
+        ], $this->config);
 
         $this->assertFalse($result);
     }
@@ -74,7 +76,7 @@ final class RelevanceEvaluatorTest extends TestCase
         $result = $evaluator->relevant([
             'url' => 'https://example.com/page',
             'title' => 'Breaking News',
-        ]);
+        ], $this->config);
 
         $this->assertTrue($result);
     }
@@ -91,7 +93,7 @@ final class RelevanceEvaluatorTest extends TestCase
         $result = $evaluator->relevant([
             'url' => 'https://example.com/page',
             'title' => 'Product Page',
-        ]);
+        ], $this->config);
 
         $this->assertFalse($result);
     }
@@ -111,7 +113,7 @@ final class RelevanceEvaluatorTest extends TestCase
         $result = $evaluator->relevant([
             'url' => 'https://example.com/page',
             'title' => 'Sponsored article',
-        ]);
+        ], $this->config);
 
         $this->assertFalse($result);
     }
@@ -129,7 +131,7 @@ final class RelevanceEvaluatorTest extends TestCase
         $result = $evaluator->relevant([
             'url' => 'https://example.com/page#section',
             'title' => 'Breaking News',
-        ]);
+        ], $this->config);
 
         $this->assertFalse($result);
     }
@@ -147,7 +149,7 @@ final class RelevanceEvaluatorTest extends TestCase
         $result = $evaluator->relevant([
             'url' => 'https://example.com/page#section',
             'title' => 'Breaking News',
-        ]);
+        ], $this->config);
 
         $this->assertTrue($result);
     }
@@ -164,7 +166,7 @@ final class RelevanceEvaluatorTest extends TestCase
         $result = $evaluator->relevant([
             'url' => 'https://example.com/page',
             'title' => 'breaking news',
-        ]);
+        ], $this->config);
 
         $this->assertTrue($result);
     }
@@ -182,7 +184,7 @@ final class RelevanceEvaluatorTest extends TestCase
             'url' => 'https://example.com/page',
             'title' => 'Generic Title',
             'introText' => 'This contains the keyword here',
-        ]);
+        ], $this->config);
 
         $this->assertTrue($result);
     }
@@ -204,7 +206,7 @@ final class RelevanceEvaluatorTest extends TestCase
             'url' => 'https://example.com/page',
             'title' => 'Test',
             'introText' => 'Short.',
-        ]);
+        ], $this->config);
 
         $this->assertFalse($result);
     }
@@ -229,7 +231,7 @@ final class RelevanceEvaluatorTest extends TestCase
             'url' => 'https://example.com/page',
             'title' => 'article',
             'introText' => 'This is a long enough text that exceeds the threshold.',
-        ]);
+        ], $this->config);
 
         $this->assertTrue($result);
     }
@@ -249,7 +251,7 @@ final class RelevanceEvaluatorTest extends TestCase
             'url' => 'https://example.com/page',
             'title' => 'Generic Title',
             'html' => $html,
-        ]);
+        ], $this->config);
 
         $this->assertTrue($result);
     }
@@ -266,7 +268,7 @@ final class RelevanceEvaluatorTest extends TestCase
         $result = $evaluator->relevant([
             'url' => 'https://example.com/page',
             'title' => 'Breaking News',
-        ]);
+        ], $this->config);
 
         $this->assertTrue($result);
     }

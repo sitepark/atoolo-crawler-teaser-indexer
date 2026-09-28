@@ -19,6 +19,7 @@ declare(strict_types=1);
 
 namespace Atoolo\CrawlerIndexer\Pipeline;
 
+use Atoolo\CrawlerIndexer\Config\PipelineConfig;
 use Atoolo\CrawlerIndexer\Dto\ExtractedDataInterface;
 use Atoolo\CrawlerIndexer\Exception\IndexingErrorsException;
 use Atoolo\CrawlerIndexer\Exception\StepExecution;
@@ -36,6 +37,7 @@ class CrawlerPipeline
         private readonly ProcessorInterface $processor,
         private readonly IndexerInterface $indexer,
         private readonly LoggerInterface $logger,
+        private readonly PipelineConfig $config,
     ) {}
 
     /**
@@ -77,7 +79,7 @@ class CrawlerPipeline
         // has to wrap the iteration itself. Per-page/per-document errors are
         // already handled inside the Parser; this catches step-level failures.
         try {
-            yield from $this->parser->extractData($htmlChunk);
+            yield from $this->parser->extractData($htmlChunk, $this->config);
         } catch (\Throwable $e) {
             $this->logger->error('[Parser] Error: ' . $e->getMessage(), ['exception' => $e]);
             throw new StepExecution('Parser', $e->getMessage(), $e);
@@ -92,7 +94,7 @@ class CrawlerPipeline
     private function process(array $rawDocuments): array
     {
         try {
-            $sanitized = $this->processor->sanitizeText($rawDocuments);
+            $sanitized = $this->processor->sanitizeText($rawDocuments, $this->config);
             $documents = is_array($sanitized) ? $sanitized : iterator_to_array($sanitized);
         } catch (\Throwable $e) {
             $this->logger->error('[Processor] Error: ' . $e->getMessage(), ['exception' => $e]);

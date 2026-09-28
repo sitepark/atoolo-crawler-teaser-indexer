@@ -26,7 +26,6 @@ class Processor implements ProcessorInterface
 {
     public function __construct(
         private LoggerInterface $logger,
-        private readonly PipelineConfig $config,
     ) {}
 
     /**
@@ -34,12 +33,12 @@ class Processor implements ProcessorInterface
      *
      * @return \Generator<int, ExtractedDataInterface>
      */
-    public function sanitizeText(iterable $rawextractedData): iterable
+    public function sanitizeText(iterable $rawextractedData, PipelineConfig $config): iterable
     {
         foreach ($rawextractedData as $item) {
             try {
                 $cleanTitle = $this->cleanString($item->getTitle());
-                $titleConfig = $this->config->titleConfig();
+                $titleConfig = $config->titleConfig();
                 $truncatedTitle = $this->truncate($cleanTitle, $titleConfig->maxChars);
 
                 if ('' === $truncatedTitle) {
@@ -49,7 +48,7 @@ class Processor implements ProcessorInterface
                 $cleanIntroText = null;
                 $rawIntroText = $item->getIntroText();
                 if (null !== $rawIntroText && '' !== $rawIntroText) {
-                    $introTextConfig = $this->config->introTextConfig();
+                    $introTextConfig = $config->introTextConfig();
                     $cleanIntroText = $this->truncate($this->cleanString($rawIntroText), $introTextConfig->maxChars);
                 }
 

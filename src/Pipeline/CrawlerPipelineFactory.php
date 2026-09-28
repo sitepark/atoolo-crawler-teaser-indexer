@@ -70,9 +70,9 @@ class CrawlerPipelineFactory
             $fetcher,
         );
 
-        $relevanceEvaluator = new RelevanceEvaluator($config);
-        $parser = new Parser($this->logger, $config, $relevanceEvaluator, $this->fieldExtractors);
-        $processor = new Processor($this->logger, $config);
+        $relevanceEvaluator = new RelevanceEvaluator();
+        $parser = new Parser($this->logger, $relevanceEvaluator, $this->fieldExtractors);
+        $processor = new Processor($this->logger);
         $indexer = new Indexer($this->progressHandler, $this->indexService, $config, $this->logger);
 
         return new CrawlerPipeline(
@@ -81,6 +81,7 @@ class CrawlerPipelineFactory
             $processor,
             $indexer,
             $this->logger,
+            $config,
         );
     }
 }

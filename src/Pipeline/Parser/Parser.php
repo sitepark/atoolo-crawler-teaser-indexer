@@ -21,7 +21,6 @@ class Parser implements ParserInterface
      */
     public function __construct(
         private readonly LoggerInterface $logger,
-        private readonly PipelineConfig $config,
         private readonly RelevanceEvaluatorInterface $relevanceEvaluator,
         private readonly iterable $fieldExtractors = [],
     ) {}
@@ -38,7 +37,7 @@ class Parser implements ParserInterface
      *
      * @return \Generator<int, ExtractedDataInterface>
      */
-    public function extractData(array $htmlData): \Generator
+    public function extractData(array $htmlData, PipelineConfig $config): \Generator
     {
         foreach ($htmlData as $item) {
             $html = $item['html'];
@@ -62,12 +61,14 @@ class Parser implements ParserInterface
             foreach (
                 $this->resolveBlocks(
                     $crawler,
+                    $config,
                 ) as $crawlerBlock
             ) {
                 try {
                     $extracted = $this->extractFromBlock(
                         $crawlerBlock,
                         $item['url'],
+                        $config,
                     );
                     if (null !== $extracted) {
                         yield $extracted;
@@ -96,9 +97,9 @@ class Parser implements ParserInterface
      *
      * @return list<Crawler>
      */
-    private function resolveBlocks(Crawler $crawler): array
+    private function resolveBlocks(Crawler $crawler, PipelineConfig $config): array
     {
-        $splitSelectors = $this->config->splitHtmlDocumentSelector();
+        $splitSelectors = $config->splitHtmlDocumentSelector();
         if (null === $splitSelectors || [] === $splitSelectors) {
             return [$crawler];
         }
@@ -162,11 +163,12 @@ class Parser implements ParserInterface
     private function extractFromBlock(
         Crawler $crawler,
         string $url,
+        PipelineConfig $config,
     ): ?ExtractedDataInterface {
-        $titleConfig = $this->config->titleConfig();
-        $introConfig = $this->config->introTextConfig();
-        $dateTimeConfig = $this->config->dateTimeConfig();
-        $scoringActive = $this->config->contentScoringActive();
+        $titleConfig = $config->titleConfig();
+        $introConfig = $config->introTextConfig();
+        $dateTimeConfig = $config->dateTimeConfig();
+        $scoringActive = $config->contentScoringActive();
 
         // Bounded to this block: extractors never see the Crawler, so no
         // reference to the page's parsed DOM can outlive the loop iteration.
@@ -174,7 +176,7 @@ class Parser implements ParserInterface
 
         $title = '';
         if ($titleConfig->present) {
-            $title = $this->extractString(FieldExtractorInterface::FIELD_TITLE, $source)
+            $title = $this->extractString(FieldExtractorInterface::FIELD_TITLE, $source, $config)
                 ?? $this->extractTitleText($source, $titleConfig);
             if (null === $title || '' === $title) {
                 $this->logger->debug(
@@ -192,7 +194,7 @@ class Parser implements ParserInterface
 
         $introText = null;
         if ($introConfig->present) {
-            $introText = $this->extractString(FieldExtractorInterface::FIELD_INTRO_TEXT, $source)
+            $introText = $this->extractString(FieldExtractorInterface::FIELD_INTRO_TEXT, $source, $config)
                 ?? $this->extractIntroductionText($source, $introConfig);
             if (null === $introText && $introConfig->requiredField) {
                 return null;
@@ -201,7 +203,7 @@ class Parser implements ParserInterface
 
         $dateTime = null;
         if ($dateTimeConfig->present) {
-            $dateTime = $this->extractCustomDateTime($source)
+            $dateTime = $this->extractCustomDateTime($source, $config)
                 ?? $this->extractDateTime($source, $dateTimeConfig);
             if (null === $dateTime && $dateTimeConfig->requiredField) {
                 return null;
@@ -209,14 +211,14 @@ class Parser implements ParserInterface
         }
 
         if ($scoringActive) {
-            $relevanceContentSelector = $this->config->relevanceContentSelector();
+            $relevanceContentSelector = $config->relevanceContentSelector();
             $relevanceData = [
                 'url' => $url,
                 'title' => $title,
                 'introText' => $introText,
                 'html' => $relevanceContentSelector ? ($source->text($relevanceContentSelector) ?? $crawler->outerHtml()) : $crawler->outerHtml(),
             ];
-            $keepDocument = $this->relevanceEvaluator->relevant($relevanceData);
+            $keepDocument = $this->relevanceEvaluator->relevant($relevanceData, $config);
             if (!$keepDocument) {
                 $this->logger->debug(
                     'Document not Relevant',
@@ -242,7 +244,7 @@ class Parser implements ParserInterface
      * abort the block: a broken project extractor should degrade one field, not
      * drop the document.
      */
-    private function extractCustom(string $field, FieldSource $source): mixed
+    private function extractCustom(string $field, FieldSource $source, PipelineConfig $config): mixed
     {
         foreach ($this->fieldExtractors as $extractor) {
             if (!$extractor->supports($field)) {
@@ -250,7 +252,7 @@ class Parser implements ParserInterface
             }
 
             try {
-                $value = $extractor->extract($field, $source, $this->config);
+                $value = $extractor->extract($field, $source, $config);
             } catch (\Throwable $e) {
                 $this->logger->error('[Parser] Field extractor failed, falling back', [
                     'field' => $field,
@@ -273,9 +275,9 @@ class Parser implements ParserInterface
      * violation by the extractor, so it is logged and the built-in extraction
      * takes over.
      */
-    private function extractString(string $field, FieldSource $source): ?string
+    private function extractString(string $field, FieldSource $source, PipelineConfig $config): ?string
     {
-        $value = $this->extractCustom($field, $source);
+        $value = $this->extractCustom($field, $source, $config);
 
         if (null === $value) {
             return null;
@@ -299,9 +301,9 @@ class Parser implements ParserInterface
      * violation by the extractor, so it is logged and the built-in extraction
      * takes over.
      */
-    private function extractCustomDateTime(FieldSource $source): ?\DateTimeImmutable
+    private function extractCustomDateTime(FieldSource $source, PipelineConfig $config): ?\DateTimeImmutable
     {
-        $value = $this->extractCustom(FieldExtractorInterface::FIELD_DATETIME, $source);
+        $value = $this->extractCustom(FieldExtractorInterface::FIELD_DATETIME, $source, $config);
 
         if (null === $value) {
             return null;

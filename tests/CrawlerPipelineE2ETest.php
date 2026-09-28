@@ -103,6 +103,7 @@ final class CrawlerPipelineE2ETest extends TestCase
             $processor,
             $indexer,
             $logger,
+            $this->createConfig($logger),
         );
     }
 
@@ -301,7 +302,7 @@ final class CrawlerPipelineE2ETest extends TestCase
         $parser = $this->createStub(Parser::class);
         $parser->method('extractData')->willReturnCallback(fn(): \Generator => $this->toGenerator([new ExtractedData($this->url1, 'Title 1')]));
 
-        $processor = new Processor($logger, $config);
+        $processor = new Processor($logger);
 
         $indexer = $this->createMock(Indexer::class);
         $indexer->expects($this->once())
