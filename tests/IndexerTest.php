@@ -114,6 +114,25 @@ final class IndexerTest extends TestCase
         $this->assertCount(2, $added);
     }
 
+    /**
+     * The pipeline hands over its lazy chain, not an array.
+     */
+    public function testIndexesDocumentsFromAGenerator(): void
+    {
+        $added = [];
+        $indexer = $this->makeCapturingIndexer($added);
+
+        $documents = (static function (): \Generator {
+            yield new ExtractedData('https://example.com/a', 'Same Title');
+            yield new ExtractedData('https://example.com/b', 'Same Title');
+            yield new ExtractedData('https://example.com/c', 'Other Title');
+        })();
+
+        $indexer->doIndex($documents, $this->config);
+
+        $this->assertCount(2, $added);
+    }
+
     public function testMultipleDocumentsFromSameUrlGetDistinctGeneratedIds(): void
     {
         $added = [];

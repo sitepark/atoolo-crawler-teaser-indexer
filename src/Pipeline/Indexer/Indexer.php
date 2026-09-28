@@ -40,15 +40,17 @@ class Indexer implements \Atoolo\Search\Indexer, IndexerInterface
     /**
      * Main indexing logic: transforms items into Solr documents.
      *
-     * @param ExtractedDataInterface[] $finalDocuments
+     * @param iterable<int, ExtractedDataInterface> $finalDocuments
      */
-    public function doIndex(array $finalDocuments, PipelineConfig $config): IndexerStatus
+    public function doIndex(iterable $finalDocuments, PipelineConfig $config): IndexerStatus
     {
         // Local, not a property: the indexer is shared across sites.
         $source = $config->id();
 
-        // A page can produce several documents (1:N); drop content-duplicates
-        // (same title + intro + date) so redundant documents are not indexed.
+        // The one place the lazy pipeline is buffered: start() needs the total
+        // up front, and the Solr updater collects all documents until update()
+        // anyway. A page can produce several documents (1:N); content-duplicates
+        // (same title + intro + date) are dropped on the way.
         $finalDocuments = $this->deduplicate($finalDocuments);
 
         $language = ResourceLanguage::default();
@@ -144,11 +146,11 @@ class Indexer implements \Atoolo\Search\Indexer, IndexerInterface
      * date), keeping the first occurrence. Distinct documents from the same
      * page are kept.
      *
-     * @param ExtractedDataInterface[] $documents
+     * @param iterable<int, ExtractedDataInterface> $documents
      *
      * @return list<ExtractedDataInterface>
      */
-    private function deduplicate(array $documents): array
+    private function deduplicate(iterable $documents): array
     {
         $seen = [];
         $unique = [];

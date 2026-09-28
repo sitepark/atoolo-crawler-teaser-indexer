@@ -25,3 +25,8 @@ Realistische Erwartung: der Solr-Updater puffert die Dokumente bis `update()` oh
 
 ## Dateien
 `src/Pipeline/CrawlerPipeline.php`, `src/Pipeline/Parser/*`, `src/Pipeline/Processor/*`, `src/Pipeline/Indexer/*`, Tests
+
+## Umsetzung (2026-09-28)
+Abweichend vom Plan oben **lazy bis zum Indexer**: Collector → Parser → Processor sind eine Generator-Kette ohne Zwischen-Array; der Indexer liest die Kette beim Deduplizieren einmal in ein Array. Grund: `progressHandler->start()` braucht die Gesamtzahl vorab, und `SolrIndexUpdater` puffert alle Dokumente bis `update()` ohnehin – vollständiges Streaming hätte den Indexer komplizierter gemacht, ohne Speicher zu sparen. Erst sinnvoll, wenn der Solr-Updater blockweise (`update()` alle n Dokumente) genutzt wird.
+
+Fehler: jeder Step hat einen eigenen Guard (`URLCollector`, `Parser`, `Processor`); eine bereits benannte `StepExecution` wird unverändert durchgereicht, damit ein Upstream-Fehler nicht als Fehler eines späteren Steps gemeldet wird. Collector-Fehler kommen damit neu als `StepExecution('URLCollector')` an.

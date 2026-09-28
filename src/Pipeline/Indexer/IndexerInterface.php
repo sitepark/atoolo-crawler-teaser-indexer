@@ -20,7 +20,10 @@ interface IndexerInterface
     /**
      * Enriches and commits the processed teaser documents to the index.
      *
-     * @param ExtractedDataInterface[] $finalDocuments
+     * The documents arrive as the lazy end of the pipeline: iterating them is
+     * what drives crawling, parsing and processing.
+     *
+     * @param iterable<int, ExtractedDataInterface> $finalDocuments
      */
-    public function doIndex(array $finalDocuments, PipelineConfig $config): IndexerStatus;
+    public function doIndex(iterable $finalDocuments, PipelineConfig $config): IndexerStatus;
 }

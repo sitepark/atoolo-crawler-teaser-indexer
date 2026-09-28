@@ -42,10 +42,11 @@ class CrawlerPipeline
     /**
      * Starts the full crawling workflow.
      *
-     * The URLCollector streams every fetched page as a chunk; each chunk is
-     * parsed as it arrives. The collected documents are then sanitized and
-     * indexed. There is no separate fetch pass - every page is fetched
-     * exactly once by the collector.
+     * The steps are chained lazily: the URLCollector streams every fetched
+     * page as a chunk, each chunk is parsed and processed as it arrives, and
+     * the work only happens while the Indexer consumes the chain. There is no
+     * separate fetch pass - every page is fetched exactly once by the
+     * collector - and no intermediate list of documents.
      *
      * Each step is handled explicitly (empty/error/logging) rather than
      * through a generic wrapper, because the steps are not interchangeable.
@@ -61,55 +62,84 @@ class CrawlerPipeline
         // the whole crawl (crawling + parsing + indexing), not just indexing.
         $this->indexer->prepare('Crawler run started');
 
-        /** @var array<int, ExtractedDataInterface> $rawDocuments */
-        $rawDocuments = [];
-        foreach ($this->urlCollector->collect($config) as $htmlChunk) {
-            foreach ($this->parse($htmlChunk, $config) as $document) {
-                $rawDocuments[] = $document;
-            }
-        }
+        $pageChunks = $this->collect($config);
+        $documents = $this->parse($pageChunks, $config);
+        $processed = $this->process($documents, $config);
 
-        $this->index($this->process($rawDocuments, $config), $config);
+        $this->index($processed, $config);
+    }
+
+    /*
+     * Error guards: a generator only runs (and can fail) while iterated, so
+     * each guard wraps the iteration of its step. Because the chain is lazy,
+     * an upstream failure travels through the downstream guards - a
+     * StepExecution therefore passes unchanged, so the failure keeps the name
+     * of the step it came from. Per-page/per-document errors are handled
+     * inside the steps; these catch step-level failures.
+     */
+
+    /**
+     * @return \Generator<int, array<int, array{url: string, html: string}>>
+     */
+    private function collect(PipelineConfig $config): \Generator
+    {
+        try {
+            yield from $this->urlCollector->collect($config);
+        } catch (\Throwable $e) {
+            throw $this->stepFailed('URLCollector', $e);
+        }
     }
 
     /**
-     * @param array<int, array{url: string, html: string}> $htmlChunk
+     * @param iterable<int, array<int, array{url: string, html: string}>> $pageChunks
      *
      * @return \Generator<int, ExtractedDataInterface>
      */
-    private function parse(array $htmlChunk, PipelineConfig $config): \Generator
+    private function parse(iterable $pageChunks, PipelineConfig $config): \Generator
     {
-        // A generator only runs (and can fail) while iterated, so the guard
-        // has to wrap the iteration itself. Per-page/per-document errors are
-        // already handled inside the Parser; this catches step-level failures.
-        try {
-            yield from $this->parser->extractData($htmlChunk, $config);
-        } catch (\Throwable $e) {
-            $this->logger->error('[Parser] Error: ' . $e->getMessage(), ['exception' => $e]);
-            throw new StepExecution('Parser', $e->getMessage(), $e);
+        foreach ($pageChunks as $pageChunk) {
+            try {
+                yield from $this->parser->extractData($pageChunk, $config);
+            } catch (\Throwable $e) {
+                throw $this->stepFailed('Parser', $e);
+            }
         }
     }
 
     /**
-     * @param array<int, ExtractedDataInterface> $rawDocuments
+     * @param iterable<int, ExtractedDataInterface> $documents
      *
-     * @return ExtractedDataInterface[]
+     * @return \Generator<int, ExtractedDataInterface>
      */
-    private function process(array $rawDocuments, PipelineConfig $config): array
+    private function process(iterable $documents, PipelineConfig $config): \Generator
     {
+        $count = 0;
         try {
-            $sanitized = $this->processor->sanitizeText($rawDocuments, $config);
-            $documents = is_array($sanitized) ? $sanitized : iterator_to_array($sanitized);
+            foreach ($this->processor->sanitizeText($documents, $config) as $document) {
+                ++$count;
+                yield $document;
+            }
         } catch (\Throwable $e) {
-            $this->logger->error('[Processor] Error: ' . $e->getMessage(), ['exception' => $e]);
-            throw new StepExecution('Processor', $e->getMessage(), $e);
+            throw $this->stepFailed('Processor', $e);
         }
 
-        if ([] === $documents) {
+        if (0 === $count) {
             $this->logger->warning('[Processor] Step returned no data.');
         }
+    }
 
-        return array_values($documents);
+    /**
+     * Wraps a step failure - unless it already is one from an upstream step.
+     */
+    private function stepFailed(string $step, \Throwable $e): StepExecution
+    {
+        if ($e instanceof StepExecution) {
+            return $e;
+        }
+
+        $this->logger->error(sprintf('[%s] Error: %s', $step, $e->getMessage()), ['exception' => $e]);
+
+        return new StepExecution($step, $e->getMessage(), $e);
     }
 
     /**
@@ -117,11 +147,11 @@ class CrawlerPipeline
      * counted as failed by the caller. The error itself is logged once there,
      * together with the site id.
      *
-     * @param ExtractedDataInterface[] $processedDocuments
+     * @param iterable<int, ExtractedDataInterface> $processedDocuments
      *
      * @throws IndexingErrorsException when the indexer reported errors
      */
-    private function index(array $processedDocuments, PipelineConfig $config): void
+    private function index(iterable $processedDocuments, PipelineConfig $config): void
     {
         $indexerStatus = $this->indexer->doIndex($processedDocuments, $config);
         $statusLine = $indexerStatus->getStatusLine();

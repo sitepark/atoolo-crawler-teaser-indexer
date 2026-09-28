@@ -9,6 +9,7 @@ use Atoolo\CrawlerIndexer\Config\PipelineConfigHelper;
 use Atoolo\CrawlerIndexer\Pipeline\CrawlerPipeline;
 use Atoolo\CrawlerIndexer\Dto\ExtractedData;
 use Atoolo\CrawlerIndexer\Exception\IndexingErrorsException;
+use Atoolo\CrawlerIndexer\Exception\StepExecution;
 use Atoolo\CrawlerIndexer\Pipeline\Indexer\Indexer;
 use Atoolo\CrawlerIndexer\Pipeline\Parser\Parser;
 use Atoolo\CrawlerIndexer\Pipeline\Processor\Processor;
@@ -106,49 +107,45 @@ final class CrawlerPipelineE2ETest extends TestCase
         );
     }
 
+    /**
+     * An Indexer mock that consumes the lazy chain like the real one does -
+     * iterating is what makes the upstream steps run. The received documents
+     * are written to $received.
+     *
+     * @param list<mixed>|null $received
+     */
+    private function consumingIndexer(?array &$received, int $errors = 0): Indexer
+    {
+        $indexer = $this->createMock(Indexer::class);
+        $indexer->expects($this->once())
+            ->method('doIndex')
+            ->willReturnCallback(function (iterable $documents) use (&$received, $errors): IndexerStatus {
+                $received = [];
+                foreach ($documents as $document) {
+                    $received[] = $document;
+                }
+
+                return $this->makeIndexerStatus($errors);
+            });
+
+        return $indexer;
+    }
+
     public function testFullCrawlerWorkflow(): void
     {
-        $title1 = 'Title 1 Cleaned';
-        $title2 = 'Title 2 Cleaned';
-        $date1 = '2026-01-14';
-        $date2 = '2026-01-15';
-
         $pages = [
-            ['url' => $this->url1, 'html' => '<h1>Title 1</h1><div class="smc-table-cell sidat">' . $date1 . '</div>'],
-            ['url' => $this->url2, 'html' => '<h1>Title 2</h1><div class="smc-table-cell sidat">' . $date2 . '</div>'],
+            ['url' => $this->url1, 'html' => '<h1>Title 1</h1>'],
+            ['url' => $this->url2, 'html' => '<h1>Title 2</h1>'],
         ];
 
-        $parsed = [
-            ['url' => $this->url1, 'title' => 'Title 1', 'date' => $date1],
-            ['url' => $this->url2, 'title' => 'Title 2', 'date' => $date2],
-        ];
-
-        $processed = [
-            ['url' => $this->url1, 'title' => $title1, 'date' => $date1],
-            ['url' => $this->url2, 'title' => $title2, 'date' => $date2],
-        ];
+        $parsed = [new ExtractedData($this->url1, 'Title 1'), new ExtractedData($this->url2, 'Title 2')];
+        $processed = [new ExtractedData($this->url1, 'Title 1 Cleaned'), new ExtractedData($this->url2, 'Title 2 Cleaned')];
 
         $parser = $this->createStub(Parser::class);
         $parser->method('extractData')->willReturnCallback(fn(): \Generator => $this->toGenerator($parsed));
 
         $processor = $this->createStub(Processor::class);
         $processor->method('sanitizeText')->willReturn($processed);
-
-        $indexer = $this->createMock(Indexer::class);
-        $indexer->expects($this->once())
-            ->method('doIndex')
-            ->with($this->callback(function (array $items) use ($title1, $title2, $date1, $date2) {
-                $this->assertSame(
-                    [
-                        ['url' => $this->url1, 'title' => $title1, 'date' => $date1],
-                        ['url' => $this->url2, 'title' => $title2, 'date' => $date2],
-                    ],
-                    $items,
-                );
-
-                return true;
-            }))
-            ->willReturn($this->makeIndexerStatus(0));
 
         $logger = $this->createMock(LoggerInterface::class);
         $logger->expects($this->atLeastOnce())->method('info');
@@ -157,14 +154,16 @@ final class CrawlerPipelineE2ETest extends TestCase
             $this->stubUrlCollector([$pages]),
             $parser,
             $processor,
-            $indexer,
+            $this->consumingIndexer($received),
             $logger,
         )->run($this->createConfig($this->createStub(LoggerInterface::class)));
+
+        $this->assertSame($processed, $received);
     }
 
     /**
-     * Every chunk streamed by URLCollector must be parsed and the resulting
-     * documents merged before processing/indexing.
+     * Every chunk streamed by URLCollector must be parsed and reach the
+     * indexer, in order.
      */
     public function testChunksStreamedByUrlCollectorAreParsedAndMerged(): void
     {
@@ -182,47 +181,83 @@ final class CrawlerPipelineE2ETest extends TestCase
         $processor = $this->createStub(Processor::class);
         $processor->method('sanitizeText')->willReturnArgument(0);
 
-        $indexer = $this->createMock(Indexer::class);
-        $indexer->expects($this->once())
-            ->method('doIndex')
-            ->with($this->callback(function (array $items) use ($doc1, $doc2) {
-                $this->assertSame([$doc1, $doc2], $items);
-
-                return true;
-            }))
-            ->willReturn($this->makeIndexerStatus(0));
-
-        $logger = $this->createStub(LoggerInterface::class);
-
         $this->makeManager(
             $this->stubUrlCollector([$chunk1, $chunk2]),
             $parser,
             $processor,
-            $indexer,
-            $logger,
+            $this->consumingIndexer($received),
+            $this->createStub(LoggerInterface::class),
         )->run($this->createConfig($this->createStub(LoggerInterface::class)));
+
+        $this->assertSame([$doc1, $doc2], $received);
+    }
+
+    /**
+     * The chain is lazy: nothing is crawled or parsed until the indexer
+     * iterates it, and the pipeline keeps no list of documents of its own.
+     */
+    public function testStepsOnlyRunWhileTheIndexerConsumes(): void
+    {
+        $events = [];
+
+        $urlCollector = $this->createStub(URLCollector::class);
+        $urlCollector->method('collect')->willReturnCallback(
+            function () use (&$events): \Generator {
+                $events[] = 'collect page 1';
+                yield [['url' => $this->url1, 'html' => '<h1>1</h1>']];
+                $events[] = 'collect page 2';
+                yield [['url' => $this->url2, 'html' => '<h1>2</h1>']];
+            },
+        );
+
+        $parser = $this->createStub(Parser::class);
+        $parser->method('extractData')->willReturnCallback(
+            fn(array $pages): \Generator => $this->toGenerator([new ExtractedData($pages[0]['url'], 'T')]),
+        );
+
+        $indexer = $this->createMock(Indexer::class);
+        $indexer->method('doIndex')->willReturnCallback(
+            function (iterable $documents) use (&$events): IndexerStatus {
+                $events[] = 'indexer starts';
+                foreach ($documents as $document) {
+                    $events[] = 'index ' . $document->getUrl();
+                }
+
+                return $this->makeIndexerStatus(0);
+            },
+        );
+
+        $this->makeManager(
+            $urlCollector,
+            $parser,
+            new Processor($this->createStub(LoggerInterface::class)),
+            $indexer,
+            $this->createStub(LoggerInterface::class),
+        )->run($this->createConfig($this->createStub(LoggerInterface::class)));
+
+        $this->assertSame([
+            'indexer starts',
+            'collect page 1',
+            'index ' . $this->url1,
+            'collect page 2',
+            'index ' . $this->url2,
+        ], $events);
     }
 
     public function testStopsWhenUrlCollectorYieldsNothing(): void
     {
-        $indexer = $this->createMock(Indexer::class);
-        $indexer->expects($this->once())
-            ->method('doIndex')
-            ->with($this->equalTo([]))
-            ->willReturn($this->makeIndexerStatus(0));
-
-        $logger = $this->createStub(LoggerInterface::class);
-
         $this->makeManager(
             $this->stubUrlCollector([]),
             $this->createStub(Parser::class),
-            $this->createStub(Processor::class),
-            $indexer,
-            $logger,
+            new Processor($this->createStub(LoggerInterface::class)),
+            $this->consumingIndexer($received),
+            $this->createStub(LoggerInterface::class),
         )->run($this->createConfig($this->createStub(LoggerInterface::class)));
+
+        $this->assertSame([], $received);
     }
 
-    public function testUrlCollectorFailurePropagatesDirectly(): void
+    public function testUrlCollectorFailureIsReportedAsCollectorStepFailure(): void
     {
         $urlCollector = $this->createStub(URLCollector::class);
         $urlCollector->method('collect')->willReturnCallback(
@@ -233,43 +268,51 @@ final class CrawlerPipelineE2ETest extends TestCase
             },
         );
 
-        $indexer = $this->createMock(Indexer::class);
-        $indexer->expects($this->never())->method('doIndex');
-
-        $logger = $this->createStub(LoggerInterface::class);
-
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Collector failed');
+        $this->expectException(StepExecution::class);
+        $this->expectExceptionMessage('Step [URLCollector] failed: Collector failed');
 
         $this->makeManager(
             $urlCollector,
             $this->createStub(Parser::class),
-            $this->createStub(Processor::class),
-            $indexer,
+            new Processor($this->createStub(LoggerInterface::class)),
+            $this->consumingIndexer($received),
+            $this->createStub(LoggerInterface::class),
+        )->run($this->createConfig($this->createStub(LoggerInterface::class)));
+    }
+
+    /**
+     * A parser failure travels through the (downstream) processor guard while
+     * the indexer consumes the chain - it must still be reported as a parser
+     * failure, and logged only once.
+     */
+    public function testParserFailureKeepsItsStepNameThroughTheLazyChain(): void
+    {
+        $parser = $this->createStub(Parser::class);
+        $parser->method('extractData')->willThrowException(new \RuntimeException('broken HTML'));
+
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->once())
+            ->method('error')
+            ->with('[Parser] Error: broken HTML', $this->anything());
+
+        $this->expectException(StepExecution::class);
+        $this->expectExceptionMessage('Step [Parser] failed: broken HTML');
+
+        $this->makeManager(
+            $this->stubUrlCollector([[['url' => $this->url1, 'html' => '<h1>1</h1>']]]),
+            $parser,
+            new Processor($this->createStub(LoggerInterface::class)),
+            $this->consumingIndexer($received),
             $logger,
         )->run($this->createConfig($this->createStub(LoggerInterface::class)));
     }
 
     public function testIndexerReturnsError(): void
     {
-        $date = '2026-01-14';
-
-        $pages = [
-            ['url' => $this->url1, 'html' => '<h1>Title</h1><div class="smc-table-cell sidat">' . $date . '</div>'],
-        ];
-
         $parser = $this->createStub(Parser::class);
         $parser->method('extractData')->willReturnCallback(fn(): \Generator => $this->toGenerator([
             new ExtractedData($this->url1, 'Title'),
         ]));
-
-        $processor = $this->createStub(Processor::class);
-        $processor->method('sanitizeText')->willReturn([
-            ['url' => $this->url1, 'title' => 'Title Cleaned', 'date' => $date],
-        ]);
-
-        $indexer = $this->createStub(Indexer::class);
-        $indexer->method('doIndex')->willReturn($this->makeIndexerStatus(1));
 
         // Not logged here - SitesRunner logs the failure once, with the site id.
         $logger = $this->createMock(LoggerInterface::class);
@@ -279,10 +322,10 @@ final class CrawlerPipelineE2ETest extends TestCase
         $this->expectExceptionMessage('Indexing finished with 1 error(s)');
 
         $this->makeManager(
-            $this->stubUrlCollector([$pages]),
+            $this->stubUrlCollector([[['url' => $this->url1, 'html' => '<h1>Title</h1>']]]),
             $parser,
-            $processor,
-            $indexer,
+            new Processor($this->createStub(LoggerInterface::class)),
+            $this->consumingIndexer($received, 1),
             $logger,
         )->run($this->createConfig($this->createStub(LoggerInterface::class)));
     }
@@ -294,32 +337,23 @@ final class CrawlerPipelineE2ETest extends TestCase
     public function testWorkflowWithRealProcessor(): void
     {
         $logger = $this->createStub(LoggerInterface::class);
-        $config = $this->createConfig($logger);
 
         $chunk = [['url' => $this->url1, 'html' => '<h1>Title 1</h1>']];
 
         $parser = $this->createStub(Parser::class);
-        $parser->method('extractData')->willReturnCallback(fn(): \Generator => $this->toGenerator([new ExtractedData($this->url1, 'Title 1')]));
-
-        $processor = new Processor($logger);
-
-        $indexer = $this->createMock(Indexer::class);
-        $indexer->expects($this->once())
-            ->method('doIndex')
-            ->with($this->callback(function (array $items) {
-                $this->assertCount(1, $items);
-                $this->assertSame('Title 1', $items[0]->getTitle());
-
-                return true;
-            }))
-            ->willReturn($this->makeIndexerStatus(0));
+        $parser->method('extractData')->willReturnCallback(fn(): \Generator => $this->toGenerator([new ExtractedData($this->url1, '  <b>Title 1</b> ')]));
 
         $this->makeManager(
             $this->stubUrlCollector([$chunk]),
             $parser,
-            $processor,
-            $indexer,
+            new Processor($logger),
+            $this->consumingIndexer($received),
             $logger,
-        )->run($this->createConfig($this->createStub(LoggerInterface::class)));
+        )->run($this->createConfig($logger));
+
+        self::assertIsArray($received);
+        $this->assertCount(1, $received);
+        self::assertInstanceOf(ExtractedData::class, $received[0]);
+        $this->assertSame('Title 1', $received[0]->getTitle());
     }
 }
