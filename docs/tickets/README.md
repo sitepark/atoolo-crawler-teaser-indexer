@@ -11,7 +11,7 @@ Verifikation pro Ticket: `composer analyse`, `vendor/bin/phpunit --no-coverage`;
 | 03 | [User-Agent CRLF & SSRF-Hinweis](03-user-agent-crlf-ssrf.md) | erledigt |
 | 04 | [Cron-Ausdrücke früh validieren](04-schedule-cron-validation.md) | erledigt |
 | 05 | [Truncation-Länge](05-truncation-length.md) | erledigt |
-| 06 | [Indexer-Fehler gehen nicht verloren](06-indexer-errors-not-lost.md) | offen |
+| 06 | [Indexer-Fehler gehen nicht verloren](06-indexer-errors-not-lost.md) | erledigt |
 | 07 | [ExtractedDataInterface in eigene Datei](07-extracted-data-interface-file.md) | offen |
 | 08 | [Steps dekorierbar machen](08-decoratable-steps.md) | offen |
 | 09 | [Pipeline durchgehend lazy](09-lazy-pipeline.md) | offen |

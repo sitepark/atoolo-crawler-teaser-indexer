@@ -20,6 +20,7 @@ declare(strict_types=1);
 namespace Atoolo\CrawlerIndexer\Pipeline;
 
 use Atoolo\CrawlerIndexer\Dto\ExtractedDataInterface;
+use Atoolo\CrawlerIndexer\Exception\IndexingErrorsException;
 use Atoolo\CrawlerIndexer\Exception\StepExecution;
 use Atoolo\CrawlerIndexer\Pipeline\Collector\URLCollectorInterface;
 use Atoolo\CrawlerIndexer\Pipeline\Indexer\IndexerInterface;
@@ -106,16 +107,24 @@ class CrawlerPipeline
     }
 
     /**
+     * Indexer errors are raised rather than only logged, so the site is
+     * counted as failed by the caller. The error itself is logged once there,
+     * together with the site id.
+     *
      * @param ExtractedDataInterface[] $processedDocuments
+     *
+     * @throws IndexingErrorsException when the indexer reported errors
      */
     private function index(array $processedDocuments): void
     {
         $indexerStatus = $this->indexer->doIndex($processedDocuments);
-        $this->logger->info('Indexer statusLine: ' . $indexerStatus->getStatusLine());
-        if (0 == $indexerStatus->errors) {
-            $this->logger->info("No Status Error [{$indexerStatus->errors}]: Crawling Prozess completed successfully.");
-        } else {
-            $this->logger->error("Status Errors [{$indexerStatus->errors}]: Crawling Prozess Stops by Indexing.");
+        $statusLine = $indexerStatus->getStatusLine();
+        $this->logger->info('Indexer statusLine: ' . $statusLine);
+
+        if ($indexerStatus->errors > 0) {
+            throw new IndexingErrorsException($indexerStatus->errors, $statusLine);
         }
+
+        $this->logger->info('Crawling process completed successfully.');
     }
 }

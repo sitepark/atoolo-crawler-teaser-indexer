@@ -7,6 +7,7 @@ namespace Atoolo\CrawlerIndexer\Tests;
 use Atoolo\CrawlerIndexer\Application\PipelineRunner;
 use Atoolo\CrawlerIndexer\Application\SitesRunner;
 use Atoolo\CrawlerIndexer\Config\PipelineConfigFactory;
+use Atoolo\CrawlerIndexer\Exception\IndexingErrorsException;
 use Atoolo\CrawlerIndexer\Pipeline\CrawlerPipeline;
 use Atoolo\CrawlerIndexer\Pipeline\CrawlerPipelineFactory;
 use Atoolo\Resource\DataBag;
@@ -144,6 +145,30 @@ final class SitesRunnerTest extends TestCase
             $manager,
             $logger,
         )->runAll();
+
+        $this->assertFalse($result->isSuccessful());
+        $this->assertSame(['site-1'], $result->failedSites);
+    }
+
+    /**
+     * Indexer errors must reach the result - otherwise the command would exit
+     * with success although documents were not indexed.
+     */
+    public function testSiteWithIndexingErrorsIsReportedAsFailed(): void
+    {
+        $manager = $this->createMock(CrawlerPipeline::class);
+        $manager->method('startCrawler')
+            ->willThrowException(new IndexingErrorsException(2, '[FINISHED] errors: 2'));
+
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->atLeastOnce())
+            ->method('error')
+            ->with($this->logicalOr(
+                $this->stringContains('Crawling failed for "site-1": Indexing finished with 2 error(s)'),
+                $this->stringContains('Crawler failed for sites: site-1'),
+            ));
+
+        $result = $this->makeSitesRunner([['sp_id' => 'site-1']], $manager, $logger)->runAll();
 
         $this->assertFalse($result->isSuccessful());
         $this->assertSame(['site-1'], $result->failedSites);

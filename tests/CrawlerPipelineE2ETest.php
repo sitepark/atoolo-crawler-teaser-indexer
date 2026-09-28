@@ -8,6 +8,7 @@ use Atoolo\CrawlerIndexer\Config\PipelineConfig;
 use Atoolo\CrawlerIndexer\Config\PipelineConfigHelper;
 use Atoolo\CrawlerIndexer\Pipeline\CrawlerPipeline;
 use Atoolo\CrawlerIndexer\Dto\ExtractedData;
+use Atoolo\CrawlerIndexer\Exception\IndexingErrorsException;
 use Atoolo\CrawlerIndexer\Pipeline\Indexer\Indexer;
 use Atoolo\CrawlerIndexer\Pipeline\Parser\Parser;
 use Atoolo\CrawlerIndexer\Pipeline\Processor\Processor;
@@ -270,10 +271,12 @@ final class CrawlerPipelineE2ETest extends TestCase
         $indexer = $this->createStub(Indexer::class);
         $indexer->method('doIndex')->willReturn($this->makeIndexerStatus(1));
 
+        // Not logged here - SitesRunner logs the failure once, with the site id.
         $logger = $this->createMock(LoggerInterface::class);
-        $logger->expects($this->once())
-            ->method('error')
-            ->with($this->stringContains('Status Errors [1]: Crawling Prozess Stops by Indexing.'));
+        $logger->expects($this->never())->method('error');
+
+        $this->expectException(IndexingErrorsException::class);
+        $this->expectExceptionMessage('Indexing finished with 1 error(s)');
 
         $this->makeManager(
             $this->stubUrlCollector([$pages]),
