@@ -17,6 +17,9 @@ final class PipelineRunner
     ) {}
 
     /**
+     * Failures are not logged here but propagate to the caller
+     * ({@see SitesRunner}), which logs them once together with the site id.
+     *
      * @param array<string, mixed> $site
      */
     public function run(array $site): void
@@ -24,15 +27,8 @@ final class PipelineRunner
         $config = $this->configFactory->create($site);
         $siteKey = $config->id();
 
-        try {
-            $this->logger->info(sprintf('Processing site: %s', $siteKey));
-            $this->pipelineFactory->create($config)->startCrawler();
-            $this->logger->info(sprintf('Successfully crawled: %s', $siteKey));
-        } catch (\Throwable $e) {
-            $this->logger->error('[Crawler] Failed site', [
-                'exception' => $e,
-            ]);
-            throw $e;
-        }
+        $this->logger->info(sprintf('Processing site: %s', $siteKey));
+        $this->pipelineFactory->create($config)->startCrawler();
+        $this->logger->info(sprintf('Successfully crawled: %s', $siteKey));
     }
 }

@@ -5,10 +5,11 @@ declare(strict_types=1);
 namespace Atoolo\CrawlerIndexer\Tests;
 
 use Atoolo\CrawlerIndexer\Application\PipelineRunner;
+use Atoolo\CrawlerIndexer\Application\SitesRunner;
 use Atoolo\CrawlerIndexer\Command\PipelineCommand;
 use Atoolo\CrawlerIndexer\Config\PipelineConfigFactory;
-use Atoolo\CrawlerIndexer\Pipeline\CrawlerPipelineFactory;
 use Atoolo\CrawlerIndexer\Pipeline\CrawlerPipeline;
+use Atoolo\CrawlerIndexer\Pipeline\CrawlerPipelineFactory;
 use Atoolo\Resource\DataBag;
 use Atoolo\Search\Dto\Indexer\IndexerConfiguration;
 use Atoolo\Search\Service\Indexer\IndexerConfigurationLoader;
@@ -17,129 +18,96 @@ use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
 
+/**
+ * Only the exit-code mapping; the site loop itself is covered by SitesRunnerTest.
+ */
 final class PipelineCommandTest extends TestCase
 {
-    private function makeConfig(array $sites): IndexerConfiguration
-    {
-        return new IndexerConfiguration(
-            source: 'atooloTeaserCrawler',
-            name: 'Crawler',
-            data: new DataBag(['sp_crawling_sites' => $sites]),
-        );
-    }
-
-    private function makeRunner(CrawlerPipeline $manager): PipelineRunner
+    private function makeSitesRunner(IndexerConfigurationLoader $loader, CrawlerPipeline $manager): SitesRunner
     {
         $pipelineFactory = $this->createMock(CrawlerPipelineFactory::class);
         $pipelineFactory->method('create')->willReturn($manager);
 
-        return new PipelineRunner(
-            new PipelineConfigFactory($this->createStub(LoggerInterface::class)),
-            $pipelineFactory,
+        return new SitesRunner(
+            $loader,
+            new PipelineRunner(
+                new PipelineConfigFactory($this->createStub(LoggerInterface::class)),
+                $pipelineFactory,
+                $this->createStub(LoggerInterface::class),
+            ),
             $this->createStub(LoggerInterface::class),
         );
     }
 
-    private function runCommand(PipelineCommand $command): CommandTester
+    private function makeLoader(array $sites): IndexerConfigurationLoader
+    {
+        $loader = $this->createMock(IndexerConfigurationLoader::class);
+        $loader->method('load')->willReturn(new IndexerConfiguration(
+            source: 'atooloTeaserCrawler',
+            name: 'Crawler',
+            data: new DataBag(['sp_crawling_sites' => $sites]),
+        ));
+
+        return $loader;
+    }
+
+    private function execute(PipelineCommand $command): int
     {
         $tester = new CommandTester($command);
         $tester->execute([]);
 
-        return $tester;
+        return $tester->getStatusCode();
     }
 
-    public function testExecuteWithNoSitesReturnsSuccess(): void
+    public function testSuccessfulRunReturnsSuccess(): void
     {
-        $loader = $this->createMock(IndexerConfigurationLoader::class);
-        $loader->method('load')->willReturn($this->makeConfig([]));
-
-        $manager = $this->createMock(CrawlerPipeline::class);
-        $manager->expects($this->never())->method('startCrawler');
-
-        $logger = $this->createMock(LoggerInterface::class);
-        $logger->expects($this->once())->method('warning');
-
-        $command = new PipelineCommand($loader, $this->makeRunner($manager), $logger);
-        $tester = $this->runCommand($command);
-
-        $this->assertSame(Command::SUCCESS, $tester->getStatusCode());
-    }
-
-    public function testExecuteWithValidSitesCrawlsAllAndReturnsSuccess(): void
-    {
-        $sites = [
-            ['sp_id' => 'site-1'],
-            ['sp_id' => 'site-2'],
-        ];
-
-        $loader = $this->createMock(IndexerConfigurationLoader::class);
-        $loader->method('load')->willReturn($this->makeConfig($sites));
-
-        $manager = $this->createMock(CrawlerPipeline::class);
-        $manager->expects($this->exactly(2))->method('startCrawler');
-
-        $logger = $this->createStub(LoggerInterface::class);
-
-        $command = new PipelineCommand($loader, $this->makeRunner($manager), $logger);
-        $tester = $this->runCommand($command);
-
-        $this->assertSame(Command::SUCCESS, $tester->getStatusCode());
-    }
-
-    public function testExecuteWithSiteWithoutIdLogsErrorAndReturnsFailure(): void
-    {
-        $sites = [
-            [],                    // invalid: no sp_id
-            ['sp_id' => 'site-1'], // valid
-        ];
-
-        $loader = $this->createMock(IndexerConfigurationLoader::class);
-        $loader->method('load')->willReturn($this->makeConfig($sites));
-
         $manager = $this->createMock(CrawlerPipeline::class);
         $manager->expects($this->once())->method('startCrawler');
 
-        $logger = $this->createMock(LoggerInterface::class);
-        $logger->expects($this->atLeastOnce())->method('error');
+        $command = new PipelineCommand(
+            $this->makeSitesRunner($this->makeLoader([['sp_id' => 'site-1']]), $manager),
+            $this->createStub(LoggerInterface::class),
+        );
 
-        $command = new PipelineCommand($loader, $this->makeRunner($manager), $logger);
-        $tester = $this->runCommand($command);
-
-        $this->assertSame(Command::FAILURE, $tester->getStatusCode());
+        $this->assertSame(Command::SUCCESS, $this->execute($command));
     }
 
-    public function testExecuteWithPipelineRunnerThrowingReturnsFailure(): void
+    public function testFailedSiteReturnsFailure(): void
     {
-        $sites = [['sp_id' => 'site-1']];
-
-        $loader = $this->createMock(IndexerConfigurationLoader::class);
-        $loader->method('load')->willReturn($this->makeConfig($sites));
-
         $manager = $this->createMock(CrawlerPipeline::class);
         $manager->method('startCrawler')->willThrowException(new \RuntimeException('crawl failed'));
 
-        $logger = $this->createMock(LoggerInterface::class);
-        $logger->expects($this->atLeastOnce())->method('error');
+        $command = new PipelineCommand(
+            $this->makeSitesRunner($this->makeLoader([['sp_id' => 'site-1']]), $manager),
+            $this->createStub(LoggerInterface::class),
+        );
 
-        $command = new PipelineCommand($loader, $this->makeRunner($manager), $logger);
-        $tester = $this->runCommand($command);
-
-        $this->assertSame(Command::FAILURE, $tester->getStatusCode());
+        $this->assertSame(Command::FAILURE, $this->execute($command));
     }
 
-    public function testExecuteWithLoaderThrowingReturnsFatalFailure(): void
+    public function testInvalidSiteReturnsFailure(): void
+    {
+        $command = new PipelineCommand(
+            $this->makeSitesRunner($this->makeLoader([[]]), $this->createStub(CrawlerPipeline::class)),
+            $this->createStub(LoggerInterface::class),
+        );
+
+        $this->assertSame(Command::FAILURE, $this->execute($command));
+    }
+
+    public function testLoaderThrowingLogsCriticalAndReturnsFailure(): void
     {
         $loader = $this->createMock(IndexerConfigurationLoader::class);
         $loader->method('load')->willThrowException(new \RuntimeException('config not found'));
 
-        $manager = $this->createMock(CrawlerPipeline::class);
-
         $logger = $this->createMock(LoggerInterface::class);
         $logger->expects($this->once())->method('critical');
 
-        $command = new PipelineCommand($loader, $this->makeRunner($manager), $logger);
-        $tester = $this->runCommand($command);
+        $command = new PipelineCommand(
+            $this->makeSitesRunner($loader, $this->createStub(CrawlerPipeline::class)),
+            $logger,
+        );
 
-        $this->assertSame(Command::FAILURE, $tester->getStatusCode());
+        $this->assertSame(Command::FAILURE, $this->execute($command));
     }
 }

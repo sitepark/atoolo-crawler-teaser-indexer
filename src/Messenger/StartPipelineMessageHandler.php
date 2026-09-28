@@ -2,73 +2,22 @@
 
 namespace Atoolo\CrawlerIndexer\Messenger;
 
-use Atoolo\CrawlerIndexer\Application\PipelineRunner;
-use Atoolo\Search\Service\Indexer\IndexerConfigurationLoader;
-use Psr\Log\LoggerInterface;
+use Atoolo\CrawlerIndexer\Application\SitesRunner;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
 final class StartPipelineMessageHandler
 {
     public function __construct(
-        private readonly PipelineRunner $runner,
-        private readonly IndexerConfigurationLoader $indexerConfigurationLoader,
-        private readonly LoggerInterface $logger,
+        private readonly SitesRunner $sitesRunner,
     ) {}
 
+    /**
+     * Configuration load errors propagate on purpose, so Messenger can apply
+     * its retry / failure transport handling.
+     */
     public function __invoke(StartPipelineMessage $message): void
     {
-        $config = $this->indexerConfigurationLoader->load('atooloTeaserCrawler');
-
-        /** @var array<string, mixed> $data */
-        $data = $config->data->get();
-
-        if (empty($data)) {
-            $this->logger->warning('No crawler data configured or data not found.');
-
-            return;
-        }
-
-        /** @var array<array<string, mixed>> $sites */
-        $sites = $data['sp_crawling_sites'] ?? [];
-
-        if (empty($sites)) {
-            $this->logger->warning('Data found but, no crawler sites configured.');
-
-            return;
-        }
-        foreach ($sites as $site) {
-            // Invalid config (e.g. missing sp_id): skip this site, keep going.
-            if (!$this->isValidSite($site)) {
-                continue;
-            }
-
-            // A fatal error in one site (Solr down, threshold not met, …) must
-            // not abort the remaining sites: log it and continue.
-            try {
-                $this->runner->run($site);
-            } catch (\Throwable $e) {
-                /** @var string $siteKey */
-                $siteKey = $site['sp_id'] ?? '';
-                $this->logger->error(
-                    sprintf('Crawling failed for "%s": %s', $siteKey, $e->getMessage()),
-                    ['exception' => $e, 'site_id' => $siteKey],
-                );
-            }
-        }
-    }
-
-    /**
-     * @param array<string, mixed> $site
-     */
-    private function isValidSite(array $site): bool
-    {
-        if (empty($site['sp_id'] ?? null)) {
-            $this->logger->error('Invalid site config: missing "sp_id" field.');
-
-            return false;
-        }
-
-        return true;
+        $this->sitesRunner->runAll();
     }
 }

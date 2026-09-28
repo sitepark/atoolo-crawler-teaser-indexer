@@ -211,11 +211,11 @@ Die Architektur setzt auf Symfony-Decoration (ganze Steps). Für die zwei häufi
 - **`services.yaml`:** Step-Interfaces auf Default-Implementierungen mappen (damit Decorators andocken). `retry_status_codes` etc. in den `HttpFetcher`.
 - **Scheduler:** `Schedule` baut die `RecurringMessage`; Cron-Ausdrücke früh (beim Boot) validieren statt still abzufangen.
 
-## 9. Textkürzung
-
-Truncation gehört **nur** in den `ProcessorStep`, und zwar **nach** dem `clean()` (auf dem sichtbaren Text, nicht auf rohem HTML), mit der pro Feld konfigurierten `maxChars`. Ellipsis `…` statt `...`, Länge `mb_substr(…, $maxChars - 1) . '…'`.
-⚠️ Skelett: kürzt im `ParserStep` (mit `'...'`), `ProcessorStep` gar nicht. Verschieben.
-
++## 9. Textkürzung
++
++Truncation gehört **nur** in den `ProcessorStep`, und zwar **nach** dem `clean()` (auf dem sichtbaren Text, nicht auf rohem HTML), mit der pro Feld konfigurierten `maxChars`. Ellipsis `…` statt `...`, Länge `mb_substr(…, $maxChars - 1) . '…'`.
++⚠️ Skelett: kürzt im `ParserStep` (mit `'...'`), `ProcessorStep` gar nicht. Verschieben.
++
 ## 10. Migrations-/Cutover-Plan
 
 +Das Skelett liegt parallel unter `src/Proposal/`, damit der Altcode lauffähig bleibt.

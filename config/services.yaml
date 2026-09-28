@@ -24,8 +24,9 @@ services:
             - "../src/Pipeline/Processor"
             - "../src/Pipeline/Indexer"
 
-    # Run in Development
-    Atoolo\CrawlerIndexer\Command\PipelineCommand:
+    # Shared by PipelineCommand (development) and StartPipelineMessageHandler
+    # (customer project, via Schedule).
+    Atoolo\CrawlerIndexer\Application\SitesRunner:
         arguments:
             $indexerConfigurationLoader: '@atoolo_search.indexer.configuration_loader'
 
@@ -33,10 +34,6 @@ services:
     Atoolo\CrawlerIndexer\Messenger\Schedule:
         arguments:
             $schedule: "%atoolo.crawler.schedule%"
-
-    Atoolo\CrawlerIndexer\Messenger\StartPipelineMessageHandler:
-        arguments:
-            $indexerConfigurationLoader: '@atoolo_search.indexer.configuration_loader'
 
     # Assembles the per-run pipeline graph around an immutable PipelineConfig.
     # $indexService/$progressHandler gehören eigentlich ins Kunden-FEDS bzw. Commons-FEDS

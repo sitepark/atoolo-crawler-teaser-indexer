@@ -56,13 +56,16 @@ final class PipelineRunnerTest extends TestCase
         $this->makeRunner($manager, $logger)->run(['sp_id' => '']);
     }
 
-    public function testRunLogsErrorAndRethrowsWhenCrawlerThrows(): void
+    /**
+     * The failure is logged once by SitesRunner, not here as well.
+     */
+    public function testRunRethrowsWithoutLoggingWhenCrawlerThrows(): void
     {
         $manager = $this->createMock(CrawlerPipeline::class);
         $manager->method('startCrawler')->willThrowException(new \RuntimeException('crawl error'));
 
         $logger = $this->createMock(LoggerInterface::class);
-        $logger->expects($this->once())->method('error');
+        $logger->expects($this->never())->method('error');
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('crawl error');

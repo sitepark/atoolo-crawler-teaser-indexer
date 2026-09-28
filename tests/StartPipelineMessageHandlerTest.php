@@ -5,120 +5,63 @@ declare(strict_types=1);
 namespace Atoolo\CrawlerIndexer\Tests;
 
 use Atoolo\CrawlerIndexer\Application\PipelineRunner;
+use Atoolo\CrawlerIndexer\Application\SitesRunner;
+use Atoolo\CrawlerIndexer\Config\PipelineConfigFactory;
 use Atoolo\CrawlerIndexer\Messenger\StartPipelineMessage;
 use Atoolo\CrawlerIndexer\Messenger\StartPipelineMessageHandler;
-use Atoolo\CrawlerIndexer\Config\PipelineConfigFactory;
-use Atoolo\CrawlerIndexer\Pipeline\CrawlerPipelineFactory;
 use Atoolo\CrawlerIndexer\Pipeline\CrawlerPipeline;
+use Atoolo\CrawlerIndexer\Pipeline\CrawlerPipelineFactory;
 use Atoolo\Resource\DataBag;
 use Atoolo\Search\Dto\Indexer\IndexerConfiguration;
 use Atoolo\Search\Service\Indexer\IndexerConfigurationLoader;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 
+/**
+ * Only the wiring; the site loop itself is covered by SitesRunnerTest.
+ */
 final class StartPipelineMessageHandlerTest extends TestCase
 {
-    private function makeConfig(array $sites): IndexerConfiguration
-    {
-        return new IndexerConfiguration(
-            source: 'atooloTeaserCrawler',
-            name: 'Crawler',
-            data: new DataBag(['sp_crawling_sites' => $sites]),
-        );
-    }
-
-    private function makeRunner(CrawlerPipeline $manager): PipelineRunner
+    private function makeHandler(IndexerConfigurationLoader $loader, CrawlerPipeline $manager): StartPipelineMessageHandler
     {
         $pipelineFactory = $this->createMock(CrawlerPipelineFactory::class);
         $pipelineFactory->method('create')->willReturn($manager);
 
-        return new PipelineRunner(
-            new PipelineConfigFactory($this->createStub(LoggerInterface::class)),
-            $pipelineFactory,
+        return new StartPipelineMessageHandler(new SitesRunner(
+            $loader,
+            new PipelineRunner(
+                new PipelineConfigFactory($this->createStub(LoggerInterface::class)),
+                $pipelineFactory,
+                $this->createStub(LoggerInterface::class),
+            ),
             $this->createStub(LoggerInterface::class),
-        );
+        ));
     }
 
-    public function testInvokeWithNoSitesLogsWarning(): void
+    public function testInvokeCrawlsConfiguredSitesAndSwallowsSiteFailures(): void
     {
         $loader = $this->createMock(IndexerConfigurationLoader::class);
-        $loader->method('load')->willReturn($this->makeConfig([]));
+        $loader->method('load')->willReturn(new IndexerConfiguration(
+            source: 'atooloTeaserCrawler',
+            name: 'Crawler',
+            data: new DataBag(['sp_crawling_sites' => [['sp_id' => 'site-1'], ['sp_id' => 'site-2']]]),
+        ));
 
-        $manager = $this->createMock(CrawlerPipeline::class);
-        $manager->expects($this->never())->method('startCrawler');
-
-        $logger = $this->createMock(LoggerInterface::class);
-        $logger->expects($this->once())->method('warning');
-
-        $handler = new StartPipelineMessageHandler($this->makeRunner($manager), $loader, $logger);
-        $handler(new StartPipelineMessage());
-    }
-
-    public function testInvokeCallsRunnerForEachValidSite(): void
-    {
-        $sites = [
-            ['sp_id' => 'site-1'],
-            ['sp_id' => 'site-2'],
-        ];
-
-        $loader = $this->createMock(IndexerConfigurationLoader::class);
-        $loader->method('load')->willReturn($this->makeConfig($sites));
-
-        $manager = $this->createMock(CrawlerPipeline::class);
-        $manager->expects($this->exactly(2))->method('startCrawler');
-
-        $logger = $this->createStub(LoggerInterface::class);
-
-        $handler = new StartPipelineMessageHandler($this->makeRunner($manager), $loader, $logger);
-        $handler(new StartPipelineMessage());
-    }
-
-    public function testInvokeContinuesWithNextSiteWhenOneSiteFails(): void
-    {
-        $sites = [
-            ['sp_id' => 'site-1'],
-            ['sp_id' => 'site-2'],
-        ];
-
-        $loader = $this->createMock(IndexerConfigurationLoader::class);
-        $loader->method('load')->willReturn($this->makeConfig($sites));
-
-        $calls = 0;
         $manager = $this->createMock(CrawlerPipeline::class);
         $manager->expects($this->exactly(2))
             ->method('startCrawler')
-            ->willReturnCallback(function () use (&$calls): void {
-                ++$calls;
-                if (1 === $calls) {
-                    throw new \RuntimeException('site-1 exploded');
-                }
-            });
+            ->willThrowException(new \RuntimeException('crawl failed'));
 
-        $logger = $this->createMock(LoggerInterface::class);
-        $logger->expects($this->atLeastOnce())->method('error');
-
-        $handler = new StartPipelineMessageHandler($this->makeRunner($manager), $loader, $logger);
-        // Must not throw: the failing site-1 is isolated, site-2 still runs.
-        $handler(new StartPipelineMessage());
+        // Must not throw: a failing site is not a failed message.
+        ($this->makeHandler($loader, $manager))(new StartPipelineMessage());
     }
 
-    public function testInvokeSkipsInvalidSiteWithoutSpId(): void
+    public function testInvokeLetsConfigLoadErrorReachMessenger(): void
     {
-        $sites = [
-            [],                    // invalid: no sp_id
-            ['sp_id' => 'site-1'], // valid
-        ];
-
         $loader = $this->createMock(IndexerConfigurationLoader::class);
-        $loader->method('load')->willReturn($this->makeConfig($sites));
+        $loader->method('load')->willThrowException(new \RuntimeException('config not found'));
 
-        $manager = $this->createMock(CrawlerPipeline::class);
-        $manager->expects($this->once())->method('startCrawler');
-
-        $logger = $this->createMock(LoggerInterface::class);
-        $logger->expects($this->once())->method('error');
-
-        $handler = new StartPipelineMessageHandler($this->makeRunner($manager), $loader, $logger);
-        $handler(new StartPipelineMessage());
+        $this->expectException(\RuntimeException::class);
+        ($this->makeHandler($loader, $this->createStub(CrawlerPipeline::class)))(new StartPipelineMessage());
     }
 }
