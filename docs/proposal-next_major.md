@@ -144,7 +144,7 @@
 +- `RobotsTxtChecker` (Interface) → neben `CrawlerStep`
 +- `RelevanceEvaluator` (Interface, umbenannt) → neben `ParserStep`
 +- `URLNormalizer` → auflösen (5.2)
-
++
 +### 5.1 RelevanceEvaluator
 +
 +Keyword-basiertes Relevanz-Scoring (aus `title  introText  Hauptinhalts-Text`; positive/negative Regeln  Längen-Bedingung; `forcedArticleUrls` immer relevant). Wird pragmatisch vom `ParserStep` aufgerufen — okay, aber im Klassen-Kommentar dokumentieren.
@@ -181,32 +181,32 @@
 
 Die Architektur setzt auf Symfony-Decoration (ganze Steps). Für die zwei häufigsten Custom-Stellen ist das zu grob bzw. es funktioniert nicht — dort braucht es feingranulare Nähte. 7.1/7.2 sind die wichtigsten, 7.3/7.4 Ermessen.
 
-**7.1 Feldextraktion (häufigster Wunsch).** `extractText()` ist fest „OpenGraph → CSS". Ein Parser-Decorator hilft nicht, weil er nur fertige `IndexEntry` (ohne HTML) sieht und re-parsen müsste. Besser eine Naht *im* Parser auf der bereits geparsten DOM:
-```php
-interface FieldExtractorInterface {
-    public function supports(string $field): bool;
-    public function extract(Crawler $dom, PipelineConfig $config): mixed;
-}
-```
-Der `ParserStep` iteriert eine per DI erweiterbare (`tagged`) Extraktor-Liste. Custom-Extraktor = ein registrierter Service.
-
-**7.2 Extension-Ausgang (die Bag braucht eine Tür).** Der `IndexerStep` baut das Solr-Doc in einer privaten Methode mit hartkodierten `setField()` — ein zusätzliches Feld geht heute nur, indem man die Indexier-Schleife neu schreibt. Lösung: die Extension bringt ihr Mapping selbst mit, der Indexer bekommt einen Builder-Seam:
-```php
-interface SolrFieldContributor {
-    public function contribute(DocumentBuilder $doc): void;
-}
-```
-Der `IndexerStep` ruft `contribute()` für jede Extension. Neues Feld = eine Extension-Klasse  der Extraktor aus 7.1. Behält die Solr-Kopplung (hinter dem `DocumentBuilder`), ohne dass Extensions Solr kennen.
-
-**7.3 Crawler-Nähte (optional).** Der `CrawlerStep` (~330 Zeilen) vereint viel. Sinnvolle Schnittstellen bei Bedarf: `UrlDiscoveryStrategy` (statt fest BFS — z.B. Sitemap/Pagination) und `LinkFilterInterface`/Normalisierung. Nebenbei: das hartkodierte `https://`-only ist eine vergrabene Policy.
++**7.1 Feldextraktion (häufigster Wunsch).** `extractText()` ist fest „OpenGraph → CSS". Ein Parser-Decorator hilft nicht, weil er nur fertige `IndexEntry` (ohne HTML) sieht und re-parsen müsste. Besser eine Naht *im* Parser auf der bereits geparsten DOM:
++```php
++interface FieldExtractorInterface {
++    public function supports(string $field): bool;
++    public function extract(Crawler $dom, PipelineConfig $config): mixed;
++}
++```
++Der `ParserStep` iteriert eine per DI erweiterbare (`tagged`) Extraktor-Liste. Custom-Extraktor = ein registrierter Service.
++
++**7.2 Extension-Ausgang (die Bag braucht eine Tür).** Der `IndexerStep` baut das Solr-Doc in einer privaten Methode mit hartkodierten `setField()` — ein zusätzliches Feld geht heute nur, indem man die Indexier-Schleife neu schreibt. Lösung: die Extension bringt ihr Mapping selbst mit, der Indexer bekommt einen Builder-Seam:
++```php
++interface SolrFieldContributor {
++    public function contribute(DocumentBuilder $doc): void;
++}
++```
++Der `IndexerStep` ruft `contribute()` für jede Extension. Neues Feld = eine Extension-Klasse  der Extraktor aus 7.1. Behält die Solr-Kopplung (hinter dem `DocumentBuilder`), ohne dass Extensions Solr kennen.
++
++**7.3 Crawler-Nähte (optional).** Der `CrawlerStep` (~330 Zeilen) vereint viel. Sinnvolle Schnittstellen bei Bedarf: `UrlDiscoveryStrategy` (statt fest BFS — z.B. Sitemap/Pagination) und +`LinkFilterInterface`/Normalisierung. Nebenbei: das hartkodierte `https://`-only ist eine vergrabene Policy.
 
 **7.4 Inkrementelles Crawlen (Zukunft).** Conditional Requests (`ETag`/`If-Modified-Since`) und robots.txt-`Crawl-delay`. Nicht jetzt nötig, aber `HttpFetcher`  ein Per-URL-State-Ablageort sollten es später aufnehmen können.
-
-**7.5 Bewusst geschlossen halten:** Solr-Kopplung nicht generalisieren; `IndexEntry`-Kernfelder nicht Map-basiert machen (dafür ist die Bag da); die 4 Steps bleiben fest — keine generische ETL-Engine.
-
++
++**7.5 Bewusst geschlossen halten:** Solr-Kopplung nicht generalisieren; `IndexEntry`-Kernfelder nicht Map-basiert machen (dafür ist die Bag da); die 4 Steps bleiben fest — keine generische ETL-Engine.
++
 ## 8. Wiring & Einstiegspunkte
 
-- **Doppelte Site-Lade-Logik zusammenführen:** `Command\Index` und `StartCrawlerMessageHandler` laden beide Config  iterieren Sites. Gemeinsamer `CrawlerRunner`; beide werden dünne Wrapper (Exit-Code bzw. Message).
+- **Doppelte Site-Lade-Logik zusammenführen:** `Command\Index` und `StartCrawlerMessageHandler` laden beide Config iterieren Sites. Gemeinsamer `CrawlerRunner`; beide werden dünne Wrapper (Exit-Code bzw. Message).
 - **`CrawlSiteRunner`** baut per Factory die Config, ruft `CrawlerPipeline::run()`, fängt Fehler pro Site. Kein `configContext` mehr.
 - **`services.yaml`:** Step-Interfaces auf Default-Implementierungen mappen (damit Decorators andocken). `retry_status_codes` etc. in den `HttpFetcher`.
 - **Scheduler:** `Schedule` baut die `RecurringMessage`; Cron-Ausdrücke früh (beim Boot) validieren statt still abzufangen.
@@ -218,29 +218,29 @@ Truncation gehört **nur** in den `ProcessorStep`, und zwar **nach** dem `clean(
 
 ## 10. Migrations-/Cutover-Plan
 
-Das Skelett liegt parallel unter `src/Proposal/`, damit der Altcode lauffähig bleibt.
++Das Skelett liegt parallel unter `src/Proposal/`, damit der Altcode lauffähig bleibt.
 1. Adapter (6)  Wiring (8) vervollständigen, bis die Pipeline eigenständig läuft.
-2. Tests portieren/neu schreiben (11), grün bekommen.
-3. Altcode entfernen: `Controller/`, `Domain/`, `Console/`, alte `Config/`, alte `Steps/`.
-4. `Proposal/` hochziehen, Namespace → `Atoolo\CrawlerIndexer\` (inkl. Bundle-Klasse  `composer.json`-PSR-4; Test-Namespace-Tippfehler `Atoolo\Cralwer` mitkorrigieren).
-5. `CLAUDE.md`  README aktualisieren.
++2. Tests portieren/neu schreiben (11), grün bekommen.
++3. Altcode entfernen: `Controller/`, `Domain/`, `Console/`, alte `Config/`, alte `Steps/`.
++4. `Proposal/` hochziehen, Namespace → `Atoolo\CrawlerIndexer\` (inkl. Bundle-Klasse  `composer.json`-PSR-4; Test-Namespace-Tippfehler `Atoolo\Cralwer` mitkorrigieren).
++5. `CLAUDE.md`  README aktualisieren.
 
 **Breaking Change → `2.0.0`.** CHANGELOG: Namespace/Bundle-FQCN geändert (Host-Apps müssen `config/bundles.php` anpassen); im Minor bereits als „Release Notes" markierte Verhaltensänderungen bündeln.
 
-## 11. Tests
-
-Es gibt bereits eine substanzielle Suite (~18 Dateien). Problem ist nicht Coverage, sondern dass sie gegen die **alte** Architektur (`CrawlerManager`, `CrawlerConfig`, Array-Steps) geschrieben ist → beim Umbau größtenteils zu portieren.
-
-Zielbild:
-- **Unit pro Step** (aus vorhandenen portieren): `CrawlerStep` (BFS/Tiefe>0/Filter/robots/Canonical/maxItems/forced), `ParserStep`, `ProcessorStep` (Truncation nach Clean), `IndexerStep` (0-Einträge/Cleanup-Policy).
-- **Adapter** auf neue Signaturen nachziehen (u.a. DOM-Übergabe an Evaluator); neu: `PipelineConfigFactory` (Validierungsfehler).
-- **Echtes E2E:** Der heutige `CrawlerManagerE2ETest` stubbt überwiegend die Steps. Wünschenswert: Integrationstest gegen einen Mock-HTTP-Server über die ganze Pipeline.
-
-## 12. Umsetzungsreihenfolge
-
-1. Config: `PipelineConfig`  `PipelineConfigFactory` (2.1).
-2. Adapter migrieren (6), XPath-/CRLF-Fixes.
-3. Steps finalisieren: Truncation verschieben (9), Stubs schließen.
-4. Wiring: `CrawlerRunner`/`CrawlSiteRunner`/`services.yaml` (8).
-5. Tests (11).
-6. Cutover  Namespace  CHANGELOG (10).
++## 11. Tests
++
++Es gibt bereits eine substanzielle Suite (~18 Dateien). Problem ist nicht Coverage, sondern dass sie gegen die **alte** Architektur (`CrawlerManager`, `CrawlerConfig`, Array-Steps) geschrieben ist → +beim Umbau größtenteils zu portieren.
++
++Zielbild:
++- **Unit pro Step** (aus vorhandenen portieren): `CrawlerStep` (BFS/Tiefe>0/Filter/robots/Canonical/maxItems/forced), `ParserStep`, `ProcessorStep` (Truncation nach Clean), `IndexerStep` (0-Einträge/+Cleanup-Policy).
++- **Adapter** auf neue Signaturen nachziehen (u.a. DOM-Übergabe an Evaluator); neu: `PipelineConfigFactory` (Validierungsfehler).
++- **Echtes E2E:** Der heutige `CrawlerManagerE2ETest` stubbt überwiegend die Steps. Wünschenswert: Integrationstest gegen einen Mock-HTTP-Server über die ganze Pipeline.
++
++## 12. Umsetzungsreihenfolge
++
++1. Config: `PipelineConfig`  `PipelineConfigFactory` (2.1).
++2. Adapter migrieren (6), XPath-/CRLF-Fixes.
++3. Steps finalisieren: Truncation verschieben (9), Stubs schließen.
++4. Wiring: `CrawlerRunner`/`CrawlSiteRunner`/`services.yaml` (8).
++5. Tests (11).
++6. Cutover  Namespace  CHANGELOG (10).
