@@ -81,13 +81,18 @@ final class FieldSource
 
     /**
      * Content of a `<meta property="...">` tag - OpenGraph and friends.
+     *
+     * The property is compared in PHP rather than interpolated into the XPath
+     * expression: it comes from the config or from project extractors, and a
+     * quote in it would otherwise break or inject into the expression.
      */
     public function meta(string $property): ?string
     {
         try {
-            $metaTag = $this->crawler->filterXPath("//meta[@property='$property']");
-            if ($metaTag->count() > 0) {
-                return trim((string) $metaTag->attr('content'));
+            foreach ($this->crawler->filterXPath('//meta[@property]') as $node) {
+                if ($node instanceof \DOMElement && $node->getAttribute('property') === $property) {
+                    return trim($node->getAttribute('content'));
+                }
             }
 
             return null;

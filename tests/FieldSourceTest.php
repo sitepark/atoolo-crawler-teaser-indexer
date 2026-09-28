@@ -68,6 +68,54 @@ final class FieldSourceTest extends TestCase
     }
 
     /**
+     * The property used to be interpolated into the XPath expression, so this
+     * value turned into `@property='x' or @property='og:title'` and matched a
+     * tag it does not name. It must be a plain string comparison.
+     */
+    public function testMetaPropertyCannotInjectIntoTheQuery(): void
+    {
+        $this->assertNull($this->makeSource()->meta("x' or @property='og:title"));
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function quotedPropertyProvider(): iterable
+    {
+        yield 'single quote' => ["it's:title"];
+        yield 'double quote' => ['say:"title"'];
+        yield 'both quotes' => ['it\'s:"title"'];
+    }
+
+    /**
+     * @dataProvider quotedPropertyProvider
+     */
+    public function testMetaMatchesPropertiesContainingQuotesExactly(string $property): void
+    {
+        $html = '<html><head>'
+            . '<meta property="og:title" content="Falsch">'
+            . '<meta property="' . htmlspecialchars($property, ENT_QUOTES) . '" content="Richtig">'
+            . '</head><body></body></html>';
+
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->never())->method('error');
+
+        $source = new FieldSource(new Crawler($html), $logger);
+
+        $this->assertSame('Richtig', $source->meta($property));
+    }
+
+    public function testMetaReturnsFirstMatchingTag(): void
+    {
+        $html = '<html><head>'
+            . '<meta property="og:title" content="  Erster  ">'
+            . '<meta property="og:title" content="Zweiter">'
+            . '</head><body></body></html>';
+
+        $this->assertSame('Erster', $this->makeSource($html)->meta('og:title'));
+    }
+
+    /**
      * A malformed selector must not abort the block - it is logged and treated
      * like "no match", so a single bad config entry cannot lose a document.
      */
