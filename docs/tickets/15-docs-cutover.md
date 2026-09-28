@@ -5,7 +5,7 @@
 
 ## Umsetzung
 - **CLAUDE.md:** Directory-Structure, Architektur und Config-Abschnitt auf den Ist-Stand (`Application/`, `Pipeline/`, `Config/PipelineConfig*`, `Messenger/`, `Ports/`), `src/Proposal/`-Hinweis, `Controller/`, `Domain/`, `CrawlerConfig`, `Index`-Command entfernen, Test-Anzahl aktualisieren.
-- **README:** Erweiterungspunkte (FieldExtractor, EntryEnricher/SolrFieldContributor, Step-Decorator, LinkFilter), neue Config-Keys (`sp_split_html_document`, `sp_relevance_content_selector`), SSRF-Hinweis (aus 03).
+- **README:** Erweiterungspunkte (FieldExtractor, Step-Decorator, LinkFilter), neue Config-Keys (`sp_split_html_document`, `sp_relevance_content_selector`), SSRF-Hinweis (aus 03).
 - **docs/proposal-next_major.md:**
   - Tippfehler: „Namensgebung#", „- #", „`RelevanceEvaluator` → `RelevanceEvaluator`".
   - ⚠️-Skelett-Hinweise und Verweise auf `src/Proposal/` entfernen.

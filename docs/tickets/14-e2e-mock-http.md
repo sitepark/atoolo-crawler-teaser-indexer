@@ -1,7 +1,7 @@
 # 14 – Echtes E2E mit MockHttpClient
 
 **Proposal:** §11 · **Typ:** Test
-**Voraussetzung:** 08–12 (sonst wird der Test mehrfach umgeschrieben)
+**Voraussetzung:** 08–11 (sonst wird der Test mehrfach umgeschrieben)
 
 ## Hintergrund
 `tests/CrawlerPipelineE2ETest.php` stubbt überwiegend die Steps – die Verdrahtung Collector → Parser → Processor → Indexer mit echten Implementierungen wird nicht getestet.

@@ -17,7 +17,7 @@ Verifikation pro Ticket: `composer analyse`, `vendor/bin/phpunit --no-coverage`;
 | 09 | [Pipeline durchgehend lazy](09-lazy-pipeline.md) | erledigt |
 | 10 | [URLNormalizer aufteilen](10-split-url-normalizer.md) | erledigt |
 | 11 | [RelevanceEvaluator typisieren](11-relevance-evaluator-typed.md) | erledigt |
-| 12 | [Extension-Bag & SolrFieldContributor](12-extension-bag.md) | offen |
+| 12 | [Bilder extrahieren und indizieren](12-images.md) | später (bei Kundenanforderung) |
 | 13 | [PipelineConfigFactoryTest](13-pipeline-config-factory-test.md) | offen |
 | 14 | [Echtes E2E mit MockHttpClient](14-e2e-mock-http.md) | offen |
 | 15 | [Doku-Cutover](15-docs-cutover.md) | offen |
