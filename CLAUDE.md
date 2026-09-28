@@ -71,61 +71,58 @@ composer report:phpstan
 
 ## Architecture Overview
 
-The crawler follows a **Pipe and Filter architectural pattern** orchestrated by `CrawlerPipeline`. The pipeline has five sequential steps:
-
-### Execution Pipeline (CrawlerPipeline)
+The crawler follows a **Pipe and Filter architectural pattern** orchestrated by `Pipeline\CrawlerPipeline`. Four steps form one **lazy generator chain**; the work happens while the Indexer consumes it:
 
 ```
-URLCollector → Fetcher ↓ → Parser → Processor → Indexer
-                ↓ (chunked by concurrency)
-           [storage handling]
+URLCollector ──▶ Parser ──▶ Processor ──▶ Indexer
+(BFS + fetch)    (extract)   (clean)       (Solr)
+  │
+  ├─ UrlCanonicalizer  (one form per URL)
+  ├─ LinkFilter        (allow/deny, endings, robots.txt)
+  └─ Fetcher ─ RequestExecutor (parallel chunks, retry/backoff, throttle)
 ```
 
 **Data Flow:**
-1. **URLCollector** - Discovers URLs from start pages using CSS selectors, respects robots.txt, applies allow/deny filters, normalizes URLs
-2. **Fetcher** - Fetches HTML content in parallel (configurable concurrency), implements exponential backoff retries for failed requests
-3. **Parser** - Extracts teaser data (title, intro text, datetime) from HTML using CSS selectors and OpenGraph tags, applies content scoring/filtering
-4. **Processor** - Sanitizes and cleans extracted text data
-5. **Indexer** - Enriches teasers and commits them to Apache Solr index
+1. **URLCollector** - Breadth-first crawl from the start URLs. Fetches every page exactly once (in chunks of `sp_parallel_requests`), streams the fetched pages downstream and discovers links from them: `LinkFilter::filter(UrlCanonicalizer::canonicalize(links))`.
+2. **Parser** - Extracts title, intro text and datetime (OpenGraph first, then CSS; project `FieldExtractor`s are asked first). A page can yield several documents (`sp_split_html_document`, 1:N). Optional content scoring via `RelevanceEvaluator`.
+3. **Processor** - Strips HTML/scripts, decodes entities, truncates to `maxChars` (ellipsis included).
+4. **Indexer** - Buffers the chain once (dedup + total for the progress handler), writes the Solr documents, deletes old documents of the source only if the cleanup threshold is met.
 
-The Fetcher and Parser are chunked based on `sp_parallel_requests` configuration to manage memory and resource usage.
+**Errors:** per-page/per-document errors are logged and skipped inside the steps. Step-level failures are wrapped in `StepExecution` with the step name (an upstream `StepExecution` passes the downstream guards unchanged). Indexer errors raise `IndexingErrorsException`, so the site counts as failed.
 
 ### Directory Structure
 
 ```
 src/
 ├── Application/
-│   ├── PipelineRunner          - Orchestrates single site crawling with config context
-│   ├── Schedule                 - Provides cron schedule via ScheduleProviderInterface
-│   ├── StartPipelineMessage      - Messenger message for async crawling
-│   └── StartPipelineMessageHandler - Handles async crawler invocation
+│   ├── SitesRunner            - Loads the site list and runs every site (shared by command and handler)
+│   ├── SitesRunResult         - Outcome of one run over all sites (failed/invalid sites)
+│   └── PipelineRunner         - One site: PipelineConfigFactory → CrawlerPipeline::run()
 ├── Command/
-│   └── Index                    - CLI command: bin/console crawler:scheduler-atoolo-crawler-teaser-indexer
+│   └── PipelineCommand        - bin/console crawler:scheduler-atoolo-crawler-teaser-indexer
 ├── Config/
-│   ├── CrawlerConfig            - Accessor for configuration values (sp_* prefixed)
-│   ├── CrawlerConfigContext     - Thread-safe context storing current site config
-│   └── PipelineConfigHelper      - Helper methods for type-safe config reading
-├── Controller/
-│   └── CrawlerPipeline           - Central orchestrator of the 5-step pipeline
-├── Domain/Crawler/
-│   ├── Steps/
-│   │   ├── URLCollector         - Step 1: discover URLs
-│   │   ├── Fetcher              - Step 2: fetch HTML (with retries)
-│   │   ├── Parser               - Step 3: extract teaser data
-│   │   ├── Processor            - Step 4: sanitize text
-│   │   └── Indexer              - Step 5: commit to Solr
-│   ├── Services/
-│   │   ├── FieldExtractConfig   - Config for title/intro extraction
-│   │   ├── DateTimeExtractConfig - Config for datetime extraction
-│   │   ├── ContentScoringConfig - Config for content scoring/filtering
-│   │   ├── RelevanceEvaluator - Implements content scoring logic
-│   │   ├── RobotsTxtChecker     - Validates URLs against robots.txt
-│   │   └── URLNormalizer        - Normalizes URLs (query param stripping, deduplication)
-│   └── Ports/
-│       └── RequestExecutor      - HTTP request execution with retries
+│   ├── PipelineConfig         - Immutable per-site config (typed accessors for the sp_* keys)
+│   ├── PipelineConfigFactory  - Validates the sp_* array, builds PipelineConfig
+│   ├── PipelineConfigHelper   - Type-safe reading of the raw array
+│   └── *ExtractConfig, ContentScoring*Config, LengthConditionConfig - value objects
+├── Dto/
+│   └── ExtractedData(Interface) - One extracted document (url, title, intro, date)
+├── Exception/                 - StepExecution, IndexingErrorsException, ThresholdNotMetException
+├── Messenger/
+│   ├── Schedule               - Cron schedule (atoolo.crawler.schedule), fails on invalid expressions
+│   ├── StartPipelineMessage
+│   └── StartPipelineMessageHandler
+├── Pipeline/
+│   ├── CrawlerPipeline        - Orchestrator: run(PipelineConfig)
+│   ├── Collector/             - URLCollector, UrlCanonicalizer, LinkFilter(Interface), RobotsTxtChecker(Interface)
+│   ├── Fetcher/               - Fetcher(Interface)
+│   ├── Parser/                - Parser(Interface), FieldExtractorInterface, FieldSource
+│   ├── RelevanceEvaluator/    - RelevanceEvaluator(Interface), ScoreRuleConfig
+│   ├── Processor/             - Processor(Interface)
+│   └── Indexer/               - Indexer(Interface), coupled to SolrIndexService on purpose
+└── Ports/
+    └── RequestExecutor(Interface) - HTTP with retry/backoff, Retry-After, per-host throttle
 ```
-
-> **Note:** `src/Proposal/` is a non-wired code skeleton for the planned next major release (see `docs/proposal-next_major.md`). It is not registered as services and not part of the runtime — ignore it when working on the current codebase.
 
 ### Configuration System
 
@@ -134,36 +131,27 @@ All configuration is **PHP array-based**, loaded via `IndexerConfigurationLoader
 **Master Configuration** (`config/packages/atoolo_crawler_master.yaml`):
 - `atoolo.crawler.schedule` - Cron expressions for execution
 - `atoolo.crawler.retry_status_codes` - HTTP status codes triggering retries
+- `atoolo.crawler.deny_endings` - URL endings never followed (merged with `sp_deny_endings`)
 
-**Site Configuration** (file at `base_dir/indexer/atooloTeaserCrawler.php`):
+**Site Configuration** (file at `<resource channel configDir>/indexer/atooloTeaserCrawler.php`):
 - Returns array with `data.sp_crawling_sites[]` - array of site configurations
-- Each site config has 40+ `sp_*` prefixed parameters controlling:
-  - Core metadata (ID, user agent, retry policy)
-  - URL discovery (start URLs, CSS selectors, allow/deny lists)
-  - Content extraction (title, intro text, datetime selectors)
-  - Content scoring (positive/negative keyword signals)
+- Each site config uses `sp_*` prefixed keys, one uniform schema (lists are always lists):
+  - Core metadata (`sp_id`, user agent, retry policy, throttle)
+  - URL discovery (start URLs, link selector, allow/deny prefixes and endings, robots.txt, query/fragment stripping)
+  - Content extraction (title, intro text, datetime selectors; `sp_split_html_document` for 1:N)
+  - Content scoring (positive/negative rules, `sp_relevance_content_selector` list)
 
-**CrawlerConfig** class provides type-safe accessor methods for all configuration parameters.
+`PipelineConfigFactory::create()` validates the array (missing `sp_id` → `\InvalidArgumentException`) and returns an immutable `PipelineConfig`.
 
-### Key Services & Interfaces
+### Dependency Injection & Extension Points
 
-**RequestExecutorInterface** - Ports abstraction for HTTP requests
-- Implements exponential backoff (1s, 2s, 4s, 8s...) for configurable status codes
-- Used by Fetcher for robust HTML retrieval
+The steps are **shared container services**; the per-site `PipelineConfig` is passed **per call** as the last parameter (`collect($config)`, `extractData($pages, $config)`, …). Steps must not store site-specific state in properties.
 
-**RobotsTxtCheckerInterface** - Validates URLs against robots.txt
-- Loaded from config, optional (controlled by `sp_respect_robots_txt`)
-
-**RelevanceEvaluatorInterface** - Content scoring logic
-- Evaluates teasers based on positive/negative signals in URL and body text
-- Filters out teasers below `sp_content_scoring_min_score` threshold
-
-### Dependency Injection
-
-The bundle uses Symfony's service autowiring (`config/services.yaml`):
-- All classes in `src/` are auto-registered as services
-- Specific service configurations for commands and message handlers
-- External dependencies injected from `atoolo/search-bundle` (Solr indexing, logger)
+- Every step is wired by its interface in `config/services.yaml`, so a project (or the commons project) can decorate it: `#[AsDecorator(ParserInterface::class)]`. Decorators of the same step stack (`decoration_priority`).
+- `FieldExtractorInterface` (autoconfigured tag `atoolo.crawler.field_extractor`) replaces the extraction of a single field (title, intro, datetime) on the parsed block via `FieldSource`.
+- `LinkFilterInterface` holds the rules for following links (decorate it e.g. for a host allowlist).
+- Per-run state (`RequestExecutor` throttle, `RobotsTxtChecker` cache) implements `ResetInterface` and is cleared via `kernel.reset` after every Messenger message.
+- External dependencies come from `atoolo/search-bundle` (Solr index service, progress handler, configuration loader).
 
 ## Testing
 
@@ -175,9 +163,10 @@ The bundle uses Symfony's service autowiring (`config/services.yaml`):
 - Memory limit: 512M
 
 **Test Coverage:**
-- Tests located in `tests/` directory (18 test files)
-- Focus areas: URL collection, fetching, parsing, processing, end-to-end crawling
-- E2E test (`CrawlerPipelineE2ETest.php`) validates complete pipeline
+- Unit tests per step and building block in `tests/`
+- `CrawlerPipelineTest.php` - orchestration with stubbed steps (lazy chain, error naming)
+- `CrawlerPipelineE2ETest.php` - all real steps against a fake site (`MockHttpClient`), only Solr stubbed
+- `StepDecorationTest.php` - wires the real `services.yaml` and checks stacked decorators
 
 **Running Tests:**
 ```bash
@@ -229,15 +218,11 @@ composer test:infection                  # Mutation testing
 
 **Configuration Prefixes:** All configuration keys use `sp_` prefix (e.g., `sp_id`, `sp_title_css`, `sp_content_scoring_active`)
 
-**Type Safety:** CrawlerConfig provides accessor methods with type hints:
-- `string()` - required string config
-- `nullableString()` - optional string
-- `bool()` - boolean with default
-- `intStringList()` - handles both int and string list types
+**Type Safety:** `PipelineConfig` provides typed accessors; `PipelineConfigHelper` reads the raw array (`string()`, `bool()`, `int()`, `stringList()`, …) and logs invalid values instead of failing.
 
-**Iterator-based Processing:** Parser and Processor use generators/iterators for memory efficiency with large result sets
+**Lazy Processing:** Collector, Parser and Processor are generators; only the Indexer buffers (once).
 
-**Thread-safe Configuration:** CrawlerConfigContext stores current site config (implements ResetInterface) to avoid state leakage across sites
+**Config per call:** `PipelineConfig` is immutable and passed as the last parameter; there is no shared mutable config state.
 
 **Symfony Messenger Integration:** StartPipelineMessage and StartPipelineMessageHandler enable async/scheduled crawling via Symfony Messenger
 

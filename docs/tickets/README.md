@@ -20,5 +20,5 @@ Verifikation pro Ticket: `composer analyse`, `vendor/bin/phpunit --no-coverage`;
 | 12 | [Bilder extrahieren und indizieren](12-images.md) | später (bei Kundenanforderung) |
 | 13 | [PipelineConfigFactoryTest](13-pipeline-config-factory-test.md) | erledigt |
 | 14 | [Echtes E2E mit MockHttpClient](14-e2e-mock-http.md) | erledigt |
-| 15 | [Doku-Cutover](15-docs-cutover.md) | offen |
+| 15 | [Doku-Cutover](15-docs-cutover.md) | erledigt |
 | 16 | [Indizierungszeiten pro Kunde](16-schedule-per-customer.md) | offen (unabhängig) |
