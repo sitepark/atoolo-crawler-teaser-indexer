@@ -64,6 +64,19 @@ final class PipelineConfigHelperTest extends TestCase
         $this->assertFalse($helper->bool('missing', false));
     }
 
+    public function testBoolDefaultsToFalse(): void
+    {
+        $helper = $this->makeHelper([]);
+        $this->assertFalse($helper->bool('missing'));
+    }
+
+    public function testBoolIgnoresCaseAndSurroundingWhitespace(): void
+    {
+        $helper = $this->makeHelper(['yes' => ' TRUE ', 'no' => "False\n"]);
+        $this->assertTrue($helper->bool('yes'));
+        $this->assertFalse($helper->bool('no', true));
+    }
+
     public function testBoolReturnsDefaultForInvalidStringAndLogsError(): void
     {
         $logger = $this->createMock(LoggerInterface::class);
@@ -172,6 +185,12 @@ final class PipelineConfigHelperTest extends TestCase
         $this->assertSame([1], $helper->intList('key'));
     }
 
+    public function testIntListKeepsItemsAfterANumericFloat(): void
+    {
+        $helper = $this->makeHelper(['key' => [1.5, 2]]);
+        $this->assertSame([1, 2], $helper->intList('key'));
+    }
+
     // --- stringList() ---
 
     public function testStringListReturnsEmptyForMissingKey(): void
@@ -216,6 +235,18 @@ final class PipelineConfigHelperTest extends TestCase
         $this->assertSame([], $helper->startUrlsList('key'));
     }
 
+    public function testStartUrlsListReadsEveryEntry(): void
+    {
+        $helper = $this->makeHelper(['key' => [
+            ['sp_url' => 'https://example.com/a', 'sp_extraction_depth' => 1],
+            ['sp_url' => 'https://example.com/b', 'sp_extraction_depth' => '2'],
+        ]]);
+        $this->assertSame([
+            ['url' => 'https://example.com/a', 'extraction_depth' => 1],
+            ['url' => 'https://example.com/b', 'extraction_depth' => 2],
+        ], $helper->startUrlsList('key'));
+    }
+
     // --- readScoreRules() ---
 
     public function testReadScoreRulesReturnsEmptyForMissingKey(): void
@@ -238,6 +269,13 @@ final class PipelineConfigHelperTest extends TestCase
         $logger->expects($this->once())->method('warning');
         $helper = $this->makeHelper(['key' => ['invalid']], $logger);
         $this->assertSame([], $helper->readScoreRules('key'));
+    }
+
+    public function testReadScoreRulesKeepsRulesAfterAnInvalidEntry(): void
+    {
+        $helper = $this->makeHelper(['key' => [['sp_score' => 1], 'invalid', ['sp_score' => '2']]]);
+        $rules = $helper->readScoreRules('key');
+        $this->assertSame([1, 2], array_map(static fn(ScoreRuleConfig $rule): int => $rule->score, $rules));
     }
 
     public function testReadScoreRulesReadsScore(): void
@@ -299,6 +337,13 @@ final class PipelineConfigHelperTest extends TestCase
         $this->assertCount(1, $rules);
         $this->assertInstanceOf(LengthConditionConfig::class, $rules[0]->condition);
         $this->assertSame(100, $rules[0]->condition->bodyTextLengthLt);
+    }
+
+    public function testReadScoreRulesCastsNumericStringBodyTextLength(): void
+    {
+        $helper = $this->makeHelper(['key' => [['sp_condition' => ['sp_body_text_length' => '100']]]]);
+        $rules = $helper->readScoreRules('key');
+        $this->assertSame(100, $rules[0]->condition?->bodyTextLengthLt);
     }
 
     public function testReadScoreRulesHandlesInvalidCondition(): void
