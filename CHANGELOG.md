@@ -14,10 +14,16 @@ Restructured bundle: typed, lazy pipeline with decoratable steps. See
   application, e.g. in Messenger routing):
   - `Application\StartCrawlerMessage` → `Messenger\StartPipelineMessage`
   - `Application\StartCrawlerMessageHandler` → `Messenger\StartPipelineMessageHandler`
-  - `Application\Schedule` → `Messenger\Schedule` (schedule name unchanged)
+  - `Application\Schedule` → `Messenger\Schedule` (schedule renamed, see below)
   - `Command\Index` → `Command\PipelineCommand` (command name unchanged)
   - `Controller\CrawlerManager` → `Pipeline\CrawlerPipeline`
   - `Domain\Crawler\…` → `Pipeline\…`, `Config\CrawlerConfig` → `Config\PipelineConfig`
+- **Schedule renamed** `scheduler-atoolo-crawler-teaser-indexer` →
+  `atoolo-crawler-teaser-indexer` (Symfony adds the `scheduler_` prefix
+  itself). The Messenger transport the worker consumes changes accordingly:
+  `messenger:consume scheduler_atoolo-crawler-teaser-indexer` instead of
+  `scheduler_scheduler-atoolo-crawler-teaser-indexer`. Update the worker
+  command (e.g. supervisor config), otherwise the crawler no longer runs.
 - **New required parameter** `atoolo.crawler.deny_endings` in
   `atoolo_crawler_master.yaml` (URL endings that are never followed; merged
   with `sp_deny_endings`).
