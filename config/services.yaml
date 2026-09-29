@@ -73,7 +73,6 @@ services:
         arguments:
             $fieldExtractors: !tagged_iterator atoolo.crawler.field_extractor
 
-    # $indexService/$progressHandler gehören eigentlich ins Kunden-FEDS bzw. Commons-FEDS
     Atoolo\CrawlerIndexer\Pipeline\Indexer\Indexer:
         arguments:
             $indexService: "@atoolo_search.indexer.solr_index_service"
