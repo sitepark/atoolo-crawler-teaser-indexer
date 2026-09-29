@@ -95,6 +95,7 @@ final class RequestExecutor implements RequestExecutorInterface, ResetInterface
                     $backoffMs *= 2;
                 }
             } catch (TransportExceptionInterface $e) {
+                $response = null;
                 ++$attempts;
 
                 $this->logger->warning(

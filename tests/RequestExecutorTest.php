@@ -235,12 +235,24 @@ final class RequestExecutorTest extends TestCase
         $this->assertSame([], $result);
     }
 
+    public function testDownloadExactlyAtTheSizeLimitIsKept(): void
+    {
+        $httpClient = new MockHttpClient([
+            new MockResponse(
+                str_repeat('a', RequestExecutor::MAX_RESPONSE_BYTES),
+                ['response_headers' => ['content-length' => (string) RequestExecutor::MAX_RESPONSE_BYTES]],
+            ),
+        ]);
+
+        $executor = new RequestExecutor([], $httpClient, $this->createStub(LoggerInterface::class));
+        $result = $executor->requestChunk(['https://example.com/big'], $this->makeConfig(['sp_max_retry' => 1]));
+
+        $this->assertSame(RequestExecutor::MAX_RESPONSE_BYTES, strlen($result['https://example.com/big']->getContent()));
+    }
+
     public function testRequestChunkDeduplicatesUrls(): void
     {
-        $response = $this->createStub(ResponseInterface::class);
-        $response->method('getStatusCode')->willReturn(200);
-
-        $httpClient = $this->makeHttpClient($response);
+        $httpClient = new MockHttpClient(static fn(): MockResponse => new MockResponse('ok'));
         $config = $this->makeConfig(['sp_backoff_ms' => 0]);
         $logger = $this->createStub(LoggerInterface::class);
 
@@ -252,6 +264,100 @@ final class RequestExecutorTest extends TestCase
 
         $this->assertCount(1, $result);
         $this->assertArrayHasKey('https://example.com/a', $result);
+        $this->assertSame(1, $httpClient->getRequestsCount());
+    }
+
+    /**
+     * `sp_max_retry` is the total number of attempts, not the number of retries.
+     */
+    public function testRequestStopsAfterMaxRetryAttemptsOnRetryableStatus(): void
+    {
+        $httpClient = new MockHttpClient(static fn(): MockResponse => new MockResponse('', ['http_code' => 500]));
+        $executor = new RequestExecutor([500], $httpClient, $this->createStub(LoggerInterface::class));
+
+        $result = $executor->request('https://example.com/', $this->makeConfig(['sp_max_retry' => 3, 'sp_backoff_ms' => 0]));
+
+        $this->assertSame(3, $httpClient->getRequestsCount());
+        $this->assertSame(500, $result?->getStatusCode());
+    }
+
+    public function testRequestStopsAfterMaxRetryAttemptsOnTransportError(): void
+    {
+        $httpClient = new MockHttpClient(static fn(): MockResponse => new MockResponse('', ['error' => 'timeout']));
+        $executor = new RequestExecutor([], $httpClient, $this->createStub(LoggerInterface::class));
+
+        $result = $executor->request('https://example.com/', $this->makeConfig(['sp_max_retry' => 2, 'sp_backoff_ms' => 0]));
+
+        $this->assertNull($result);
+        $this->assertSame(2, $httpClient->getRequestsCount());
+    }
+
+    public function testRequestDoesNotRepeatNonRetryableStatus(): void
+    {
+        $httpClient = new MockHttpClient(static fn(): MockResponse => new MockResponse('', ['http_code' => 404]));
+        $executor = new RequestExecutor([500], $httpClient, $this->createStub(LoggerInterface::class));
+
+        $result = $executor->request('https://example.com/', $this->makeConfig(['sp_max_retry' => 3]));
+
+        $this->assertSame(404, $result?->getStatusCode());
+        $this->assertSame(1, $httpClient->getRequestsCount());
+    }
+
+    public function testRequestChunkStopsAfterMaxRetryAttemptsOnRetryableStatus(): void
+    {
+        $httpClient = new MockHttpClient(static fn(): MockResponse => new MockResponse('', ['http_code' => 500]));
+        $executor = new RequestExecutor([500], $httpClient, $this->createStub(LoggerInterface::class));
+
+        $executor->requestChunk(['https://example.com/'], $this->makeConfig(['sp_max_retry' => 2, 'sp_backoff_ms' => 0]));
+
+        $this->assertSame(2, $httpClient->getRequestsCount());
+    }
+
+    public function testRequestChunkStopsAfterMaxRetryAttemptsOnTransportError(): void
+    {
+        $httpClient = new MockHttpClient(static fn(): MockResponse => new MockResponse('', ['error' => 'timeout']));
+        $executor = new RequestExecutor([], $httpClient, $this->createStub(LoggerInterface::class));
+
+        $executor->requestChunk(['https://example.com/'], $this->makeConfig(['sp_max_retry' => 2, 'sp_backoff_ms' => 0]));
+
+        $this->assertSame(2, $httpClient->getRequestsCount());
+    }
+
+    /**
+     * An exhausted URL must not end the wave: the other URLs of the chunk are
+     * still read.
+     */
+    public function testRequestChunkKeepsOtherUrlsWhenOneIsExhausted(): void
+    {
+        $httpClient = new MockHttpClient(
+            static fn(string $method, string $url): MockResponse => match ($url) {
+                'https://example.com/status' => new MockResponse('', ['http_code' => 500]),
+                'https://example.com/transport' => new MockResponse('', ['error' => 'timeout']),
+                default => new MockResponse('ok'),
+            },
+        );
+        $executor = new RequestExecutor([500], $httpClient, $this->createStub(LoggerInterface::class));
+
+        $result = $executor->requestChunk(
+            ['https://example.com/status', 'https://example.com/ok1', 'https://example.com/transport', 'https://example.com/ok2'],
+            $this->makeConfig(['sp_max_retry' => 1]),
+        );
+
+        $this->assertSame(
+            ['https://example.com/status', 'https://example.com/ok1', 'https://example.com/ok2'],
+            array_keys($result),
+        );
+    }
+
+    public function testRetryAfterAsHttpDateFallsBackToBackoff(): void
+    {
+        $response = $this->createStub(ResponseInterface::class);
+        $response->method('getHeaders')->willReturn(['retry-after' => ['Wed, 21 Oct 2015 07:28:00 GMT']]);
+
+        $executor = new RequestExecutor([], $this->createStub(HttpClientInterface::class), $this->createStub(LoggerInterface::class));
+        $delay = (new \ReflectionMethod($executor, 'retryDelayMsFromHeadersOrBackoff'))->invoke($executor, $response, 100);
+
+        $this->assertSame(100, $delay);
     }
 
     public function testRequestChunkRetriesRetryableStatusInWaves(): void
