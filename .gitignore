@@ -19,3 +19,5 @@ tools/phpstan
 .env*
 /phpunit.xml
 /.phpunit.cache/
+/CLAUDE.md
+/CHANGELOG.md
