@@ -56,6 +56,14 @@ services:
     Atoolo\CrawlerIndexer\Ports\RequestExecutor:
         arguments:
             $retryStatusCodes: "%atoolo.crawler.retry_status_codes%"
+            $httpClient: '@atoolo.crawler.http_client'
+
+    # Crawled pages decide which links are followed, so a page must not be
+    # able to steer the crawler to internal addresses (localhost, Solr,
+    # private networks, cloud metadata) - also not via redirects (SSRF).
+    atoolo.crawler.http_client:
+        class: Symfony\Component\HttpClient\NoPrivateNetworkHttpClient
+        arguments: ['@Symfony\Contracts\HttpClient\HttpClientInterface']
 
     Atoolo\CrawlerIndexer\Pipeline\Collector\LinkFilter:
         arguments:

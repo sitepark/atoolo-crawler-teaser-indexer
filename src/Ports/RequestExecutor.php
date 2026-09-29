@@ -19,6 +19,12 @@ final class RequestExecutor implements RequestExecutorInterface, ResetInterface
     /** Shortest wait before a retry after a transport error. */
     private const MIN_RETRY_DELAY_MS = 200;
 
+    /**
+     * Downloads above this size are aborted, so a huge file cannot exhaust
+     * the memory. Same limit as the Parser's, bigger pages are skipped anyway.
+     */
+    public const MAX_RESPONSE_BYTES = 2_000_000;
+
     /** @var array<string, int> */
     private array $lastRequestPerHost = [];
 
@@ -242,11 +248,21 @@ final class RequestExecutor implements RequestExecutorInterface, ResetInterface
      * The User-Agent is sent per request, because the executor is shared across
      * sites while the user agent is a per-site setting.
      *
-     * @return array{headers: array{User-Agent: string}}
+     * An exception thrown in on_progress aborts the download; the caller
+     * sees it as a transport error when reading the response.
+     *
+     * @return array{headers: array{User-Agent: string}, on_progress: \Closure(int, int): void}
      */
     private function requestOptions(PipelineConfig $config): array
     {
-        return ['headers' => ['User-Agent' => $config->userAgent()]];
+        return [
+            'headers' => ['User-Agent' => $config->userAgent()],
+            'on_progress' => static function (int $downloaded, int $size): void {
+                if ($downloaded > self::MAX_RESPONSE_BYTES || $size > self::MAX_RESPONSE_BYTES) {
+                    throw new \RuntimeException(sprintf('Response larger than %d bytes, aborted', self::MAX_RESPONSE_BYTES));
+                }
+            },
+        ];
     }
 
     /**

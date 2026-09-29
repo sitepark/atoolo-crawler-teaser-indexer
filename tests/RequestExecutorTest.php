@@ -9,6 +9,8 @@ use Atoolo\CrawlerIndexer\Config\PipelineConfigHelper;
 use Atoolo\CrawlerIndexer\Ports\RequestExecutor;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\HttpClient\MockHttpClient;
+use Symfony\Component\HttpClient\Response\MockResponse;
 use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
@@ -218,6 +220,19 @@ final class RequestExecutorTest extends TestCase
         $delay = (new \ReflectionMethod($executor, 'retryDelayMsFromHeadersOrBackoff'))->invoke($executor, $response, 100);
 
         $this->assertSame($expectedMs, $delay);
+    }
+
+    public function testDownloadAboveTheSizeLimitIsAborted(): void
+    {
+        $httpClient = new MockHttpClient([
+            new MockResponse(str_repeat('a', RequestExecutor::MAX_RESPONSE_BYTES + 1)),
+        ]);
+
+        $executor = new RequestExecutor([], $httpClient, $this->createStub(LoggerInterface::class));
+        $result = $executor->requestChunk(['https://example.com/huge'], $this->makeConfig(['sp_max_retry' => 1]));
+
+        // The abort is a transport error: the URL is left out, nothing is kept in memory.
+        $this->assertSame([], $result);
     }
 
     public function testRequestChunkDeduplicatesUrls(): void
