@@ -37,7 +37,7 @@ final class ProcessorTest extends TestCase
             new ExtractedData('https://example.com/1', '<p>Hello <b>World</b></p>', '<p>Dies ist <b>eine</b> Einleitung.</p>', $datetime),
             new ExtractedData('https://example.com/2', "<script>alert('XSS');</script>Test", "<script>alert('bad');</script>Kurztext", $datetime),
             new ExtractedData('https://example.com/3', '   &uuml;berzeugt   ', '   &auml;u&szlig;erst  <i>wichtig</i>   ', $datetime),
-            new ExtractedData('https://example.com/4', '', 'Soll ignoriert werden (kein Titel)', $datetime),
+            new ExtractedData('https://example.com/4', '', 'Is dropped (no title)', $datetime),
             new ExtractedData('https://example.com/5', '       ', '   ', $datetime),
             new ExtractedData('https://example.com/6', str_repeat('a', 200), str_repeat('b', 300), $datetime),
             new ExtractedData('https://example.com/7', "<span style='color:red'>Red Text</span>", "<span style='color:red'>Roter <b>Intro</b> Text</span>", $datetime),

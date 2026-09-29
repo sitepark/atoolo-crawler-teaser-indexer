@@ -70,7 +70,7 @@ final class CrawlerPipelineE2ETest extends TestCase
                 . '<a href="/overview">1:N</a>'
                 . '</div></body></html>'],
             '/news/a' => [200, '<html><head><meta property="og:title" content="Artikel A"></head><body>'
-                . '<h1>Wird von og:title überstimmt</h1>'
+                . '<h1>Overridden by og:title</h1>'
                 . '<p class="intro"> Einleitung <b>A</b> </p>'
                 . '<time datetime="2026-01-14">14. Januar</time>'
                 . '</body></html>'],

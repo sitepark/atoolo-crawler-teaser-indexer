@@ -28,7 +28,7 @@ services:
         arguments:
             $indexerConfigurationLoader: '@atoolo_search.indexer.configuration_loader'
 
-    # Run in Customer Projekt
+    # Runs in the customer project
     Atoolo\CrawlerIndexer\Messenger\Schedule:
         arguments:
             $schedule: "%atoolo.crawler.schedule%"
