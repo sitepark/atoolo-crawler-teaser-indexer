@@ -176,6 +176,50 @@ final class RequestExecutorTest extends TestCase
         $this->assertSame($response, $result['https://example.com/b']);
     }
 
+    public function testRequestChunkSkipsUrlThatCannotBeRequested(): void
+    {
+        $response = $this->createStub(ResponseInterface::class);
+        $response->method('getStatusCode')->willReturn(200);
+
+        $httpClient = $this->createStub(HttpClientInterface::class);
+        $httpClient->method('request')->willReturnCallback(
+            static function (string $method, string $url) use ($response): ResponseInterface {
+                if (str_contains($url, ':99999')) {
+                    throw new \InvalidArgumentException('Malformed URL');
+                }
+
+                return $response;
+            },
+        );
+
+        $executor = new RequestExecutor([], $httpClient, $this->createStub(LoggerInterface::class));
+        $result = $executor->requestChunk(['https://example.com:99999/x', 'https://example.com/ok'], $this->makeConfig());
+
+        $this->assertSame(['https://example.com/ok'], array_keys($result));
+    }
+
+    /**
+     * @return iterable<string, array{string, int}>
+     */
+    public static function retryAfterProvider(): iterable
+    {
+        yield 'small value is used' => ['5', 5_000];
+        yield 'one hour is capped' => ['3600', 120_000];
+        yield 'overflowing value is capped' => ['99999999999999999999', 120_000];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('retryAfterProvider')]
+    public function testRetryAfterIsCapped(string $retryAfter, int $expectedMs): void
+    {
+        $response = $this->createStub(ResponseInterface::class);
+        $response->method('getHeaders')->willReturn(['retry-after' => [$retryAfter]]);
+
+        $executor = new RequestExecutor([], $this->createStub(HttpClientInterface::class), $this->createStub(LoggerInterface::class));
+        $delay = (new \ReflectionMethod($executor, 'retryDelayMsFromHeadersOrBackoff'))->invoke($executor, $response, 100);
+
+        $this->assertSame($expectedMs, $delay);
+    }
+
     public function testRequestChunkDeduplicatesUrls(): void
     {
         $response = $this->createStub(ResponseInterface::class);

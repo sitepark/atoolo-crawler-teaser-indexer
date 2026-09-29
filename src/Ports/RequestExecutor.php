@@ -13,6 +13,12 @@ use Symfony\Contracts\Service\ResetInterface;
 
 final class RequestExecutor implements RequestExecutorInterface, ResetInterface
 {
+    /** A longer Retry-After would block the worker (the whole wave waits). */
+    private const MAX_RETRY_AFTER_S = 120;
+
+    /** Shortest wait before a retry after a transport error. */
+    private const MIN_RETRY_DELAY_MS = 200;
+
     /** @var array<string, int> */
     private array $lastRequestPerHost = [];
 
@@ -97,11 +103,7 @@ final class RequestExecutor implements RequestExecutorInterface, ResetInterface
                 );
 
                 if ($attempts < $config->maxRetry()) {
-                    if ($backoffMs <= 50) {
-                        $waitMs = 200;
-                    }
-
-                    usleep($backoffMs * 1000);
+                    usleep(max($backoffMs, self::MIN_RETRY_DELAY_MS) * 1000);
                     $backoffMs *= 2;
                 }
             }
@@ -149,7 +151,12 @@ final class RequestExecutor implements RequestExecutorInterface, ResetInterface
             /** @var array<string, ResponseInterface> $responses */
             $responses = [];
             foreach ($pending as $url) {
-                $responses[$url] = $this->httpClient->request('GET', $url, $this->requestOptions($config));
+                try {
+                    $responses[$url] = $this->httpClient->request('GET', $url, $this->requestOptions($config));
+                } catch (\Throwable $e) {
+                    // e.g. a malformed URL: skip it, the rest of the chunk goes on
+                    $this->logger->error('Request could not be sent', ['url' => $url, 'exception' => $e]);
+                }
             }
 
             /** @var list<string> $retry */
@@ -216,7 +223,7 @@ final class RequestExecutor implements RequestExecutorInterface, ResetInterface
                     );
 
                     $retry[] = $url;
-                    $waitMs = max($waitMs, $backoffMs);
+                    $waitMs = max($waitMs, $backoffMs, self::MIN_RETRY_DELAY_MS);
                 }
             }
 
@@ -255,7 +262,7 @@ final class RequestExecutor implements RequestExecutorInterface, ResetInterface
         $retryAfter = $response->getHeaders(false)['retry-after'][0] ?? null;
 
         if (null !== $retryAfter && ctype_digit($retryAfter)) {
-            return max(0, (int) $retryAfter * 1000);
+            return min((int) $retryAfter, self::MAX_RETRY_AFTER_S) * 1000;
         }
 
         return $fallbackDelayMs;
