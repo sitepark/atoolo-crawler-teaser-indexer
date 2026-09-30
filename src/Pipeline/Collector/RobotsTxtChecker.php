@@ -33,7 +33,7 @@ final class RobotsTxtChecker implements RobotsTxtCheckerInterface, ResetInterfac
     public function filterAllowed(array $urls, PipelineConfig $config): array
     {
         $robotsUrl = $config->robotsUrl();
-        if (null == $robotsUrl || '' == $robotsUrl) {
+        if ('' === $robotsUrl) {
             return array_values(array_unique($urls));
         }
 

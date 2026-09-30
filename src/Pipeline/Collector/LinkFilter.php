@@ -49,7 +49,7 @@ final class LinkFilter implements LinkFilterInterface
             $urls = $this->robotsTxtChecker->filterAllowed($urls, $config);
         }
 
-        return array_values($urls);
+        return $urls;
     }
 
     /**

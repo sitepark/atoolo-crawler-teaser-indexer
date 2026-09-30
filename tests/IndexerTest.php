@@ -177,57 +177,57 @@ final class IndexerTest extends TestCase
         $indexer->doIndex([], $this->config);
     }
 
-    public function testDoIndexWithIntroTextIncludesIntroField(): void
+    public function testDoIndexWithIntroTextPresentSetsIntroField(): void
     {
-        $updateResult = $this->createMock(SolrUpdateResult::class);
-        $updateResult->method('getStatus')->willReturn(0);
+        $added = [];
+        $indexer = $this->makeCapturingIndexer($added, ['sp_introText_present' => true]);
 
-        $document = new Document();
-
-        $updater = $this->createMock(SolrIndexUpdater::class);
-        $updater->method('createDocument')->willReturn($document);
-        $updater->method('update')->willReturn($updateResult);
-
-        $indexService = $this->createMock(SolrIndexService::class);
-        $indexService->method('updater')->willReturn($updater);
-
-        $progressHandler = $this->createStub(IndexerProgressHandler::class);
-        $progressHandler->method('getStatus')->willReturn(IndexerStatus::empty());
-
-        $this->config = $this->makeConfig(['sp_introText_present' => true]);
-        $indexer = new Indexer(
-            $progressHandler,
-            $indexService,
-            $this->createStub(LoggerInterface::class),
-        );
-
-        $status = $indexer->doIndex([
+        $indexer->doIndex([
             new ExtractedData('https://example.com/', 'Title', 'Intro text here'),
         ], $this->config);
 
-        $this->assertInstanceOf(IndexerStatus::class, $status);
+        $this->assertCount(1, $added);
+        $this->assertSame('Intro text here', $added[0]->getFields()['sp_intro']);
     }
 
-    public function testDoIndexWithDatetimeItemIncludesDateField(): void
+    public function testDoIndexWithoutIntroTextPresentOmitsIntroField(): void
     {
-        $indexer = $this->makeIndexer(['sp_datetime_present' => true]);
+        $added = [];
+        $indexer = $this->makeCapturingIndexer($added, ['sp_introText_present' => false]);
 
-        $status = $indexer->doIndex([
+        $indexer->doIndex([
+            new ExtractedData('https://example.com/', 'Title', 'Intro text here'),
+        ], $this->config);
+
+        $this->assertCount(1, $added);
+        $this->assertArrayNotHasKey('sp_intro', $added[0]->getFields());
+    }
+
+    public function testDoIndexWithDatetimePresentSetsDateField(): void
+    {
+        $added = [];
+        $indexer = $this->makeCapturingIndexer($added, ['sp_datetime_present' => true]);
+        $date = new \DateTimeImmutable('2026-01-01T00:00:00Z');
+
+        $indexer->doIndex([
+            new ExtractedData('https://example.com/', 'Title', null, $date),
+        ], $this->config);
+
+        $this->assertCount(1, $added);
+        $this->assertSame($date, $added[0]->getFields()['sp_date']);
+    }
+
+    public function testDoIndexWithoutDatetimePresentOmitsDateField(): void
+    {
+        $added = [];
+        $indexer = $this->makeCapturingIndexer($added, ['sp_datetime_present' => false]);
+
+        $indexer->doIndex([
             new ExtractedData('https://example.com/', 'Title', null, new \DateTimeImmutable('2026-01-01')),
         ], $this->config);
 
-        $this->assertInstanceOf(IndexerStatus::class, $status);
-    }
-
-    public function testDoIndexWithDatetimeItemSetsDateField(): void
-    {
-        $indexer = $this->makeIndexer(['sp_datetime_present' => true]);
-
-        $status = $indexer->doIndex([
-            new ExtractedData('https://example.com/', 'Title', null, new \DateTimeImmutable('2026-01-01T00:00:00Z')),
-        ], $this->config);
-
-        $this->assertInstanceOf(IndexerStatus::class, $status);
+        $this->assertCount(1, $added);
+        $this->assertArrayNotHasKey('sp_date', $added[0]->getFields());
     }
 
     public function testDoIndexWithValidDateDoesNotLogWarning(): void

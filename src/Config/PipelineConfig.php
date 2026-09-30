@@ -156,7 +156,7 @@ final class PipelineConfig
      *
      * @return list<string>
      */
-    public function splitHtmlDocumentSelector(): ?array
+    public function splitHtmlDocumentSelector(): array
     {
         return $this->crawlerConfigHelper->stringList('sp_split_html_document', false);
     }

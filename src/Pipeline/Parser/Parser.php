@@ -100,7 +100,7 @@ class Parser implements ParserInterface
     private function resolveBlocks(Crawler $crawler, PipelineConfig $config): array
     {
         $splitSelectors = $config->splitHtmlDocumentSelector();
-        if (null === $splitSelectors || [] === $splitSelectors) {
+        if ([] === $splitSelectors) {
             return [$crawler];
         }
 
@@ -189,7 +189,7 @@ class Parser implements ParserInterface
 
                 return null;
             }
-            $title = ($titleConfig->prefix ?? '') . $title;
+            $title = ($titleConfig->prefix) . $title;
         }
 
         $introText = null;
