@@ -9,39 +9,70 @@ services:
         Symfony\Component\Console\Command\Command:
             tags: ["command"]
 
-    Atoolo\Crawler\:
+    Atoolo\CrawlerIndexer\:
         resource: "../src/"
+        # Values, not services: the per-site config, DTOs, exceptions and the
+        # per-block / per-rule objects the steps create themselves.
+        exclude:
+            - "../src/Config/PipelineConfig.php"
+            - "../src/Config/PipelineConfigHelper.php"
+            - "../src/Dto"
+            - "../src/Exception"
+            - "../src/Pipeline/Parser/FieldSource.php"
+            - "../src/Pipeline/RelevanceEvaluator/ScoreRuleConfig.php"
 
-    # Run in Development
-    Atoolo\Crawler\Command\Index:
+    # Shared by PipelineCommand (development) and StartPipelineMessageHandler
+    # (customer project, via Schedule).
+    Atoolo\CrawlerIndexer\Application\SitesRunner:
         arguments:
-            $indexerConfigurationLoader: '@atoolo_index.indexer.configuration_loader'
+            $indexerConfigurationLoader: '@atoolo_search.indexer.configuration_loader'
 
-    # Run in Customer Projekt
-    Atoolo\Crawler\Application\Schedule:
+    # Runs in the customer project
+    Atoolo\CrawlerIndexer\Messenger\Schedule:
         arguments:
             $schedule: "%atoolo.crawler.schedule%"
 
-    Atoolo\Crawler\Application\StartCrawlerMessageHandler:
-        arguments:
-            $indexerConfigurationLoader: '@atoolo_index.indexer.configuration_loader'
+    # --- Pipeline -----------------------------------------------------------
+    # The steps are shared services; the per-site PipelineConfig is passed per
+    # call. Each step is wired by its interface, so a project (or the commons
+    # project) can decorate it:
+    #
+    #   #[AsDecorator(ParserInterface::class)]
+    #   final class MyParser implements ParserInterface { ... }
+    #
+    # Decorators of the same step stack (use decoration_priority for the order).
 
-    Atoolo\Crawler\Domain\Crawler\Ports\RequestExecutor:
+    Atoolo\CrawlerIndexer\Pipeline\Collector\URLCollectorInterface: '@Atoolo\CrawlerIndexer\Pipeline\Collector\URLCollector'
+    Atoolo\CrawlerIndexer\Pipeline\Collector\LinkFilterInterface: '@Atoolo\CrawlerIndexer\Pipeline\Collector\LinkFilter'
+    Atoolo\CrawlerIndexer\Pipeline\Collector\RobotsTxtCheckerInterface: '@Atoolo\CrawlerIndexer\Pipeline\Collector\RobotsTxtChecker'
+    Atoolo\CrawlerIndexer\Pipeline\Fetcher\FetcherInterface: '@Atoolo\CrawlerIndexer\Pipeline\Fetcher\Fetcher'
+    Atoolo\CrawlerIndexer\Pipeline\Parser\ParserInterface: '@Atoolo\CrawlerIndexer\Pipeline\Parser\Parser'
+    Atoolo\CrawlerIndexer\Pipeline\RelevanceEvaluator\RelevanceEvaluatorInterface: '@Atoolo\CrawlerIndexer\Pipeline\RelevanceEvaluator\RelevanceEvaluator'
+    Atoolo\CrawlerIndexer\Pipeline\Processor\ProcessorInterface: '@Atoolo\CrawlerIndexer\Pipeline\Processor\Processor'
+    Atoolo\CrawlerIndexer\Pipeline\Indexer\IndexerInterface: '@Atoolo\CrawlerIndexer\Pipeline\Indexer\Indexer'
+    Atoolo\CrawlerIndexer\Ports\RequestExecutorInterface: '@Atoolo\CrawlerIndexer\Ports\RequestExecutor'
+
+    Atoolo\CrawlerIndexer\Ports\RequestExecutor:
         arguments:
             $retryStatusCodes: "%atoolo.crawler.retry_status_codes%"
+            $httpClient: '@atoolo.crawler.http_client'
 
-    Atoolo\Crawler\Controller\CrawlerManager:
+    # Crawled pages decide which links are followed, so a page must not be
+    # able to steer the crawler to internal addresses (localhost, Solr,
+    # private networks, cloud metadata) - also not via redirects (SSRF).
+    atoolo.crawler.http_client:
+        class: Symfony\Component\HttpClient\NoPrivateNetworkHttpClient
+        arguments: ['@Symfony\Contracts\HttpClient\HttpClientInterface']
+
+    Atoolo\CrawlerIndexer\Pipeline\Collector\LinkFilter:
         arguments:
-            $urlCollector: '@Atoolo\Crawler\Domain\Crawler\Steps\URLCollector'
-            $fetcher: '@Atoolo\Crawler\Domain\Crawler\Steps\Fetcher'
-            $processor: '@Atoolo\Crawler\Domain\Crawler\Steps\Processor'
-            $logger: "@logger"
-            $indexer: '@Atoolo\Crawler\Domain\Crawler\Steps\Indexer'
+            $denyEndings: "%atoolo.crawler.deny_endings%"
 
-    Atoolo\Crawler\Domain\Crawler\Ports\RequestExecutorInterface: '@Atoolo\Crawler\Domain\Crawler\Ports\RequestExecutor'
+    Atoolo\CrawlerIndexer\Pipeline\Parser\Parser:
+        arguments:
+            $fieldExtractors: !tagged_iterator atoolo.crawler.field_extractor
 
-    # gehört eigentlich ins Kunden-FEDS bzw. Commons-FEDS
-    Atoolo\Crawler\Domain\Crawler\Steps\Indexer:
+    Atoolo\CrawlerIndexer\Pipeline\Indexer\Indexer:
         arguments:
             $indexService: "@atoolo_search.indexer.solr_index_service"
             $progressHandler: "@atoolo_search.indexer.internal_resource_progress_state"

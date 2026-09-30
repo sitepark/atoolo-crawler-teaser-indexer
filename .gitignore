@@ -1,8 +1,7 @@
-###> phpstan/phpstan ###
 phpstan.neon
-###< phpstan/phpstan ###
-
-### NEW ###
+.php-cs-fixer.cache
+/.phpcs-cache
+/phpcs.xml
 /vendor/
 /vendor.orig
 composer.lock
@@ -15,7 +14,7 @@ composer.lock
 /tools
 .phpactor.json
 .env*
-###> phpunit/phpunit ###
 /phpunit.xml
 /.phpunit.cache/
-###< phpunit/phpunit ###
+/CLAUDE.md
+/CHANGELOG.md

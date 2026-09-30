@@ -1,6 +1,6 @@
 {
     "name": "atoolo/crawler-teaser-indexer",
-    "version": "1.0.2",
+    "version": "2.0.0",
     "description": "Automated crawler-based generation and indexing to Solr.",
     "type": "symfony-bundle",
     "license": "proprietary",
@@ -10,18 +10,18 @@
         "php": ">=8.1 <8.6.0",
         "ext-ctype": "*",
         "ext-iconv": "*",
-        "atoolo/search-bundle": "dev-main",
+        "atoolo/search-bundle": "^1.12",
         "spatie/robots-txt": "^2.5.4",
-        "symfony/console": "^6.4.41 || ^7.4.7",
-        "symfony/css-selector": "^6.4.34 || ^7.4.7",
-        "symfony/dom-crawler": "^6.4.40 || ^7.4.7",
-        "symfony/dotenv": "^6.4.39 || ^7.4.7",
+        "symfony/console": "^6.4.41 || ^7.4.20",
+        "symfony/css-selector": "^6.4.34 || ^7.4.18",
+        "symfony/dom-crawler": "^6.4.40 || ^7.4.17",
+        "symfony/dotenv": "^6.4.39 || ^7.4.18",
         "symfony/flex": "^2.10",
-        "symfony/framework-bundle": "^6.4.41 || ^7.4.7",
-        "symfony/http-client": "^6.4.41 || ^7.4.7",
+        "symfony/framework-bundle": "^6.4.41 || ^7.4.20",
+        "symfony/http-client": "^6.4.41 || ^7.4.20",
         "symfony/monolog-bundle": "^3.11.2",
-        "symfony/runtime": "^6.4.41 || ^7.4.7",
-        "symfony/yaml": "^6.4.41 || ^7.4.7"
+        "symfony/runtime": "^6.4.41 || ^7.4.14",
+        "symfony/yaml": "^6.4.41 || ^7.4.20"
     },
     "config": {
         "allow-plugins": {
@@ -31,17 +31,17 @@
             "symfony/flex": true,
             "symfony/runtime": true
         },
-        "bump-after-update": true,
+        "bump-after-update": false,
         "sort-packages": true
     },
     "autoload": {
         "psr-4": {
-            "Atoolo\\Crawler\\": "src/"
+            "Atoolo\\CrawlerIndexer\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Atoolo\\Cralwer\\Tests\\": "tests/"
+            "Atoolo\\CrawlerIndexer\\Tests\\": "tests/"
         }
     },
     "conflict": {
@@ -50,28 +50,30 @@
     "require-dev": {
         "dealerdirect/phpcodesniffer-composer-installer": "^1.2.1",
         "infection/infection": "^0.29.9",
-        "overtrue/phplint": "^9.7.1",
+        "overtrue/phplint": "^9.1",
         "phpcompatibility/php-compatibility": "^9.3.5",
-        "phpdocumentor/type-resolver": "^2.0",
-        "phpunit/phpunit": "^10.5.64",
-        "squizlabs/php_codesniffer": "^3.13.5"
+        "phpdocumentor/type-resolver": "^2.1",
+        "phpunit/phpunit": "^10.5.65",
+        "squizlabs/php_codesniffer": "^3.13.6"
     },
     "scripts": {
-        "post-install-cmd": "phive --no-progress install --trust-gpg-keys C00543248C87FB13,4AA394086372C20A,CF1A108D0E7AE720,51C67305FFC2E5C0,E82B2FB314E9906E",
+        "post-install-cmd": "phive --no-progress install --force-accept-unsigned --trust-gpg-keys C00543248C87FB13,4AA394086372C20A,CF1A108D0E7AE720,51C67305FFC2E5C0,E82B2FB314E9906E",
+        "check": [
+            "@analyse",
+            "@test"
+        ],
         "analyse": [
             "@analyse:phplint",
             "@analyse:phpstan",
-            "@analyse:phpcsfixer",
+            "@analyse:php-cs-checker",
             "@analyse:compatibilitycheck"
         ],
         "analyse:compatibilitycheck": "./vendor/bin/phpcs --standard=./phpcs.compatibilitycheck.xml",
         "analyse:phpcsfixer": "./tools/php-cs-fixer check --diff --show-progress=dots",
         "analyse:phplint": "./vendor/bin/phplint",
         "analyse:phpstan": "./tools/phpstan analyse",
-        "cs-fix": [
-            "@cs-fix:php-cs-fixer"
-        ],
-        "cs-fix:php-cs-fixer": "./tools/php-cs-fixer fix",
+        "analyse:php-cs-checker": "PHP_CS_FIXER_IGNORE_ENV=1 ./tools/php-cs-fixer check --diff --show-progress=dots",
+        "php-cs-fixer": "PHP_CS_FIXER_IGNORE_ENV=1 ./tools/php-cs-fixer fix",
         "report": [
             "@report:phpstan"
         ],

@@ -2,23 +2,23 @@
 
 declare(strict_types=1);
 
-namespace Tests;
+namespace Atoolo\CrawlerIndexer\Tests;
 
-use Atoolo\Crawler\Config\CrawlerConfig;
-use Atoolo\Crawler\Config\CrawlerConfigContext;
-use Atoolo\Crawler\Config\CrawlerConfigHelper;
+use Atoolo\CrawlerIndexer\Config\PipelineConfig;
+use Atoolo\CrawlerIndexer\Config\PipelineConfigHelper;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 
 final class CrawlerConfigTest extends TestCase
 {
     /** @param array<string, mixed> $params */
-    private function makeConfig(array $params): CrawlerConfig
+    private function makeConfig(array $params): PipelineConfig
     {
-        $ctx = new CrawlerConfigContext($params);
+        $ctx = $params;
         $logger = $this->createStub(LoggerInterface::class);
-        $helper = new CrawlerConfigHelper($ctx, $logger);
-        return new CrawlerConfig($helper);
+        $helper = new PipelineConfigHelper($ctx, $logger);
+
+        return new PipelineConfig($helper);
     }
 
     // --- categoriesId ---
@@ -76,7 +76,7 @@ final class CrawlerConfigTest extends TestCase
     public function testRobotsUrlReturnsNullByDefault(): void
     {
         $config = $this->makeConfig([]);
-        $this->assertNull($config->robotsUrl());
+        $this->assertSame('', $config->robotsUrl());
     }
 
     public function testRobotsUrlReturnsString(): void
@@ -91,14 +91,6 @@ final class CrawlerConfigTest extends TestCase
     {
         $config = $this->makeConfig([]);
         $this->assertSame([], $config->startUrls());
-    }
-
-    public function testStartUrlsWithStringItem(): void
-    {
-        $config = $this->makeConfig(['sp_start_urls' => ['https://example.com/']]);
-        $this->assertSame([
-            ['url' => 'https://example.com/', 'extraction_depth' => 0],
-        ], $config->startUrls());
     }
 
     public function testStartUrlsWithArrayItemAndNumericDepth(): void
@@ -142,11 +134,9 @@ final class CrawlerConfigTest extends TestCase
     public function testStartUrlsMixedStringAndArray(): void
     {
         $config = $this->makeConfig(['sp_start_urls' => [
-            'https://example.com/',
             ['sp_url' => 'https://example.com/news/', 'sp_extraction_depth' => 2],
         ]]);
         $this->assertSame([
-            ['url' => 'https://example.com/', 'extraction_depth' => 0],
             ['url' => 'https://example.com/news/', 'extraction_depth' => 2],
         ], $config->startUrls());
     }
@@ -229,15 +219,15 @@ final class CrawlerConfigTest extends TestCase
         $this->assertSame(['utm_source', 'utm_medium'], $config->stripQueryParams());
     }
 
-    // --- maxTeaser / cleanupThreshold ---
+    // --- maxDocument / cleanupThreshold ---
 
-    public function testMaxTeaserDefault(): void
+    public function testMaxDocumentDefault(): void
     {
         $config = $this->makeConfig([]);
         $this->assertSame(100, $config->maxTeaser());
     }
 
-    public function testMaxTeaserCustom(): void
+    public function testMaxDocumentCustom(): void
     {
         $config = $this->makeConfig(['sp_max_teaser' => 50]);
         $this->assertSame(50, $config->maxTeaser());
@@ -293,6 +283,46 @@ final class CrawlerConfigTest extends TestCase
         $this->assertSame('MyBot/1.0', $config->userAgent());
     }
 
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function userAgentWithControlCharsProvider(): iterable
+    {
+        yield 'CRLF' => ["MyBot/1.0\r\nX-Evil: 1"];
+        yield 'LF only' => ["MyBot/1.0\nX-Evil: 1"];
+        yield 'CR only' => ["MyBot/1.0\rX-Evil: 1"];
+        yield 'NUL' => ["MyBot/1.0\0X-Evil: 1"];
+    }
+
+    /**
+     * @dataProvider userAgentWithControlCharsProvider
+     */
+    public function testUserAgentStripsHeaderInjectionCharacters(string $userAgent): void
+    {
+        $config = $this->makeConfig(['sp_user_agent' => $userAgent]);
+        $this->assertSame('MyBot/1.0X-Evil: 1', $config->userAgent());
+    }
+
+    public function testUserAgentFallsBackToDefaultWhenOnlyControlChars(): void
+    {
+        $config = $this->makeConfig(['sp_user_agent' => "\r\n "]);
+        $this->assertSame('Atoolo/Crawler-Teaser-Indexer', $config->userAgent());
+    }
+
+    // --- content scoring: main content selectors ---
+
+    public function testRelevanceContentSelectorIsAList(): void
+    {
+        $config = $this->makeConfig(['sp_relevance_content_selector' => ['#content', 'main']]);
+
+        $this->assertSame(['#content', 'main'], $config->contentScoringConfig()->contentSelectors);
+    }
+
+    public function testRelevanceContentSelectorDefaultsToEmpty(): void
+    {
+        $this->assertSame([], $this->makeConfig([])->contentScoringConfig()->contentSelectors);
+    }
+
     // --- titleConfig ---
 
     public function testTitleConfigDefaults(): void
@@ -310,9 +340,9 @@ final class CrawlerConfigTest extends TestCase
     public function testTitleConfigCustomValues(): void
     {
         $config = $this->makeConfig([
-            'sp_title_prefix'    => 'PRE: ',
+            'sp_title_prefix' => 'PRE: ',
             'sp_title_opengraph' => ['og:title'],
-            'sp_title_css'       => ['h1', '.title'],
+            'sp_title_css' => ['h1', '.title'],
             'sp_title_max_chars' => 300,
         ]);
         $titleConfig = $config->titleConfig();
@@ -330,17 +360,16 @@ final class CrawlerConfigTest extends TestCase
         $introConfig = $config->introTextConfig();
         $this->assertFalse($introConfig->present);
         $this->assertFalse($introConfig->requiredField);
-        $this->assertSame('', $introConfig->prefix);
     }
 
     public function testIntroTextConfigCustomValues(): void
     {
         $config = $this->makeConfig([
-            'sp_introText_present'        => true,
+            'sp_introText_present' => true,
             'sp_introText_required_field' => true,
-            'sp_introText_opengraph'      => ['og:description'],
-            'sp_introText_css'            => ['.intro'],
-            'sp_introText_max_chars'      => 500,
+            'sp_introText_opengraph' => ['og:description'],
+            'sp_introText_css' => ['.intro'],
+            'sp_introText_max_chars' => 500,
         ]);
         $introConfig = $config->introTextConfig();
         $this->assertTrue($introConfig->present);
@@ -358,17 +387,21 @@ final class CrawlerConfigTest extends TestCase
         $dtConfig = $config->dateTimeConfig();
         $this->assertFalse($dtConfig->present);
         $this->assertFalse($dtConfig->requiredField);
-        $this->assertTrue($dtConfig->onlyDate);
+        // Without sp_datetime_present the whole datetime config stays inert -
+        // no sub-option is read, so onlyDate is false rather than its default.
+        $this->assertFalse($dtConfig->onlyDate);
+        $this->assertSame([], $dtConfig->opengraph);
+        $this->assertSame([], $dtConfig->css);
     }
 
     public function testDateTimeConfigCustomValues(): void
     {
         $config = $this->makeConfig([
-            'sp_datetime_present'        => true,
+            'sp_datetime_present' => true,
             'sp_datetime_required_field' => true,
-            'sp_datetime_only_date'      => false,
-            'sp_datetime_opengraph'      => ['article:published_time'],
-            'sp_datetime_css'            => ['time'],
+            'sp_datetime_only_date' => false,
+            'sp_datetime_opengraph' => ['article:published_time'],
+            'sp_datetime_css' => ['time'],
         ]);
         $dtConfig = $config->dateTimeConfig();
         $this->assertTrue($dtConfig->present);
@@ -431,10 +464,10 @@ final class CrawlerConfigTest extends TestCase
     {
         $config = $this->makeConfig([
             'sp_content_scoring_min_score' => 5,
-            'sp_content_scoring_positive'  => [
+            'sp_content_scoring_positive' => [
                 ['sp_score' => 2, 'sp_match_any' => ['news', 'sport']],
             ],
-            'sp_content_scoring_negative'  => [
+            'sp_content_scoring_negative' => [
                 ['sp_score' => 1, 'sp_match_any' => ['advertisement']],
             ],
         ]);
@@ -445,16 +478,5 @@ final class CrawlerConfigTest extends TestCase
         $this->assertSame(['news', 'sport'], $scoringConfig->positive[0]->matchAny);
         $this->assertCount(1, $scoringConfig->negative);
         $this->assertSame(1, $scoringConfig->negative[0]->score);
-    }
-
-    public function testCrawlerConfigContextResetClearsParams(): void
-    {
-        $ctx = new CrawlerConfigContext(['sp_id' => 'my-id', 'sp_max_teaser' => 50]);
-        $this->assertSame('my-id', $ctx->get('sp_id'));
-
-        $ctx->reset();
-
-        $this->assertNull($ctx->get('sp_id'));
-        $this->assertNull($ctx->get('sp_max_teaser'));
     }
 }

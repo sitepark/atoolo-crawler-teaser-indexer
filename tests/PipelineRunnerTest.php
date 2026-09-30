@@ -1,0 +1,71 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Atoolo\CrawlerIndexer\Tests;
+
+use Atoolo\CrawlerIndexer\Application\PipelineRunner;
+use Atoolo\CrawlerIndexer\Config\PipelineConfigFactory;
+use Atoolo\CrawlerIndexer\Pipeline\CrawlerPipeline;
+use PHPUnit\Framework\TestCase;
+use Psr\Log\LoggerInterface;
+
+final class PipelineRunnerTest extends TestCase
+{
+    private function makeRunner(
+        CrawlerPipeline $manager,
+        LoggerInterface $logger,
+    ): PipelineRunner {
+
+        return new PipelineRunner(
+            new PipelineConfigFactory($this->createStub(LoggerInterface::class)),
+            $manager,
+            $logger,
+        );
+    }
+
+    public function testRunWithValidSiteCallsStartCrawler(): void
+    {
+        $manager = $this->createMock(CrawlerPipeline::class);
+        $manager->expects($this->once())->method('run');
+
+        $logger = $this->createStub(LoggerInterface::class);
+        $this->makeRunner($manager, $logger)->run(['sp_id' => 'site-1']);
+    }
+
+    public function testRunWithMissingSiteIdThrowsInvalidArgumentException(): void
+    {
+        $manager = $this->createMock(CrawlerPipeline::class);
+        $manager->expects($this->never())->method('run');
+
+        $logger = $this->createStub(LoggerInterface::class);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->makeRunner($manager, $logger)->run([]);
+    }
+
+    public function testRunWithEmptySiteIdThrowsInvalidArgumentException(): void
+    {
+        $manager = $this->createMock(CrawlerPipeline::class);
+        $logger = $this->createStub(LoggerInterface::class);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->makeRunner($manager, $logger)->run(['sp_id' => '']);
+    }
+
+    /**
+     * The failure is logged once by SitesRunner, not here as well.
+     */
+    public function testRunRethrowsWithoutLoggingWhenCrawlerThrows(): void
+    {
+        $manager = $this->createMock(CrawlerPipeline::class);
+        $manager->method('run')->willThrowException(new \RuntimeException('crawl error'));
+
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->never())->method('error');
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('crawl error');
+        $this->makeRunner($manager, $logger)->run(['sp_id' => 'site-1']);
+    }
+}

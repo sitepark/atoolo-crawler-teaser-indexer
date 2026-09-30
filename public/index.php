@@ -1,6 +1,6 @@
 <?php
 
-use Atoolo\Crawler\Kernel;
+use Atoolo\CrawlerIndexer\Kernel;
 
 require_once dirname(__DIR__) . '/vendor/autoload_runtime.php';
 

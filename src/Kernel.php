@@ -1,6 +1,6 @@
 <?php
 
-namespace Atoolo\Crawler;
+namespace Atoolo\CrawlerIndexer;
 
 use Symfony\Bundle\FrameworkBundle\Kernel\MicroKernelTrait;
 use Symfony\Component\HttpKernel\Kernel as BaseKernel;

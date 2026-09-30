@@ -2,671 +2,396 @@
 
 declare(strict_types=1);
 
-namespace Tests;
+namespace Atoolo\CrawlerIndexer\Tests;
 
-use Atoolo\Crawler\Config\CrawlerConfig;
-use Atoolo\Crawler\Config\CrawlerConfigContext;
-use Atoolo\Crawler\Domain\Crawler\Steps\URLCollector;
+use Atoolo\CrawlerIndexer\Config\PipelineConfig;
+use Atoolo\CrawlerIndexer\Config\PipelineConfigHelper;
+use Atoolo\CrawlerIndexer\Pipeline\Collector\RobotsTxtCheckerInterface;
+use Atoolo\CrawlerIndexer\Pipeline\Collector\LinkFilter;
+use Atoolo\CrawlerIndexer\Pipeline\Collector\UrlCanonicalizer;
+use Atoolo\CrawlerIndexer\Pipeline\Fetcher\FetcherInterface;
+use Atoolo\CrawlerIndexer\Pipeline\Collector\URLCollector;
 use PHPUnit\Framework\TestCase;
-use Symfony\Contracts\HttpClient\ResponseInterface;
-use Atoolo\Crawler\Domain\Crawler\Services\URLNormalizer;
-use Atoolo\Crawler\Domain\Crawler\Ports\RequestExecutorInterface;
-use Atoolo\Crawler\Domain\Crawler\Services\RobotsTxtCheckerInterface;
-use Atoolo\Crawler\Config\CrawlerConfigHelper;
 use Psr\Log\LoggerInterface;
 
 /**
- * Unit tests for the URLCollector class.
+ * Unit tests for the URLCollector.
  *
- * This test suite ensures that:
- * - Links are extracted and filtered correctly.
- * - Relative URLs are resolved against the base URL.
- * - Unnecessary URLs are excluded.
- * - HTTP errors throw proper exceptions.
- * - Broken or invalid links are logged and skipped.
- * - Edge cases such as duplicate links, empty content, and non-http protocols are handled correctly.
+ * URLCollector::collect() is a generator that performs a breadth-first
+ * crawl and yields chunks of fetched HTML pages. Every URL is fetched
+ * exactly once (a whole BFS level is fetched in chunks of
+ * `sp_parallel_requests`), and links are discovered from the fetched HTML
+ * to build the next level. There is no second fetch pass and no return
+ * value - the caller just consumes the yielded page chunks.
  */
 final class URLCollectorTest extends TestCase
 {
-    private string $url1 = 'https://example.com/page1';
+    private PipelineConfig $config;
+
     private string $urlPrefix = 'https://example.com';
 
+    /**
+     * @param array<string, string> $htmlByUrl
+     */
+    private function stubFetcher(array $htmlByUrl): FetcherInterface
+    {
+        $fetcher = $this->createStub(FetcherInterface::class);
+        $fetcher->method('fetchUrls')->willReturnCallback(
+            function (array $urls) use ($htmlByUrl): array {
+                $result = [];
+                foreach ($urls as $url) {
+                    if (isset($htmlByUrl[$url])) {
+                        $result[] = ['url' => $url, 'html' => $htmlByUrl[$url]];
+                    }
+                }
+
+                return $result;
+            },
+        );
+
+        return $fetcher;
+    }
+
+    /**
+     * @param array<string, mixed> $overrides
+     */
     private function createCollector(
-        RequestExecutorInterface $requestExecutor,
+        FetcherInterface $fetcher,
         LoggerInterface $logger,
         RobotsTxtCheckerInterface $robotsTxtChecker,
+        array $overrides = [],
     ): URLCollector {
-        $ctx = new CrawlerConfigContext([
+        $ctx = array_merge([
             'sp_start_urls' => [['sp_url' => $this->urlPrefix, 'sp_extraction_depth' => 0]],
             'sp_link_selector' => '#content a[href]',
-            'sp_forced_article_urls' => [],
             'sp_max_teaser' => 999,
+            'sp_parallel_requests' => 1,
             'sp_deny_prefixes' => [],
             'sp_allow_prefixes' => [$this->urlPrefix],
             'sp_strip_query_params_active' => false,
             'sp_strip_query_params' => [],
-        ]);
+        ], $overrides);
 
-        $helper = new CrawlerConfigHelper($ctx, $logger);
-        $crawlerConfig = new CrawlerConfig($helper);
-
-        $urlNormalizer = new URLNormalizer($crawlerConfig);
+        $helper = new PipelineConfigHelper($ctx, $logger);
+        $this->config = new PipelineConfig($helper);
 
         return new URLCollector(
-            $crawlerConfig,
-            $urlNormalizer,
+            new UrlCanonicalizer(),
+            new LinkFilter($robotsTxtChecker, []),
             $logger,
-            $requestExecutor,
-            $robotsTxtChecker,
+            $fetcher,
         );
     }
 
     /**
-     * Test that valid links are extracted and unnecessary ones are filtered out.
+     * Flattens the yielded chunks into a flat list of fetched URLs.
+     *
+     * @return list<string>
      */
-    public function testFindHrefUrlsByCssSelectorExtractsAndFilters(): void
+    private function fetchedUrls(\Generator $generator): array
     {
-        $html = <<<HTML
-<!doctype html>
-<html><body id="content">
-<a href="$this->url1">Page 1</a>
-<a href="https://example.com/unwanted/page2">Page 2</a>
-<a href="/relative">Relative link</a>
-</body></html>
-HTML;
+        $urls = [];
+        foreach ($generator as $chunk) {
+            foreach ($chunk as $page) {
+                $urls[] = $page['url'];
+            }
+        }
 
-        $response = $this->createStub(ResponseInterface::class);
-        $response->method('getContent')->willReturn($html);
-
-        $requestExecutor = $this->createStub(RequestExecutorInterface::class);
-        $requestExecutor->method('request')->willReturn($response);
-
-        $logger = $this->createStub(LoggerInterface::class);
-        $robotsTxtChecker = $this->createStub(RobotsTxtCheckerInterface::class);
-
-        $collector = $this->createCollector($requestExecutor, $logger, $robotsTxtChecker);
-
-        $result = $collector->findHrefUrlsByCssSelector();
-        $expected = [
-            $this->url1,
-            'https://example.com/unwanted/page2',
-            'https://example.com/relative',
-        ];
-        $this->assertSame($expected, $result);
+        return $urls;
     }
 
-    /**
-     * Test that a failing HttpClient request throws a RuntimeException
-     * and includes the base URL in the exception message.
-     */
-    public function testHttpClientFailureThrowsRuntimeException(): void
+    public function testYieldsFetchedStartPage(): void
     {
-        $requestExecutor = $this->createStub(RequestExecutorInterface::class);
-        $requestExecutor->method('request')->willThrowException(new \Exception('Connection failed'));
+        $html = '<div id="content"></div>';
 
-        $logger = $this->createStub(LoggerInterface::class);
-        $robotsTxtChecker = $this->createStub(RobotsTxtCheckerInterface::class);
-        $collector = $this->createCollector($requestExecutor, $logger, $robotsTxtChecker);
+        $collector = $this->createCollector(
+            $this->stubFetcher([$this->urlPrefix => $html]),
+            $this->createStub(LoggerInterface::class),
+            $this->createStub(RobotsTxtCheckerInterface::class),
+        );
 
-        $this->expectException(\Exception::class);
-        $this->expectExceptionMessage('Connection failed');
+        $chunks = iterator_to_array($collector->collect($this->config));
 
-        $collector->findHrefUrlsByCssSelector();
-    }
-
-    /**
-     * Test that broken links (e.g., javascript:) are skipped and logged.
-     */
-    public function testBrokenLinkIsLoggedButNotIncluded(): void
-    {
-        $html = '<a href="javascript:void(0)">Broken</a>';
-        $response = $this->createStub(ResponseInterface::class);
-        $response->method('getContent')->willReturn($html);
-
-        $requestExecutor = $this->createStub(RequestExecutorInterface::class);
-        $requestExecutor->method('request')->willReturn($response);
-
-        $logger = $this->createStub(LoggerInterface::class);
-        $robotsTxtChecker = $this->createStub(RobotsTxtCheckerInterface::class);
-        $collector = $this->createCollector($requestExecutor, $logger, $robotsTxtChecker);
-
-        $result = $collector->findHrefUrlsByCssSelector();
-
-        $this->assertSame([], $result);
-    }
-
-    /**
-     * Test the filterUnneededUrls method directly via reflection.
-     */
-    public function testFilterUnneededUrlsViaFindHrefUrlsByCssSelector(): void
-    {
-        $html = <<<HTML
-<!doctype html>
-<html><body id="content">
-<a href="$this->url1">Page 1</a>
-<a href="https://example.com/unwanted/page2">Page 2</a>
-</body></html>
-HTML;
-
-        $logger = $this->createStub(LoggerInterface::class);
-
-        $response = $this->createStub(ResponseInterface::class);
-        $response->method('getContent')->willReturn($html);
-
-        $requestExecutor = $this->createMock(RequestExecutorInterface::class);
-
-        $requestExecutor
-            ->expects($this->once())
-            ->method('request')
-            ->with('https://example.com')
-            ->willReturn($response);
-        $robotsTxtChecker = $this->createStub(RobotsTxtCheckerInterface::class);
-        $collector = $this->createCollector($requestExecutor, $logger, $robotsTxtChecker);
-
-        $result = $collector->findHrefUrlsByCssSelector();
-
-        $this->assertSame([$this->url1, 'https://example.com/unwanted/page2'], $result);
-    }
-
-    /**
-     * Test that duplicate links are only returned once.
-     */
-    public function testDuplicateLinksAreRemoved(): void
-    {
-        $html = <<<HTML
-<!doctype html>
-<html><body id="content">
-<a href="$this->url1">Page 1</a>
-<a href="https://example.com/page1">Page 2</a>
-</body></html>
-HTML;
-
-        $response = $this->createStub(ResponseInterface::class);
-        $response->method('getContent')->willReturn($html);
-
-        $requestExecutor = $this->createStub(RequestExecutorInterface::class);
-        $requestExecutor->method('request')->willReturn($response);
-
-        $logger = $this->createStub(LoggerInterface::class);
-        $robotsTxtChecker = $this->createStub(RobotsTxtCheckerInterface::class);
-        $collector = $this->createCollector($requestExecutor, $logger, $robotsTxtChecker);
-
-        $result = $collector->findHrefUrlsByCssSelector();
-
-        $this->assertSame([$this->url1], $result);
-    }
-
-    /**
-     * Test that empty HTML content results in no links being extracted.
-     */
-    public function testEmptyHtmlContentReturnsNoLinks(): void
-    {
-        $html = '';
-        $response = $this->createStub(ResponseInterface::class);
-        $response->method('getContent')->willReturn($html);
-
-        $requestExecutor = $this->createStub(RequestExecutorInterface::class);
-        $requestExecutor->method('request')->willReturn($response);
-
-        $logger = $this->createStub(LoggerInterface::class);
-        $robotsTxtChecker = $this->createStub(RobotsTxtCheckerInterface::class);
-        $collector = $this->createCollector($requestExecutor, $logger, $robotsTxtChecker);
-
-        $result = $collector->findHrefUrlsByCssSelector();
-
-        $this->assertSame([], $result);
-    }
-
-    /**
-     * Test that requestExecutor returning null throws LogicException.
-     */
-    public function testNullResponseThrowsLogicException(): void
-    {
-        $requestExecutor = $this->createStub(RequestExecutorInterface::class);
-        $requestExecutor->method('request')->willReturn(null);
-
-        $logger = $this->createStub(LoggerInterface::class);
-        $robotsTxtChecker = $this->createStub(RobotsTxtCheckerInterface::class);
-        $collector = $this->createCollector($requestExecutor, $logger, $robotsTxtChecker);
-
-        $this->expectException(\LogicException::class);
-        $collector->findHrefUrlsByCssSelector();
-    }
-
-    /**
-     * Test that maxTeaser limits the returned URLs and the exact URLs are correct.
-     */
-    public function testMaxTeaserLimitsResults(): void
-    {
-        $html = <<<HTML
-<!doctype html>
-<html><body id="content">
-<a href="https://example.com/page1">Page 1</a>
-<a href="https://example.com/page2">Page 2</a>
-<a href="https://example.com/page3">Page 3</a>
-</body></html>
-HTML;
-
-        $response = $this->createStub(ResponseInterface::class);
-        $response->method('getContent')->willReturn($html);
-
-        $requestExecutor = $this->createStub(RequestExecutorInterface::class);
-        $requestExecutor->method('request')->willReturn($response);
-
-        $logger = $this->createStub(LoggerInterface::class);
-        $robotsTxtChecker = $this->createStub(RobotsTxtCheckerInterface::class);
-
-        $ctx = new CrawlerConfigContext([
-            'sp_start_urls' => [['sp_url' => $this->urlPrefix, 'sp_extraction_depth' => 0]],
-            'sp_link_selector' => '#content a[href]',
-            'sp_forced_article_urls' => [],
-            'sp_max_teaser' => 2,
-            'sp_deny_prefixes' => [],
-            'sp_allow_prefixes' => [$this->urlPrefix],
-            'sp_strip_query_params_active' => false,
-            'sp_strip_query_params' => [],
-        ]);
-        $helper = new CrawlerConfigHelper($ctx, $logger);
-        $crawlerConfig = new CrawlerConfig($helper);
-        $urlNormalizer = new URLNormalizer($crawlerConfig);
-        $collector = new URLCollector($crawlerConfig, $urlNormalizer, $logger, $requestExecutor, $robotsTxtChecker);
-
-        $result = $collector->findHrefUrlsByCssSelector();
-
-        $this->assertCount(2, $result);
-        $this->assertSame(['https://example.com/page1', 'https://example.com/page2'], $result);
-    }
-
-    /**
-     * Test that forcedArticleUrls are appended to the final result.
-     */
-    public function testForcedArticleUrlsAreAppendedToResults(): void
-    {
-        $html = '<html><body id="content"><a href="https://example.com/page1">Page 1</a></body></html>';
-
-        $response = $this->createStub(ResponseInterface::class);
-        $response->method('getContent')->willReturn($html);
-
-        $requestExecutor = $this->createStub(RequestExecutorInterface::class);
-        $requestExecutor->method('request')->willReturn($response);
-
-        $logger = $this->createStub(LoggerInterface::class);
-        $robotsTxtChecker = $this->createStub(RobotsTxtCheckerInterface::class);
-
-        $ctx = new CrawlerConfigContext([
-            'sp_start_urls' => [['sp_url' => $this->urlPrefix, 'sp_extraction_depth' => 0]],
-            'sp_link_selector' => '#content a[href]',
-            'sp_forced_article_urls' => ['https://example.com/forced'],
-            'sp_max_teaser' => 999,
-            'sp_deny_prefixes' => [],
-            'sp_allow_prefixes' => [$this->urlPrefix],
-            'sp_strip_query_params_active' => false,
-            'sp_strip_query_params' => [],
-        ]);
-        $helper = new CrawlerConfigHelper($ctx, $logger);
-        $crawlerConfig = new CrawlerConfig($helper);
-        $urlNormalizer = new URLNormalizer($crawlerConfig);
-        $collector = new URLCollector($crawlerConfig, $urlNormalizer, $logger, $requestExecutor, $robotsTxtChecker);
-
-        $result = $collector->findHrefUrlsByCssSelector();
-
-        $this->assertContains('https://example.com/forced', $result);
-        $this->assertContains('https://example.com/page1', $result);
         $this->assertSame(
-            ['https://example.com/page1', 'https://example.com/forced'],
-            $result,
+            [[['url' => $this->urlPrefix, 'html' => $html]]],
+            $chunks,
+        );
+    }
+
+    public function testFollowsLinksAcrossDepthAndFetchesEveryPageOnce(): void
+    {
+        $indexHtml = '<div id="content"><a href="https://example.com/section">Section</a></div>';
+        $sectionHtml = '<div id="content"><a href="https://example.com/article">Article</a></div>';
+        $articleHtml = '<div id="content"></div>';
+
+        $collector = $this->createCollector(
+            $this->stubFetcher([
+                $this->urlPrefix => $indexHtml,
+                'https://example.com/section' => $sectionHtml,
+                'https://example.com/article' => $articleHtml,
+            ]),
+            $this->createStub(LoggerInterface::class),
+            $this->createStub(RobotsTxtCheckerInterface::class),
+            ['sp_start_urls' => [['sp_url' => $this->urlPrefix, 'sp_extraction_depth' => 1]]],
+        );
+
+        // depth 1 fetches levels 0..2: start, section, article - each once.
+        $this->assertSame(
+            [$this->urlPrefix, 'https://example.com/section', 'https://example.com/article'],
+            $this->fetchedUrls($collector->collect($this->config)),
         );
     }
 
     /**
-     * Test that respectRobotsTxt=true delegates filtering to the robotsTxtChecker.
+     * Links are canonicalized before the visited check, so different
+     * spellings of the same page - including a link back to the start page -
+     * are fetched only once.
      */
-    public function testRespectRobotsTxtFiltersThroughChecker(): void
+    public function testDifferentSpellingsOfAUrlAreFetchedOnlyOnce(): void
     {
-        $html = <<<HTML
-<!doctype html>
-<html><body id="content">
-<a href="https://example.com/page1">Page 1</a>
-<a href="https://example.com/page2">Page 2</a>
-</body></html>
-HTML;
+        $indexHtml = '<div id="content">'
+            . '<a href="https://example.com/page">Page</a>'
+            . '<a href="https://EXAMPLE.com:443/page">Same page</a>'
+            . '<a href="HTTPS://example.com">Start page again</a>'
+            . '</div>';
 
-        $response = $this->createStub(ResponseInterface::class);
-        $response->method('getContent')->willReturn($html);
+        $collector = $this->createCollector(
+            $this->stubFetcher([
+                $this->urlPrefix => $indexHtml,
+                'https://example.com/page' => '<div id="content"></div>',
+            ]),
+            $this->createStub(LoggerInterface::class),
+            $this->createStub(RobotsTxtCheckerInterface::class),
+        );
 
-        $requestExecutor = $this->createStub(RequestExecutorInterface::class);
-        $requestExecutor->method('request')->willReturn($response);
+        $this->assertSame(
+            [$this->urlPrefix, 'https://example.com/page'],
+            $this->fetchedUrls($collector->collect($this->config)),
+        );
+    }
 
-        $logger = $this->createStub(LoggerInterface::class);
+    public function testEachUrlIsFetchedOnlyOnce(): void
+    {
+        $startHtml = '<div id="content">'
+            . '<a href="https://example.com/page-a">A</a>'
+            . '<a href="https://example.com/page-b">B</a>'
+            . '</div>';
+        $pageAHtml = '<div id="content"><a href="https://example.com/page-b">B again</a></div>';
+
+        $collector = $this->createCollector(
+            $this->stubFetcher([
+                $this->urlPrefix => $startHtml,
+                'https://example.com/page-a' => $pageAHtml,
+                'https://example.com/page-b' => '<div id="content"></div>',
+            ]),
+            $this->createStub(LoggerInterface::class),
+            $this->createStub(RobotsTxtCheckerInterface::class),
+            ['sp_start_urls' => [['sp_url' => $this->urlPrefix, 'sp_extraction_depth' => 2]]],
+        );
+
+        $urls = $this->fetchedUrls($collector->collect($this->config));
+
+        // page-b is discovered from both the start page and page-a, but fetched once.
+        $this->assertSame(1, array_count_values($urls)['https://example.com/page-b']);
+        $this->assertSame(
+            [$this->urlPrefix, 'https://example.com/page-a', 'https://example.com/page-b'],
+            $urls,
+        );
+    }
+
+    public function testRespectRobotsTxtFiltersDiscoveredLinks(): void
+    {
+        $html = '<div id="content">'
+            . '<a href="https://example.com/page1">Page 1</a>'
+            . '<a href="https://example.com/page2">Page 2</a>'
+            . '</div>';
 
         $robotsTxtChecker = $this->createMock(RobotsTxtCheckerInterface::class);
         $robotsTxtChecker->expects($this->once())
             ->method('filterAllowed')
             ->willReturn(['https://example.com/page1']);
 
-        $ctx = new CrawlerConfigContext([
-            'sp_start_urls' => [['sp_url' => $this->urlPrefix, 'sp_extraction_depth' => 0]],
-            'sp_link_selector' => '#content a[href]',
-            'sp_forced_article_urls' => [],
-            'sp_max_teaser' => 999,
-            'sp_deny_prefixes' => [],
-            'sp_allow_prefixes' => [$this->urlPrefix],
-            'sp_strip_query_params_active' => false,
-            'sp_strip_query_params' => [],
-            'sp_respect_robots_txt' => true,
-        ]);
-        $helper = new CrawlerConfigHelper($ctx, $logger);
-        $crawlerConfig = new CrawlerConfig($helper);
-        $urlNormalizer = new URLNormalizer($crawlerConfig);
-        $collector = new URLCollector($crawlerConfig, $urlNormalizer, $logger, $requestExecutor, $robotsTxtChecker);
+        $collector = $this->createCollector(
+            $this->stubFetcher([
+                $this->urlPrefix => $html,
+                'https://example.com/page1' => '<div id="content"></div>',
+                'https://example.com/page2' => '<div id="content"></div>',
+            ]),
+            $this->createStub(LoggerInterface::class),
+            $robotsTxtChecker,
+            ['sp_respect_robots_txt' => true],
+        );
 
-        $result = $collector->findHrefUrlsByCssSelector();
-
-        $this->assertSame(['https://example.com/page1'], $result);
-    }
-
-    /**
-     * Test that depth=1 crawling follows links on the first page to discover second-level links.
-     */
-    public function testCrawlByDepthFollowsLinksOnFirstPage(): void
-    {
-        $indexHtml = <<<HTML
-<!doctype html>
-<html><body id="content">
-<a href="https://example.com/section">Section</a>
-</body></html>
-HTML;
-
-        $sectionHtml = <<<HTML
-<!doctype html>
-<html><body id="content">
-<a href="https://example.com/article">Article</a>
-</body></html>
-HTML;
-
-        $requestExecutor = $this->createMock(RequestExecutorInterface::class);
-
-        $indexResponse = $this->createStub(ResponseInterface::class);
-        $indexResponse->method('getContent')->willReturn($indexHtml);
-
-        $sectionResponse = $this->createStub(ResponseInterface::class);
-        $sectionResponse->method('getContent')->willReturn($sectionHtml);
-
-        $requestExecutor->method('request')->willReturnMap([
-            [$this->urlPrefix, $indexResponse],
-            ['https://example.com/section', $sectionResponse],
-        ]);
-
-        $logger = $this->createStub(LoggerInterface::class);
-        $robotsTxtChecker = $this->createStub(RobotsTxtCheckerInterface::class);
-
-        $ctx = new CrawlerConfigContext([
-            'sp_start_urls' => [['sp_url' => $this->urlPrefix, 'sp_extraction_depth' => 1]],
-            'sp_link_selector' => '#content a[href]',
-            'sp_forced_article_urls' => [],
-            'sp_max_teaser' => 999,
-            'sp_deny_prefixes' => [],
-            'sp_allow_prefixes' => [$this->urlPrefix],
-            'sp_strip_query_params_active' => false,
-            'sp_strip_query_params' => [],
-        ]);
-        $helper = new CrawlerConfigHelper($ctx, $logger);
-        $crawlerConfig = new CrawlerConfig($helper);
-        $urlNormalizer = new URLNormalizer($crawlerConfig);
-        $collector = new URLCollector($crawlerConfig, $urlNormalizer, $logger, $requestExecutor, $robotsTxtChecker);
-
-        $result = $collector->findHrefUrlsByCssSelector();
-
-        $this->assertContains('https://example.com/section', $result);
-        $this->assertContains('https://example.com/article', $result);
+        // page2 is filtered out by robots.txt, so it is never fetched.
         $this->assertSame(
-            ['https://example.com/section', 'https://example.com/article'],
-            $result,
+            [$this->urlPrefix, 'https://example.com/page1'],
+            $this->fetchedUrls($collector->collect($this->config)),
         );
     }
 
-    /**
-     * Test that links matching a deny prefix are skipped in crawlByDepth (line 115).
-     */
-    public function testDenyPrefixLinksAreFilteredInCrawlByDepth(): void
+    public function testStopsAtMaxTeaser(): void
     {
-        $html = <<<HTML
-<html><body id="content">
-<a href="https://example.com/allowed">Allowed</a>
-<a href="https://example.com/denied/secret">Denied</a>
-</body></html>
-HTML;
+        $html = '<div id="content">'
+            . '<a href="https://example.com/page1">1</a>'
+            . '<a href="https://example.com/page2">2</a>'
+            . '<a href="https://example.com/page3">3</a>'
+            . '</div>';
 
-        $response = $this->createStub(ResponseInterface::class);
-        $response->method('getContent')->willReturn($html);
-
-        $requestExecutor = $this->createStub(RequestExecutorInterface::class);
-        $requestExecutor->method('request')->willReturn($response);
-
-        $logger = $this->createStub(LoggerInterface::class);
-        $robotsTxtChecker = $this->createStub(RobotsTxtCheckerInterface::class);
-
-        $ctx = new CrawlerConfigContext([
-            'sp_start_urls'               => [['sp_url' => $this->urlPrefix, 'sp_extraction_depth' => 0]],
-            'sp_link_selector'            => '#content a[href]',
-            'sp_forced_article_urls'      => [],
-            'sp_max_teaser'               => 999,
-            'sp_deny_prefixes'            => ['https://example.com/denied'],
-            'sp_allow_prefixes'           => [],
-            'sp_strip_query_params_active' => false,
-            'sp_strip_query_params'       => [],
-        ]);
-        $helper       = new CrawlerConfigHelper($ctx, $logger);
-        $crawlerConfig = new CrawlerConfig($helper);
-        $urlNormalizer = new URLNormalizer($crawlerConfig);
-        $collector    = new URLCollector($crawlerConfig, $urlNormalizer, $logger, $requestExecutor, $robotsTxtChecker);
-
-        $result = $collector->findHrefUrlsByCssSelector();
-
-        $this->assertSame(['https://example.com/allowed'], $result);
-        $this->assertNotContains('https://example.com/denied/secret', $result);
-    }
-
-    /**
-     * Test that https links not matching an allow prefix are skipped in crawlByDepth (line 119).
-     */
-    public function testNonMatchingAllowPrefixLinksAreFilteredInCrawlByDepth(): void
-    {
-        $html = <<<HTML
-<html><body id="content">
-<a href="https://example.com/allowed">Allowed</a>
-<a href="https://other.com/external">External</a>
-</body></html>
-HTML;
-
-        $response = $this->createStub(ResponseInterface::class);
-        $response->method('getContent')->willReturn($html);
-
-        $requestExecutor = $this->createStub(RequestExecutorInterface::class);
-        $requestExecutor->method('request')->willReturn($response);
-
-        $logger = $this->createStub(LoggerInterface::class);
-        $robotsTxtChecker = $this->createStub(RobotsTxtCheckerInterface::class);
-
-        $ctx = new CrawlerConfigContext([
-            'sp_start_urls'               => [['sp_url' => $this->urlPrefix, 'sp_extraction_depth' => 0]],
-            'sp_link_selector'            => '#content a[href]',
-            'sp_forced_article_urls'      => [],
-            'sp_max_teaser'               => 999,
-            'sp_deny_prefixes'            => [],
-            'sp_allow_prefixes'           => ['https://example.com'],
-            'sp_strip_query_params_active' => false,
-            'sp_strip_query_params'       => [],
-        ]);
-        $helper       = new CrawlerConfigHelper($ctx, $logger);
-        $crawlerConfig = new CrawlerConfig($helper);
-        $urlNormalizer = new URLNormalizer($crawlerConfig);
-        $collector    = new URLCollector($crawlerConfig, $urlNormalizer, $logger, $requestExecutor, $robotsTxtChecker);
-
-        $result = $collector->findHrefUrlsByCssSelector();
-
-        $this->assertSame(['https://example.com/allowed'], $result);
-        $this->assertNotContains('https://other.com/external', $result);
-    }
-
-    /**
-     * Test that a URL already visited is skipped when encountered again in the queue (line 107).
-     * This requires depth >= 2 so that a URL can be linked from two different pages.
-     */
-    public function testAlreadyVisitedUrlInQueueIsSkipped(): void
-    {
-        $startHtml = <<<HTML
-<html><body id="content">
-<a href="https://example.com/page-a">Page A</a>
-<a href="https://example.com/page-b">Page B</a>
-</body></html>
-HTML;
-
-        $pageAHtml = <<<HTML
-<html><body id="content">
-<a href="https://example.com/page-b">Page B again</a>
-</body></html>
-HTML;
-
-        $pageBHtml = '<html><body id="content"></body></html>';
-
-        $startResponse = $this->createStub(ResponseInterface::class);
-        $startResponse->method('getContent')->willReturn($startHtml);
-
-        $pageAResponse = $this->createStub(ResponseInterface::class);
-        $pageAResponse->method('getContent')->willReturn($pageAHtml);
-
-        $pageBResponse = $this->createStub(ResponseInterface::class);
-        $pageBResponse->method('getContent')->willReturn($pageBHtml);
-
-        $requestExecutor = $this->createMock(RequestExecutorInterface::class);
-        $requestExecutor->method('request')->willReturnMap([
-            [$this->urlPrefix, $startResponse],
-            ['https://example.com/page-a', $pageAResponse],
-            ['https://example.com/page-b', $pageBResponse],
-        ]);
-
-        $logger = $this->createStub(LoggerInterface::class);
-        $robotsTxtChecker = $this->createStub(RobotsTxtCheckerInterface::class);
-
-        $ctx = new CrawlerConfigContext([
-            'sp_start_urls'               => [['sp_url' => $this->urlPrefix, 'sp_extraction_depth' => 2]],
-            'sp_link_selector'            => '#content a[href]',
-            'sp_forced_article_urls'      => [],
-            'sp_max_teaser'               => 999,
-            'sp_deny_prefixes'            => [],
-            'sp_allow_prefixes'           => [],
-            'sp_strip_query_params_active' => false,
-            'sp_strip_query_params'       => [],
-        ]);
-        $helper       = new CrawlerConfigHelper($ctx, $logger);
-        $crawlerConfig = new CrawlerConfig($helper);
-        $urlNormalizer = new URLNormalizer($crawlerConfig);
-        $collector    = new URLCollector($crawlerConfig, $urlNormalizer, $logger, $requestExecutor, $robotsTxtChecker);
-
-        $result = $collector->findHrefUrlsByCssSelector();
-
-        // page-b is discovered from two pages but fetched only once (second queue entry skipped)
-        $this->assertContains('https://example.com/page-a', $result);
-        $this->assertContains('https://example.com/page-b', $result);
-        $this->assertSame(
-            ['https://example.com/page-a', 'https://example.com/page-b'],
-            $result,
+        $collector = $this->createCollector(
+            $this->stubFetcher([
+                $this->urlPrefix => $html,
+                'https://example.com/page1' => '<div id="content"></div>',
+                'https://example.com/page2' => '<div id="content"></div>',
+                'https://example.com/page3' => '<div id="content"></div>',
+            ]),
+            $this->createStub(LoggerInterface::class),
+            $this->createStub(RobotsTxtCheckerInterface::class),
+            ['sp_max_teaser' => 2],
         );
+
+        // start page + one discovered page = 2, then the limit stops the crawl.
+        $this->assertCount(2, $this->fetchedUrls($collector->collect($this->config)));
     }
 
-    /**
-     * Test that when multiple startUrls together exceed maxTeaser, the result is sliced (line 50).
-     */
-    public function testMultipleStartUrlsTotalExceedingMaxTeaserIsSliced(): void
+    public function testForcedArticleUrlsAreAlwaysFetched(): void
     {
-        $start1Html = '<html><body id="content">
-            <a href="https://example.com/from-start1">From Start 1</a></body></html>';
+        $forced = 'https://example.com/forced';
 
-        $start2Html = '<html><body id="content">
-            <a href="https://example.com/from-start2">From Start 2</a></body></html>';
-
-        $start1Response = $this->createStub(ResponseInterface::class);
-        $start1Response->method('getContent')->willReturn($start1Html);
-
-        $start2Response = $this->createStub(ResponseInterface::class);
-        $start2Response->method('getContent')->willReturn($start2Html);
-
-        $requestExecutor = $this->createStub(RequestExecutorInterface::class);
-        $requestExecutor->method('request')->willReturnMap([
-            ['https://example.com/start1', $start1Response],
-            ['https://example.com/start2', $start2Response],
-        ]);
-
-        $logger = $this->createStub(LoggerInterface::class);
-        $robotsTxtChecker = $this->createStub(RobotsTxtCheckerInterface::class);
-
-        $ctx = new CrawlerConfigContext([
-            'sp_start_urls' => [
-                ['sp_url' => 'https://example.com/start1', 'sp_extraction_depth' => 0],
-                ['sp_url' => 'https://example.com/start2', 'sp_extraction_depth' => 0],
+        $collector = $this->createCollector(
+            $this->stubFetcher([
+                $forced => '<div id="content"></div>',
+                $this->urlPrefix => '<div id="content"></div>',
+            ]),
+            $this->createStub(LoggerInterface::class),
+            $this->createStub(RobotsTxtCheckerInterface::class),
+            [
+                'sp_forced_article_urls' => [$forced],
+                'sp_max_teaser' => 1,
             ],
-            'sp_link_selector'            => '#content a[href]',
-            'sp_forced_article_urls'      => [],
-            'sp_max_teaser'               => 1,
-            'sp_deny_prefixes'            => [],
-            'sp_allow_prefixes'           => [],
-            'sp_strip_query_params_active' => false,
-            'sp_strip_query_params'       => [],
-        ]);
-        $helper       = new CrawlerConfigHelper($ctx, $logger);
-        $crawlerConfig = new CrawlerConfig($helper);
-        $urlNormalizer = new URLNormalizer($crawlerConfig);
-        $collector    = new URLCollector($crawlerConfig, $urlNormalizer, $logger, $requestExecutor, $robotsTxtChecker);
+        );
 
-        $result = $collector->findHrefUrlsByCssSelector();
+        $urls = $this->fetchedUrls($collector->collect($this->config));
 
-        // Each startUrl contributes 1 URL (maxTeaser=1 per crawl), total 2 URLs
-        // After the outer count check, sliced to maxTeaser=1
-        $this->assertCount(1, $result);
-        $this->assertSame(['https://example.com/from-start1'], $result);
+        $this->assertContains($forced, $urls);
+        $this->assertContains($this->urlPrefix, $urls);
     }
 
     /**
-     * Test that the catch block in extractAbsoluteUrlsFromScope is triggered when
-     * the Link constructor throws for a non-<a> element (lines 179-184).
-     *
-     * Using a selector that matches non-<a> elements causes Symfony's Link class
-     * to throw a LogicException ("Unable to navigate from a div tag."),
-     * which is caught and logged as debug.
+     * A forced URL that is also a normal (linked) page must still be crawled,
+     * so the pages it links to are discovered - not just fetched flat.
      */
-    public function testNonAnchorElementCaughtInExtractAbsoluteUrlsFromScope(): void
+    public function testForcedUrlThatIsAlsoACategoryStillGetsCrawled(): void
     {
-        // HTML with a <div href="..."> (non-anchor with href attribute)
-        $html = '<html><body id="content"><div href="https://example.com/page">link</div></body></html>';
+        $category = 'https://example.com/category';
+        $startHtml = '<div id="content"><a href="' . $category . '">Category</a></div>';
+        $categoryHtml = '<div id="content"><a href="https://example.com/article">Article</a></div>';
 
-        $response = $this->createStub(ResponseInterface::class);
-        $response->method('getContent')->willReturn($html);
+        $collector = $this->createCollector(
+            $this->stubFetcher([
+                $this->urlPrefix => $startHtml,
+                $category => $categoryHtml,
+                'https://example.com/article' => '<div id="content"></div>',
+            ]),
+            $this->createStub(LoggerInterface::class),
+            $this->createStub(RobotsTxtCheckerInterface::class),
+            [
+                'sp_start_urls' => [['sp_url' => $this->urlPrefix, 'sp_extraction_depth' => 1]],
+                'sp_forced_article_urls' => [$category],
+            ],
+        );
 
-        $requestExecutor = $this->createStub(RequestExecutorInterface::class);
-        $requestExecutor->method('request')->willReturn($response);
+        // The article behind the forced category page must be discovered.
+        $this->assertContains('https://example.com/article', $this->fetchedUrls($collector->collect($this->config)));
+    }
 
+    public function testBrokenLinkIsIgnored(): void
+    {
+        $html = '<div id="content"><a href="javascript:void(0)">Broken</a></div>';
+
+        $collector = $this->createCollector(
+            $this->stubFetcher([$this->urlPrefix => $html]),
+            $this->createStub(LoggerInterface::class),
+            $this->createStub(RobotsTxtCheckerInterface::class),
+        );
+
+        // Only the start page is fetched; the broken link yields no next level.
+        $this->assertSame([$this->urlPrefix], $this->fetchedUrls($collector->collect($this->config)));
+    }
+
+    public function testEmptyHtmlContentYieldsPageButNoLinks(): void
+    {
+        $collector = $this->createCollector(
+            $this->stubFetcher([$this->urlPrefix => '']),
+            $this->createStub(LoggerInterface::class),
+            $this->createStub(RobotsTxtCheckerInterface::class),
+        );
+
+        $this->assertSame([$this->urlPrefix], $this->fetchedUrls($collector->collect($this->config)));
+    }
+
+    public function testFetcherFailurePropagatesWhileIterating(): void
+    {
+        $fetcher = $this->createStub(FetcherInterface::class);
+        $fetcher->method('fetchUrls')->willThrowException(new \RuntimeException('Connection failed'));
+
+        $collector = $this->createCollector(
+            $fetcher,
+            $this->createStub(LoggerInterface::class),
+            $this->createStub(RobotsTxtCheckerInterface::class),
+        );
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Connection failed');
+
+        iterator_to_array($collector->collect($this->config));
+    }
+
+    public function testDuplicateStartUrlIsFetchedOnlyOnce(): void
+    {
+        $collector = $this->createCollector(
+            $this->stubFetcher([$this->urlPrefix => '<div id="content"></div>']),
+            $this->createStub(LoggerInterface::class),
+            $this->createStub(RobotsTxtCheckerInterface::class),
+            [
+                'sp_start_urls' => [
+                    ['sp_url' => $this->urlPrefix, 'sp_extraction_depth' => 0],
+                    ['sp_url' => $this->urlPrefix, 'sp_extraction_depth' => 0],
+                ],
+            ],
+        );
+
+        $this->assertSame([$this->urlPrefix], $this->fetchedUrls($collector->collect($this->config)));
+    }
+
+    public function testChunkWithoutFetchedPagesYieldsNothing(): void
+    {
+        $collector = $this->createCollector(
+            $this->stubFetcher([]),
+            $this->createStub(LoggerInterface::class),
+            $this->createStub(RobotsTxtCheckerInterface::class),
+        );
+
+        $this->assertSame([], iterator_to_array($collector->collect($this->config)));
+    }
+
+    public function testLinkSelectorMatchingNonLinkElementIsLoggedAndIgnored(): void
+    {
+        $messages = [];
         $logger = $this->createStub(LoggerInterface::class);
-        $robotsTxtChecker = $this->createStub(RobotsTxtCheckerInterface::class);
+        $logger->method('debug')->willReturnCallback(
+            static function (string $message) use (&$messages): void {
+                $messages[] = $message;
+            },
+        );
 
-        $ctx = new CrawlerConfigContext([
-            'sp_start_urls'               => [['sp_url' => $this->urlPrefix, 'sp_extraction_depth' => 0]],
-            'sp_link_selector'            => '#content div[href]', // selects <div href="..."> not <a>
-            'sp_forced_article_urls'      => [],
-            'sp_max_teaser'               => 999,
-            'sp_deny_prefixes'            => [],
-            'sp_allow_prefixes'           => [],
-            'sp_strip_query_params_active' => false,
-            'sp_strip_query_params'       => [],
-        ]);
-        $helper       = new CrawlerConfigHelper($ctx, $logger);
-        $crawlerConfig = new CrawlerConfig($helper);
-        $urlNormalizer = new URLNormalizer($crawlerConfig);
-        $collector    = new URLCollector($crawlerConfig, $urlNormalizer, $logger, $requestExecutor, $robotsTxtChecker);
+        $collector = $this->createCollector(
+            $this->stubFetcher([$this->urlPrefix => '<div id="content"><div>No link</div></div>']),
+            $logger,
+            $this->createStub(RobotsTxtCheckerInterface::class),
+            ['sp_link_selector' => '#content div'],
+        );
 
-        // Link constructor throws for non-<a> elements → caught → empty result
-        $result = $collector->findHrefUrlsByCssSelector();
-
-        $this->assertSame([], $result);
+        $this->assertSame([$this->urlPrefix], $this->fetchedUrls($collector->collect($this->config)));
+        $this->assertContains('Failed to parse link', $messages);
     }
 }

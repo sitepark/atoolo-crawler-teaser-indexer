@@ -13,3 +13,61 @@ parameters:
         - 502
         - 503
         - 504
+    
+    # Defines URL extensions to be excluded.
+    atoolo.crawler.deny_endings:
+        # Images & Graphics (Avoid rendering assets)
+        - .jpg
+        - .jpeg
+        - .png
+        - .gif
+        - .svg
+        - .webp
+        - .ico
+        - .bmp
+        - .tiff
+
+        # Documents (Often very large and require specialized parsing)
+        - .pdf
+        - .doc
+        - .docx
+        - .xls
+        - .xlsx
+        - .ppt
+        - .pptx
+        - .odt
+        - .rtf
+
+        # Archives (Risk of "zip bombs" and excessive memory usage)
+        - .zip
+        - .tar
+        - .gz
+        - .7z
+        - .rar
+        - .iso
+
+        # Web Assets & Data (No relevant content for text crawlers)
+        - .js
+        - .css
+        - .json
+        - .xml
+        - .map
+        - .webmanifest
+
+        # Media (Video & audio consume significant bandwidth)
+        - .mp3
+        - .mp4
+        - .wav
+        - .avi
+        - .mov
+        - .mkv
+        - .webm
+        - .ogg
+
+        # Fonts & Miscellaneous
+        - .woff
+        - .woff2
+        - .ttf
+        - .eot
+        - .exe
+        - .bin

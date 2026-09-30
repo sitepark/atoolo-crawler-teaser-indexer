@@ -2,37 +2,38 @@
 
 declare(strict_types=1);
 
-namespace Tests;
+namespace Atoolo\CrawlerIndexer\Tests;
 
-use Atoolo\Crawler\Config\CrawlerConfig;
-use Atoolo\Crawler\Config\CrawlerConfigContext;
-use Atoolo\Crawler\Config\CrawlerConfigHelper;
-use Atoolo\Crawler\Domain\Crawler\Services\TeaserRelevanceEvaluatorInterface;
-use Atoolo\Crawler\Domain\Crawler\Steps\Parser;
+use Atoolo\CrawlerIndexer\Config\PipelineConfig;
+use Atoolo\CrawlerIndexer\Config\PipelineConfigHelper;
+use Atoolo\CrawlerIndexer\Dto\ExtractedDataInterface;
+use Atoolo\CrawlerIndexer\Pipeline\RelevanceEvaluator\RelevanceEvaluatorInterface;
+use Atoolo\CrawlerIndexer\Pipeline\Parser\Parser;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 
 final class ParserTest extends TestCase
 {
     private Parser $parser;
+    private PipelineConfig $config;
 
     protected function setUp(): void
     {
         $this->parser = $this->makeParser([
             'sp_title_opengraph' => ['og:title'],
-            'sp_title_css'       => ['h1', '#content h1', 'h1.h1'],
+            'sp_title_css' => ['h1', '#content h1', 'h1.h1'],
             'sp_title_max_chars' => 200,
 
-            'sp_introText_present'        => true,
+            'sp_introText_present' => true,
             'sp_introText_required_field' => false,
-            'sp_introText_opengraph'      => [],
-            'sp_introText_css'            => ['.introText'],
+            'sp_introText_opengraph' => [],
+            'sp_introText_css' => ['.introText'],
 
-            'sp_datetime_present'        => true,
+            'sp_datetime_present' => true,
             'sp_datetime_required_field' => false,
-            'sp_datetime_only_date'      => true,
-            'sp_datetime_opengraph'      => [],
-            'sp_datetime_css'            => ['.date', '#content .date'],
+            'sp_datetime_only_date' => true,
+            'sp_datetime_opengraph' => [],
+            'sp_datetime_css' => ['.date', '#content .date'],
         ]);
     }
 
@@ -46,48 +47,59 @@ final class ParserTest extends TestCase
     private function makeParser(array $ctxOverrides = [], bool $evaluatorReturns = true): Parser
     {
         $defaults = [
-            'sp_title_prefix'    => '',
+            'sp_title_prefix' => '',
             'sp_title_opengraph' => [],
-            'sp_title_css'       => ['h1'],
+            'sp_title_css' => ['h1'],
             'sp_title_max_chars' => 999,
 
-            'sp_introText_present'        => false,
+            'sp_introText_present' => false,
             'sp_introText_required_field' => false,
-            'sp_introText_opengraph'      => [],
-            'sp_introText_css'            => ['.introText'],
-            'sp_introText_max_chars'      => 999,
+            'sp_introText_opengraph' => [],
+            'sp_introText_css' => ['.introText'],
+            'sp_introText_max_chars' => 999,
 
-            'sp_datetime_present'        => false,
+            'sp_datetime_present' => false,
             'sp_datetime_required_field' => false,
-            'sp_datetime_only_date'      => true,
-            'sp_datetime_opengraph'      => [],
-            'sp_datetime_css'            => ['.date'],
+            'sp_datetime_only_date' => true,
+            'sp_datetime_opengraph' => [],
+            'sp_datetime_css' => ['.date'],
 
             'sp_content_scoring_active' => false,
         ];
 
-        $ctx    = new CrawlerConfigContext(array_merge($defaults, $ctxOverrides));
+        $ctx = array_merge($defaults, $ctxOverrides);
         $logger = $this->createStub(LoggerInterface::class);
-        $helper = new CrawlerConfigHelper($ctx, $logger);
-        $config = new CrawlerConfig($helper);
+        $helper = new PipelineConfigHelper($ctx, $logger);
+        $this->config = new PipelineConfig($helper);
 
-        $evaluator = $this->createStub(TeaserRelevanceEvaluatorInterface::class);
+        $evaluator = $this->createStub(RelevanceEvaluatorInterface::class);
         $evaluator->method('relevant')->willReturn($evaluatorReturns);
 
-        return new Parser($logger, $config, $evaluator);
+        return new Parser($logger, $evaluator);
     }
 
     /**
-     * @param array<int,array<string,mixed>> $result
-     * @return array<int,array<string,mixed>>
+     * Converts ExtractedDataInterface[] to a normalized array structure for comparison.
+     *
+     * @param ExtractedDataInterface[] $result
+     *
+     * @return array<int, array<string, mixed>>
      */
     private function normalizeDatetime(array $result): array
     {
-        return array_map(static function (array $t): array {
-            if (isset($t['datetime']) && $t['datetime'] instanceof \DateTimeInterface) {
-                $t['datetime'] = $t['datetime']->format(DATE_ATOM);
+        return array_map(static function (ExtractedDataInterface $t): array {
+            $normalized = [
+                'url' => $t->getUrl(),
+                'title' => $t->getTitle(),
+            ];
+            if (null !== $t->getIntroText()) {
+                $normalized['introText'] = $t->getIntroText();
             }
-            return $t;
+            if (null !== $t->getDate()) {
+                $normalized['datetime'] = $t->getDate()->format(DATE_ATOM);
+            }
+
+            return $normalized;
         }, $result);
     }
 
@@ -106,16 +118,16 @@ final class ParserTest extends TestCase
 </html>
 HTML;
 
-        $result = $this->normalizeDatetime($this->parser->extractTeasers([
+        $result = $this->normalizeDatetime(iterator_to_array($this->parser->extractData([
             ['url' => 'https://example.com/page1', 'html' => $html],
-        ]));
+        ], $this->config), false));
 
         $this->assertSame([
             [
-                'url'       => 'https://example.com/page1',
-                'title'     => 'Meta Title',
+                'url' => 'https://example.com/page1',
+                'title' => 'Meta Title',
                 'introText' => 'Einleitungs Text Extrahiert',
-                'datetime'  => '2026-01-14T00:00:00+00:00',
+                'datetime' => '2026-01-14T00:00:00+00:00',
             ],
         ], $result);
     }
@@ -132,34 +144,34 @@ HTML;
 </html>
 HTML;
 
-        $result = $this->normalizeDatetime($this->parser->extractTeasers([
+        $result = $this->normalizeDatetime(iterator_to_array($this->parser->extractData([
             ['url' => 'https://example.com/page2', 'html' => $html],
-        ]));
+        ], $this->config), false));
 
         $this->assertSame([
             [
-                'url'       => 'https://example.com/page2',
-                'title'     => 'Main Heading',
+                'url' => 'https://example.com/page2',
+                'title' => 'Main Heading',
                 'introText' => 'Einleitungs Text Extrahiert',
-                'datetime'  => '2026-01-14T00:00:00+00:00',
+                'datetime' => '2026-01-14T00:00:00+00:00',
             ],
         ], $result);
     }
 
     public function testSkipsWhenNoTitle(): void
     {
-        $html   = '<html><body><p>No title here</p></body></html>';
-        $result = $this->parser->extractTeasers([
+        $html = '<html><body><p>No title here</p></body></html>';
+        $result = iterator_to_array($this->parser->extractData([
             ['url' => 'https://example.com/page3', 'html' => $html],
-        ]);
+        ], $this->config), false);
         $this->assertSame([], $result);
     }
 
     public function testSkipsEmptyHtml(): void
     {
-        $result = $this->parser->extractTeasers([
+        $result = iterator_to_array($this->parser->extractData([
             ['url' => 'https://example.com/empty', 'html' => ''],
-        ]);
+        ], $this->config), false);
         $this->assertSame([], $result);
     }
 
@@ -168,14 +180,235 @@ HTML;
         $html1 = '<html><body><h1>First</h1></body></html>';
         $html2 = '<html><body><h1>Second</h1></body></html>';
 
-        $result = $this->parser->extractTeasers([
+        $result = iterator_to_array($this->parser->extractData([
             ['url' => 'https://example.com/1', 'html' => $html1],
             ['url' => 'https://example.com/2', 'html' => $html2],
-        ]);
+        ], $this->config), false);
 
         $this->assertCount(2, $result);
-        $this->assertSame('First', $result[0]['title']);
-        $this->assertSame('Second', $result[1]['title']);
+        $this->assertSame('First', $result[0]->getTitle());
+        $this->assertSame('Second', $result[1]->getTitle());
+    }
+
+    // --- Multi-document split (1:N) ---
+
+    public function testSplitsOnePageIntoMultipleDocumentsBySelector(): void
+    {
+        $parser = $this->makeParser([
+            'sp_split_html_document' => ['//article'],
+            'sp_title_css' => ['h1'],
+        ]);
+        $html = <<<HTML
+<html><body>
+  <article><h1>First</h1></article>
+  <article><h1>Second</h1></article>
+  <article><h1>Third</h1></article>
+</body></html>
+HTML;
+
+        $result = iterator_to_array($parser->extractData([
+            ['url' => 'https://example.com/overview', 'html' => $html],
+        ], $this->config), false);
+
+        $this->assertCount(3, $result);
+        $this->assertSame(
+            ['First', 'Second', 'Third'],
+            array_map(static fn(ExtractedDataInterface $d): string => $d->getTitle(), $result),
+        );
+        // Every document from the same page shares the page URL.
+        $this->assertSame(
+            array_fill(0, 3, 'https://example.com/overview'),
+            array_map(static fn(ExtractedDataInterface $d): string => $d->getUrl(), $result),
+        );
+    }
+
+    public function testEachSplitDocumentExtractsItsOwnFieldsWithinItsBlock(): void
+    {
+        $parser = $this->makeParser([
+            'sp_split_html_document' => ['//article'],
+            'sp_title_css' => ['h2'],
+            'sp_introText_present' => true,
+            'sp_introText_css' => ['.intro'],
+            'sp_datetime_present' => true,
+            'sp_datetime_css' => ['.date'],
+        ]);
+        $html = <<<HTML
+<html><body>
+  <article><h2>Idea One</h2><p class="intro">First idea</p><span class="date">2026-01-01</span></article>
+  <article><h2>Idea Two</h2><p class="intro">Second idea</p><span class="date">2026-02-02</span></article>
+</body></html>
+HTML;
+
+        $result = iterator_to_array($parser->extractData([
+            ['url' => 'https://example.com/ideas', 'html' => $html],
+        ], $this->config), false);
+
+        $this->assertCount(2, $result);
+        $this->assertSame('Idea One', $result[0]->getTitle());
+        $this->assertSame('First idea', $result[0]->getIntroText());
+        $this->assertSame('2026-01-01', $result[0]->getDate()->format('Y-m-d'));
+        $this->assertSame('Idea Two', $result[1]->getTitle());
+        $this->assertSame('Second idea', $result[1]->getIntroText());
+        $this->assertSame('2026-02-02', $result[1]->getDate()->format('Y-m-d'));
+    }
+
+    public function testSplitSelectorWithoutMatchFallsBackToWholePage(): void
+    {
+        $parser = $this->makeParser([
+            'sp_split_html_document' => ['//article'],
+            'sp_title_css' => ['h1'],
+        ]);
+        $html = '<html><body><h1>Single Page</h1></body></html>';
+
+        $result = iterator_to_array($parser->extractData([
+            ['url' => 'https://example.com/', 'html' => $html],
+        ], $this->config), false);
+
+        $this->assertCount(1, $result);
+        $this->assertSame('Single Page', $result[0]->getTitle());
+    }
+
+    /**
+     * An invalid XPath only emits a PHP warning; the catch is reached where
+     * the warning is turned into an exception (Symfony's ErrorHandler in debug).
+     */
+    public function testInvalidSplitSelectorLogsWarningAndFallsBackToWholePage(): void
+    {
+        $this->makeParser([
+            'sp_split_html_document' => ['//div[@'],
+            'sp_title_css' => ['h1'],
+        ]);
+
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->once())->method('warning')
+            ->with('[Parser] Invalid split selector, using whole page');
+        $parser = new Parser($logger, $this->createStub(RelevanceEvaluatorInterface::class));
+
+        set_error_handler(static function (int $severity, string $message): bool {
+            throw new \ErrorException($message, 0, $severity);
+        });
+        try {
+            $result = iterator_to_array($parser->extractData([
+                ['url' => 'https://example.com/', 'html' => '<html><body><h1>Single Page</h1></body></html>'],
+            ], $this->config), false);
+        } finally {
+            restore_error_handler();
+        }
+
+        $this->assertCount(1, $result);
+        $this->assertSame('Single Page', $result[0]->getTitle());
+    }
+
+    /**
+     * Complex, noisy page (nav/wrapper/footer) split via an XPath ":has"-style
+     * selector. The innermost-only variant yields exactly the leaf blocks,
+     * each parsed with its own title/intro/date - proving the block tags are
+     * preserved (not flattened to plain text).
+     */
+    public function testSplitsComplexHtmlViaInnermostXPathSelector(): void
+    {
+        $parser = $this->makeParser([
+            'sp_split_html_document' => ['//*[@id="content"]//div[(.//h2 or .//h3 or .//h4) and not(.//div[.//h2 or .//h3 or .//h4])]'],
+            'sp_title_css' => ['h2', 'h3', 'h4'],
+            'sp_introText_present' => true,
+            'sp_introText_css' => ['.intro'],
+            'sp_datetime_present' => true,
+            'sp_datetime_css' => ['.date'],
+        ]);
+
+        $html = <<<HTML
+<html>
+  <head><title>Overview</title></head>
+  <body>
+    <header><nav><ul><li><a href="/home">Home</a></li></ul></nav></header>
+    <div id="content">
+      <div class="portlet-content-container">
+        <div class="teaser"><h2>Teaser One</h2><p class="intro">Intro one</p><span class="date">2026-01-01</span></div>
+        <div class="teaser"><h3>Teaser Two</h3><p class="intro">Intro two</p><span class="date">2026-02-02</span></div>
+        <div class="teaser"><h4>Teaser Three</h4><p class="intro">Intro three</p></div>
+      </div>
+    </div>
+    <footer><p>Footer</p></footer>
+  </body>
+</html>
+HTML;
+
+        $result = iterator_to_array($parser->extractData([
+            ['url' => 'https://example.com/overview', 'html' => $html],
+        ], $this->config), false);
+
+        $this->assertCount(3, $result);
+        $this->assertSame(
+            ['Teaser One', 'Teaser Two', 'Teaser Three'],
+            array_map(static fn(ExtractedDataInterface $d): string => $d->getTitle(), $result),
+        );
+        $this->assertSame(
+            ['Intro one', 'Intro two', 'Intro three'],
+            array_map(static fn(ExtractedDataInterface $d): ?string => $d->getIntroText(), $result),
+        );
+        $this->assertSame('2026-01-01', $result[0]->getDate()?->format('Y-m-d'));
+        $this->assertNull($result[2]->getDate());
+    }
+
+    /**
+     * A broad ":has"-style XPath also matches ancestor wrappers (the container
+     * has h2/h3/h4 descendants too). The Parser drops any matched node that is
+     * an ancestor of another matched node, so the wrapper does not produce a
+     * duplicate of its inner block - the innermost match wins.
+     */
+    public function testBroadHasXPathDropsWrapperContainerAndYieldsNoDuplicates(): void
+    {
+        $parser = $this->makeParser([
+            'sp_split_html_document' => ['//*[@id="content"]//div[.//h2 or .//h3 or .//h4]'],
+            'sp_title_css' => ['h2', 'h3', 'h4'],
+        ]);
+
+        $html = <<<HTML
+<html><body>
+  <div id="content">
+    <div class="portlet-content-container">
+      <div class="teaser"><h2>Teaser One</h2></div>
+      <div class="teaser"><h3>Teaser Two</h3></div>
+    </div>
+  </div>
+</body></html>
+HTML;
+
+        $result = iterator_to_array($parser->extractData([
+            ['url' => 'https://example.com/overview', 'html' => $html],
+        ], $this->config), false);
+
+        // The wrapper (portlet-content-container) is an ancestor of both
+        // teasers and is dropped; only the two innermost teasers remain.
+        $this->assertSame(
+            ['Teaser One', 'Teaser Two'],
+            array_map(static fn(ExtractedDataInterface $d): string => $d->getTitle(), $result),
+        );
+    }
+
+    public function testSplitBlockWithoutTitleIsSkippedButOthersAreKept(): void
+    {
+        $parser = $this->makeParser([
+            'sp_split_html_document' => ['//article'],
+            'sp_title_css' => ['h1'],
+        ]);
+        $html = <<<HTML
+<html><body>
+  <article><h1>Has Title</h1></article>
+  <article><p>no title here</p></article>
+  <article><h1>Also Has Title</h1></article>
+</body></html>
+HTML;
+
+        $result = iterator_to_array($parser->extractData([
+            ['url' => 'https://example.com/mixed', 'html' => $html],
+        ], $this->config), false);
+
+        $this->assertCount(2, $result);
+        $this->assertSame(
+            ['Has Title', 'Also Has Title'],
+            array_map(static fn(ExtractedDataInterface $d): string => $d->getTitle(), $result),
+        );
     }
 
     // --- Huge HTML ---
@@ -183,11 +416,11 @@ HTML;
     public function testSkipsHugeHtml(): void
     {
         $parser = $this->makeParser();
-        $html   = '<html><body><h1>Title</h1></body>' . str_repeat('x', 2_000_001) . '</html>';
+        $html = '<html><body><h1>Title</h1></body>' . str_repeat('x', 2_000_001) . '</html>';
 
-        $result = $parser->extractTeasers([
+        $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]);
+        ], $this->config), false);
 
         $this->assertSame([], $result);
     }
@@ -197,85 +430,84 @@ HTML;
     public function testTitlePrefixIsPrependedToTitle(): void
     {
         $parser = $this->makeParser(['sp_title_prefix' => 'PREFIX: ']);
-        $html   = '<html><body><h1>News</h1></body></html>';
+        $html = '<html><body><h1>News</h1></body></html>';
 
-        $result = $parser->extractTeasers([
+        $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]);
+        ], $this->config), false);
 
-        $this->assertSame('PREFIX: News', $result[0]['title']);
+        $this->assertSame('PREFIX: News', $result[0]->getTitle());
     }
 
     // --- introText ---
 
     public function testIntroTextNotPresentResultsInNoIntroTextField(): void
     {
-        // sp_introText_present defaults to false → extractText returns null, field omitted
         $parser = $this->makeParser();
-        $html   = '<html><body><h1>Title</h1><div class="introText">Ignored</div></body></html>';
+        $html = '<html><body><h1>Title</h1><div class="introText">Ignored</div></body></html>';
 
-        $result = $parser->extractTeasers([
+        $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]);
+        ], $this->config), false);
 
         $this->assertCount(1, $result);
-        $this->assertArrayNotHasKey('introText', $result[0]);
+        $this->assertNull($result[0]->getIntroText());
     }
 
     public function testIntroTextFoundIsIncludedInResult(): void
     {
         $parser = $this->makeParser([
             'sp_introText_present' => true,
-            'sp_introText_css'     => ['.intro'],
+            'sp_introText_css' => ['.intro'],
         ]);
         $html = '<html><body><h1>Title</h1><p class="intro">Lead text</p></body></html>';
 
-        $result = $parser->extractTeasers([
+        $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]);
+        ], $this->config), false);
 
-        $this->assertSame('Lead text', $result[0]['introText']);
+        $this->assertSame('Lead text', $result[0]->getIntroText());
     }
 
-    public function testIntroTextRequiredAndMissingSkipsTeaser(): void
+    public function testIntroTextRequiredAndMissingSkipsDocument(): void
     {
         $parser = $this->makeParser([
-            'sp_introText_present'        => true,
+            'sp_introText_present' => true,
             'sp_introText_required_field' => true,
-            'sp_introText_css'            => ['.introText'],
+            'sp_introText_css' => ['.introText'],
         ]);
         $html = '<html><body><h1>Title</h1></body></html>';
 
-        $result = $parser->extractTeasers([
+        $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]);
+        ], $this->config), false);
 
         $this->assertSame([], $result);
     }
 
-    public function testIntroTextNotFoundAndNotRequiredKeepsTeaser(): void
+    public function testIntroTextNotFoundAndNotRequiredKeepsDocument(): void
     {
         $parser = $this->makeParser([
-            'sp_introText_present'        => true,
+            'sp_introText_present' => true,
             'sp_introText_required_field' => false,
-            'sp_introText_css'            => ['.introText'],
+            'sp_introText_css' => ['.introText'],
         ]);
         $html = '<html><body><h1>Title</h1></body></html>';
 
-        $result = $parser->extractTeasers([
+        $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]);
+        ], $this->config), false);
 
         $this->assertCount(1, $result);
-        $this->assertArrayNotHasKey('introText', $result[0]);
+        $this->assertNull($result[0]->getIntroText());
     }
 
     public function testIntroTextExtractedFromOgMeta(): void
     {
         $parser = $this->makeParser([
-            'sp_introText_present'   => true,
+            'sp_introText_present' => true,
             'sp_introText_opengraph' => ['og:description'],
-            'sp_introText_css'       => [],
+            'sp_introText_css' => [],
         ]);
         $html = <<<HTML
 <html>
@@ -284,68 +516,67 @@ HTML;
 </html>
 HTML;
 
-        $result = $parser->extractTeasers([
+        $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]);
+        ], $this->config), false);
 
-        $this->assertSame('OG intro text', $result[0]['introText']);
+        $this->assertSame('OG intro text', $result[0]->getIntroText());
     }
 
     // --- datetime ---
 
     public function testDateTimeNotPresentResultsInNoDatetimeField(): void
     {
-        // sp_datetime_present defaults to false
         $parser = $this->makeParser();
-        $html   = '<html><body><h1>Title</h1><div class="date">2026-01-14</div></body></html>';
+        $html = '<html><body><h1>Title</h1><div class="date">2026-01-14</div></body></html>';
 
-        $result = $parser->extractTeasers([
+        $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]);
+        ], $this->config), false);
 
         $this->assertCount(1, $result);
-        $this->assertArrayNotHasKey('datetime', $result[0]);
+        $this->assertNull($result[0]->getDate());
     }
 
-    public function testDateTimeRequiredAndMissingSkipsTeaser(): void
+    public function testDateTimeRequiredAndMissingSkipsDocument(): void
     {
         $parser = $this->makeParser([
-            'sp_datetime_present'        => true,
+            'sp_datetime_present' => true,
             'sp_datetime_required_field' => true,
-            'sp_datetime_css'            => ['.date'],
+            'sp_datetime_css' => ['.date'],
         ]);
         $html = '<html><body><h1>Title</h1></body></html>';
 
-        $result = $parser->extractTeasers([
+        $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]);
+        ], $this->config), false);
 
         $this->assertSame([], $result);
     }
 
-    public function testDateTimeNotFoundButNotRequiredKeepsTeaser(): void
+    public function testDateTimeNotFoundButNotRequiredKeepsDocument(): void
     {
         $parser = $this->makeParser([
-            'sp_datetime_present'        => true,
+            'sp_datetime_present' => true,
             'sp_datetime_required_field' => false,
-            'sp_datetime_css'            => ['.date'],
+            'sp_datetime_css' => ['.date'],
         ]);
         $html = '<html><body><h1>Title</h1></body></html>';
 
-        $result = $parser->extractTeasers([
+        $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]);
+        ], $this->config), false);
 
         $this->assertCount(1, $result);
-        $this->assertArrayNotHasKey('datetime', $result[0]);
+        $this->assertNull($result[0]->getDate());
     }
 
     public function testDateTimeExtractedFromOgMeta(): void
     {
         $parser = $this->makeParser([
-            'sp_datetime_present'    => true,
-            'sp_datetime_opengraph'  => ['article:published_time'],
-            'sp_datetime_only_date'  => false,
+            'sp_datetime_present' => true,
+            'sp_datetime_opengraph' => ['article:published_time'],
+            'sp_datetime_only_date' => false,
         ]);
         $html = <<<HTML
 <html>
@@ -354,20 +585,20 @@ HTML;
 </html>
 HTML;
 
-        $result = $parser->extractTeasers([
+        $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]);
+        ], $this->config), false);
 
         $this->assertCount(1, $result);
-        $this->assertInstanceOf(\DateTimeImmutable::class, $result[0]['datetime']);
-        $this->assertSame('2026-03-15', $result[0]['datetime']->format('Y-m-d'));
+        $this->assertInstanceOf(\DateTimeImmutable::class, $result[0]->getDate());
+        $this->assertSame('2026-03-15', $result[0]->getDate()->format('Y-m-d'));
     }
 
     public function testDateTimeExtractedFromTimeElementDatetimeAttribute(): void
     {
         $parser = $this->makeParser([
-            'sp_datetime_present'   => true,
-            'sp_datetime_css'       => ['time'],
+            'sp_datetime_present' => true,
+            'sp_datetime_css' => ['time'],
             'sp_datetime_only_date' => true,
         ]);
         $html = <<<HTML
@@ -379,49 +610,49 @@ HTML;
 </html>
 HTML;
 
-        $result = $parser->extractTeasers([
+        $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]);
+        ], $this->config), false);
 
         $this->assertCount(1, $result);
-        $this->assertInstanceOf(\DateTimeImmutable::class, $result[0]['datetime']);
-        $this->assertSame('2026-05-20', $result[0]['datetime']->format('Y-m-d'));
+        $this->assertInstanceOf(\DateTimeImmutable::class, $result[0]->getDate());
+        $this->assertSame('2026-05-20', $result[0]->getDate()->format('Y-m-d'));
     }
 
     public function testDateTimeFromCssTextContent(): void
     {
         $parser = $this->makeParser([
-            'sp_datetime_present'   => true,
-            'sp_datetime_css'       => ['.published'],
+            'sp_datetime_present' => true,
+            'sp_datetime_css' => ['.published'],
             'sp_datetime_only_date' => true,
         ]);
         $html = '<html><body><h1>Title</h1><span class="published">2026-07-04</span></body></html>';
 
-        $result = $parser->extractTeasers([
+        $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]);
+        ], $this->config), false);
 
         $this->assertCount(1, $result);
-        $this->assertSame('2026-07-04', $result[0]['datetime']->format('Y-m-d'));
-        $this->assertSame('00:00:00', $result[0]['datetime']->format('H:i:s'));
+        $this->assertSame('2026-07-04', $result[0]->getDate()->format('Y-m-d'));
+        $this->assertSame('00:00:00', $result[0]->getDate()->format('H:i:s'));
     }
 
     public function testDateTimeWithOnlyDateFalsePreservesTime(): void
     {
         $parser = $this->makeParser([
-            'sp_datetime_present'   => true,
-            'sp_datetime_css'       => ['.date'],
+            'sp_datetime_present' => true,
+            'sp_datetime_css' => ['.date'],
             'sp_datetime_only_date' => false,
         ]);
         $html = '<html><body><h1>Title</h1><div class="date">2026-01-14 08:30:00</div></body></html>';
 
-        $result = $parser->extractTeasers([
+        $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]);
+        ], $this->config), false);
 
         $this->assertCount(1, $result);
-        $this->assertSame('2026-01-14', $result[0]['datetime']->format('Y-m-d'));
-        $this->assertSame('08:30:00', $result[0]['datetime']->format('H:i:s'));
+        $this->assertSame('2026-01-14', $result[0]->getDate()->format('Y-m-d'));
+        $this->assertSame('08:30:00', $result[0]->getDate()->format('H:i:s'));
     }
 
     public function testDateTimeWithOnlyDateTrueButNonDateStringPassedThrough(): void
@@ -429,53 +660,53 @@ HTML;
         // "2026-01-14 12:00:00" does not match the strict Y-m-d format check,
         // so normalizeDateTimeRaw returns the raw string unchanged.
         $parser = $this->makeParser([
-            'sp_datetime_present'   => true,
-            'sp_datetime_css'       => ['.date'],
+            'sp_datetime_present' => true,
+            'sp_datetime_css' => ['.date'],
             'sp_datetime_only_date' => true,
         ]);
         $html = '<html><body><h1>Title</h1><div class="date">2026-01-14 12:00:00</div></body></html>';
 
-        $result = $parser->extractTeasers([
+        $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]);
+        ], $this->config), false);
 
         $this->assertCount(1, $result);
-        $this->assertSame('2026-01-14', $result[0]['datetime']->format('Y-m-d'));
+        $this->assertSame('2026-01-14', $result[0]->getDate()->format('Y-m-d'));
         // Time is preserved because the raw was not normalized to "YYYY-MM-DD 00:00:00"
-        $this->assertSame('12:00:00', $result[0]['datetime']->format('H:i:s'));
+        $this->assertSame('12:00:00', $result[0]->getDate()->format('H:i:s'));
     }
 
     // --- Content scoring ---
 
-    public function testContentScoringFiltersOutTeaser(): void
+    public function testContentScoringFiltersOutDocument(): void
     {
         $parser = $this->makeParser(
             ['sp_content_scoring_active' => true],
-            false, // evaluator rejects the teaser
+            false, // evaluator rejects the document
         );
         $html = '<html><body><h1>Title</h1></body></html>';
 
-        $result = $parser->extractTeasers([
+        $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]);
+        ], $this->config), false);
 
         $this->assertSame([], $result);
     }
 
-    public function testContentScoringKeepsTeaser(): void
+    public function testContentScoringKeepsDocument(): void
     {
         $parser = $this->makeParser(
             ['sp_content_scoring_active' => true],
-            true, // evaluator accepts the teaser
+            true, // evaluator accepts the Document
         );
         $html = '<html><body><h1>Title</h1></body></html>';
 
-        $result = $parser->extractTeasers([
+        $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]);
+        ], $this->config), false);
 
         $this->assertCount(1, $result);
-        $this->assertSame('Title', $result[0]['title']);
+        $this->assertSame('Title', $result[0]->getTitle());
     }
 
     // --- Exception paths (invalid selectors are caught and logged) ---
@@ -485,55 +716,55 @@ HTML;
         // '[invalid' is an unclosed CSS attribute selector → CssSelector throws
         // findCssSelectorContent catches it and returns null
         $parser = $this->makeParser([
-            'sp_introText_present'        => true,
+            'sp_introText_present' => true,
             'sp_introText_required_field' => false,
-            'sp_introText_css'            => ['[invalid'],
+            'sp_introText_css' => ['[invalid'],
         ]);
         $html = '<html><body><h1>Title</h1></body></html>';
 
-        $result = $parser->extractTeasers([
+        $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]);
+        ], $this->config), false);
 
         $this->assertCount(1, $result);
-        $this->assertArrayNotHasKey('introText', $result[0]);
+        $this->assertNull($result[0]->getIntroText());
     }
 
     public function testInvalidCssInDatetimeIsCaughtAndFieldOmitted(): void
     {
         // '[invalid' triggers exceptions in both findAttrByCss and findCssSelectorContent
         $parser = $this->makeParser([
-            'sp_datetime_present'        => true,
+            'sp_datetime_present' => true,
             'sp_datetime_required_field' => false,
-            'sp_datetime_css'            => ['[invalid'],
+            'sp_datetime_css' => ['[invalid'],
         ]);
         $html = '<html><body><h1>Title</h1></body></html>';
 
-        $result = $parser->extractTeasers([
+        $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]);
+        ], $this->config), false);
 
         $this->assertCount(1, $result);
-        $this->assertArrayNotHasKey('datetime', $result[0]);
+        $this->assertNull($result[0]->getDate());
     }
 
     public function testParseDateTimeExceptionLogsWarningAndOmitsField(): void
     {
         // '@invalid' uses Unix timestamp syntax but is not a valid number → DateMalformedStringException
         $parser = $this->makeParser([
-            'sp_datetime_present'        => true,
+            'sp_datetime_present' => true,
             'sp_datetime_required_field' => false,
-            'sp_datetime_css'            => ['.date'],
-            'sp_datetime_only_date'      => false,
+            'sp_datetime_css' => ['.date'],
+            'sp_datetime_only_date' => false,
         ]);
         $html = '<html><body><h1>Title</h1><div class="date">@invalid</div></body></html>';
 
-        $result = $parser->extractTeasers([
+        $result = iterator_to_array($parser->extractData([
             ['url' => 'https://example.com/', 'html' => $html],
-        ]);
+        ], $this->config), false);
 
         $this->assertCount(1, $result);
-        $this->assertArrayNotHasKey('datetime', $result[0]);
+        $this->assertNull($result[0]->getDate());
     }
 
     public function testExceptionFromEvaluatorIsCaughtByOuterTryCatch(): void
@@ -541,48 +772,77 @@ HTML;
         $logger = $this->createMock(LoggerInterface::class);
         $logger->expects($this->once())->method('warning');
 
-        $evaluator = $this->createMock(TeaserRelevanceEvaluatorInterface::class);
+        $evaluator = $this->createMock(RelevanceEvaluatorInterface::class);
         $evaluator->method('relevant')->willThrowException(new \RuntimeException('evaluator error'));
 
-        $ctx = new CrawlerConfigContext(array_merge([
-            'sp_title_prefix'             => '',
-            'sp_title_opengraph'          => [],
-            'sp_title_css'                => ['h1'],
-            'sp_title_max_chars'          => 999,
-            'sp_introText_present'        => false,
+        $ctx = array_merge([
+            'sp_title_prefix' => '',
+            'sp_title_opengraph' => [],
+            'sp_title_css' => ['h1'],
+            'sp_title_max_chars' => 999,
+            'sp_introText_present' => false,
             'sp_introText_required_field' => false,
-            'sp_introText_opengraph'      => [],
-            'sp_introText_css'            => [],
-            'sp_introText_max_chars'      => 999,
-            'sp_datetime_present'         => false,
-            'sp_datetime_required_field'  => false,
-            'sp_datetime_only_date'       => true,
-            'sp_datetime_opengraph'       => [],
-            'sp_datetime_css'             => [],
-            'sp_content_scoring_active'   => true,
-        ]));
-        $helper = new CrawlerConfigHelper($ctx, $logger);
-        $config = new CrawlerConfig($helper);
-        $parser = new Parser($logger, $config, $evaluator);
+            'sp_introText_opengraph' => [],
+            'sp_introText_css' => [],
+            'sp_introText_max_chars' => 999,
+            'sp_datetime_present' => false,
+            'sp_datetime_required_field' => false,
+            'sp_datetime_only_date' => true,
+            'sp_datetime_opengraph' => [],
+            'sp_datetime_css' => [],
+            'sp_content_scoring_active' => true,
+        ]);
+        $helper = new PipelineConfigHelper($ctx, $logger);
+        $this->config = new PipelineConfig($helper);
+        $parser = new Parser($logger, $evaluator);
 
-        $html   = '<html><body><h1>Title</h1></body></html>';
-        $result = $parser->extractTeasers([['url' => 'https://example.com/', 'html' => $html]]);
+        $html = '<html><body><h1>Title</h1></body></html>';
+        $result = iterator_to_array($parser->extractData([['url' => 'https://example.com/', 'html' => $html]], $this->config), false);
 
         $this->assertSame([], $result);
     }
 
-    public function testDateTimeRequiredAndUnparseableRawValueSkipsTeaser(): void
+    public function testDateTimeRequiredAndUnparseableRawValueSkipsDocument(): void
     {
         $parser = $this->makeParser([
-            'sp_datetime_present'        => true,
+            'sp_datetime_present' => true,
             'sp_datetime_required_field' => true,
-            'sp_datetime_only_date'      => false,
-            'sp_datetime_css'            => ['.date'],
+            'sp_datetime_only_date' => false,
+            'sp_datetime_css' => ['.date'],
         ]);
         $html = '<html><body><h1>Title</h1><div class="date">@invalid</div></body></html>';
 
-        $result = $parser->extractTeasers([['url' => 'https://example.com/', 'html' => $html]]);
+        $result = iterator_to_array($parser->extractData([['url' => 'https://example.com/', 'html' => $html]], $this->config), false);
 
         $this->assertSame([], $result);
+    }
+
+    /**
+     * The Parser is shared across sites, so the config passed per call - not
+     * the one of an earlier call - decides how a page is parsed.
+     */
+    public function testOneParserServesSitesWithDifferentConfigs(): void
+    {
+        $logger = $this->createStub(LoggerInterface::class);
+        $evaluator = $this->createStub(RelevanceEvaluatorInterface::class);
+        $evaluator->method('relevant')->willReturn(true);
+        $parser = new Parser($logger, $evaluator);
+
+        $siteA = new PipelineConfig(new PipelineConfigHelper([
+            'sp_title_css' => ['h1'],
+            'sp_title_prefix' => 'A: ',
+        ], $logger));
+        $siteB = new PipelineConfig(new PipelineConfigHelper([
+            'sp_title_css' => ['h2'],
+            'sp_title_prefix' => 'B: ',
+        ], $logger));
+
+        $page = [['url' => 'https://example.com/', 'html' => '<html><body><h1>Eins</h1><h2>Zwei</h2></body></html>']];
+
+        $resultA = iterator_to_array($parser->extractData($page, $siteA), false);
+        $resultB = iterator_to_array($parser->extractData($page, $siteB), false);
+
+        $this->assertSame('A: Eins', $resultA[0]->getTitle());
+        $this->assertSame('B: Zwei', $resultB[0]->getTitle());
     }
 }

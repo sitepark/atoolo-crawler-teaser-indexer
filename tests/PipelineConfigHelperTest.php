@@ -1,0 +1,379 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Atoolo\CrawlerIndexer\Tests;
+
+use Atoolo\CrawlerIndexer\Config\PipelineConfigHelper;
+use Atoolo\CrawlerIndexer\Config\LengthConditionConfig;
+use Atoolo\CrawlerIndexer\Pipeline\RelevanceEvaluator\ScoreRuleConfig;
+use PHPUnit\Framework\TestCase;
+use Psr\Log\LoggerInterface;
+
+final class PipelineConfigHelperTest extends TestCase
+{
+    private function makeHelper(array $params, ?LoggerInterface $logger = null): PipelineConfigHelper
+    {
+        $ctx = $params;
+
+        return new PipelineConfigHelper($ctx, $logger ?? $this->createStub(LoggerInterface::class));
+    }
+
+    // --- bool() ---
+
+    public function testBoolReturnsTrueForBoolTrue(): void
+    {
+        $helper = $this->makeHelper(['key' => true]);
+        $this->assertTrue($helper->bool('key'));
+    }
+
+    public function testBoolReturnsFalseForBoolFalse(): void
+    {
+        $helper = $this->makeHelper(['key' => false]);
+        $this->assertFalse($helper->bool('key'));
+    }
+
+    public function testBoolReturnsTrueForStringTrue(): void
+    {
+        $helper = $this->makeHelper(['key' => 'true']);
+        $this->assertTrue($helper->bool('key'));
+    }
+
+    public function testBoolReturnsFalseForStringFalse(): void
+    {
+        $helper = $this->makeHelper(['key' => 'false']);
+        $this->assertFalse($helper->bool('key'));
+    }
+
+    public function testBoolReturnsTrueForStringOne(): void
+    {
+        $helper = $this->makeHelper(['key' => '1']);
+        $this->assertTrue($helper->bool('key'));
+    }
+
+    public function testBoolReturnsFalseForStringZero(): void
+    {
+        $helper = $this->makeHelper(['key' => '0']);
+        $this->assertFalse($helper->bool('key'));
+    }
+
+    public function testBoolReturnsDefaultForMissingKey(): void
+    {
+        $helper = $this->makeHelper([]);
+        $this->assertTrue($helper->bool('missing', true));
+        $this->assertFalse($helper->bool('missing', false));
+    }
+
+    public function testBoolDefaultsToFalse(): void
+    {
+        $helper = $this->makeHelper([]);
+        $this->assertFalse($helper->bool('missing'));
+    }
+
+    public function testBoolIgnoresCaseAndSurroundingWhitespace(): void
+    {
+        $helper = $this->makeHelper(['yes' => ' TRUE ', 'no' => "False\n"]);
+        $this->assertTrue($helper->bool('yes'));
+        $this->assertFalse($helper->bool('no', true));
+    }
+
+    public function testBoolReturnsDefaultForInvalidStringAndLogsError(): void
+    {
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->once())->method('error');
+        $helper = $this->makeHelper(['key' => 'notabool'], $logger);
+        $this->assertFalse($helper->bool('key', false));
+    }
+
+    public function testBoolReturnsDefaultForInvalidTypeAndLogsError(): void
+    {
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->once())->method('error');
+        $helper = $this->makeHelper(['key' => 42], $logger);
+        $this->assertFalse($helper->bool('key', false));
+    }
+
+    // --- int() ---
+
+    public function testIntReturnsIntValue(): void
+    {
+        $helper = $this->makeHelper(['key' => 7]);
+        $this->assertSame(7, $helper->int('key'));
+    }
+
+    public function testIntReturnsDefaultForMissingKey(): void
+    {
+        $helper = $this->makeHelper([]);
+        $this->assertSame(99, $helper->int('missing', 99));
+    }
+
+    public function testIntParsesStringDigit(): void
+    {
+        $helper = $this->makeHelper(['key' => '42']);
+        $this->assertSame(42, $helper->int('key'));
+    }
+
+    public function testIntReturnsDefaultForInvalidAndLogsError(): void
+    {
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->once())->method('error');
+        $helper = $this->makeHelper(['key' => 'notanumber'], $logger);
+        $this->assertSame(0, $helper->int('key'));
+    }
+
+    // --- string() ---
+
+    public function testStringReturnsStringValue(): void
+    {
+        $helper = $this->makeHelper(['key' => 'hello']);
+        $this->assertSame('hello', $helper->string('key'));
+    }
+
+    public function testStringReturnsDefaultForMissingKey(): void
+    {
+        $helper = $this->makeHelper([]);
+        $this->assertSame('default', $helper->string('missing', 'default'));
+    }
+
+    public function testStringReturnsDefaultForInvalidTypeAndLogsError(): void
+    {
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->once())->method('error');
+        $helper = $this->makeHelper(['key' => 123], $logger);
+        $this->assertSame('fallback', $helper->string('key', 'fallback'));
+    }
+
+    // --- intList() ---
+
+    public function testIntListReturnsEmptyForMissingKey(): void
+    {
+        $helper = $this->makeHelper([]);
+        $this->assertSame([], $helper->intList('missing'));
+    }
+
+    public function testIntListReturnsEmptyForNonArrayAndLogsWarning(): void
+    {
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->once())->method('warning');
+        $helper = $this->makeHelper(['key' => 'notarray'], $logger);
+        $this->assertSame([], $helper->intList('key'));
+    }
+
+    public function testIntListReturnsSortedUniqueInts(): void
+    {
+        $helper = $this->makeHelper(['key' => [3, 1, 2, 1]]);
+        $this->assertSame([1, 2, 3], $helper->intList('key'));
+    }
+
+    public function testIntListParsesStringDigits(): void
+    {
+        $helper = $this->makeHelper(['key' => ['10', '20']]);
+        $this->assertSame([10, 20], $helper->intList('key'));
+    }
+
+    public function testIntListSkipsInvalidItemsWithWarning(): void
+    {
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->atLeastOnce())->method('warning');
+        $helper = $this->makeHelper(['key' => [1, 'invalid', 2]], $logger);
+        $this->assertSame([1, 2], $helper->intList('key'));
+    }
+
+    public function testIntListAcceptsNumericFloatAsInt(): void
+    {
+        $helper = $this->makeHelper(['key' => [1.5]]);
+        $this->assertSame([1], $helper->intList('key'));
+    }
+
+    public function testIntListKeepsItemsAfterANumericFloat(): void
+    {
+        $helper = $this->makeHelper(['key' => [1.5, 2]]);
+        $this->assertSame([1, 2], $helper->intList('key'));
+    }
+
+    // --- stringList() ---
+
+    public function testStringListReturnsEmptyForMissingKey(): void
+    {
+        $helper = $this->makeHelper([]);
+        $this->assertSame([], $helper->stringList('missing'));
+    }
+
+    public function testStringListReturnsEmptyForNonArrayAndLogsWarning(): void
+    {
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->once())->method('warning');
+        $helper = $this->makeHelper(['key' => 'notarray'], $logger);
+        $this->assertSame([], $helper->stringList('key'));
+    }
+
+    public function testStringListFiltersOutEmptyStrings(): void
+    {
+        $helper = $this->makeHelper(['key' => ['a', '', 'b']]);
+        $this->assertSame(['a', 'b'], $helper->stringList('key'));
+    }
+
+    public function testStringListReturnsValidStrings(): void
+    {
+        $helper = $this->makeHelper(['key' => ['foo', 'bar']]);
+        $this->assertSame(['foo', 'bar'], $helper->stringList('key'));
+    }
+
+    // --- intStringList() ---
+
+    public function testStartUrlsListReturnsEmptyForMissingKey(): void
+    {
+        $helper = $this->makeHelper([]);
+        $this->assertSame([], $helper->startUrlsList('missing'));
+    }
+
+    public function testStartUrlsListReturnsEmptyForNonArrayAndLogsWarning(): void
+    {
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->once())->method('warning');
+        $helper = $this->makeHelper(['key' => 'notarray'], $logger);
+        $this->assertSame([], $helper->startUrlsList('key'));
+    }
+
+    public function testStartUrlsListReadsEveryEntry(): void
+    {
+        $helper = $this->makeHelper(['key' => [
+            ['sp_url' => 'https://example.com/a', 'sp_extraction_depth' => 1],
+            ['sp_url' => 'https://example.com/b', 'sp_extraction_depth' => '2'],
+        ]]);
+        $this->assertSame([
+            ['url' => 'https://example.com/a', 'extraction_depth' => 1],
+            ['url' => 'https://example.com/b', 'extraction_depth' => 2],
+        ], $helper->startUrlsList('key'));
+    }
+
+    public function testStartUrlsListSkipsEmptyStringEntries(): void
+    {
+        $helper = $this->makeHelper(['key' => [
+            '',
+            ['sp_url' => 'https://example.com/a', 'sp_extraction_depth' => 1],
+        ]]);
+        $this->assertSame([
+            ['url' => 'https://example.com/a', 'extraction_depth' => 1],
+        ], $helper->startUrlsList('key'));
+    }
+
+    // --- readScoreRules() ---
+
+    public function testReadScoreRulesReturnsEmptyForMissingKey(): void
+    {
+        $helper = $this->makeHelper([]);
+        $this->assertSame([], $helper->readScoreRules('missing'));
+    }
+
+    public function testReadScoreRulesReturnsEmptyForNonArrayAndLogsWarning(): void
+    {
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->once())->method('warning');
+        $helper = $this->makeHelper(['key' => 'notarray'], $logger);
+        $this->assertSame([], $helper->readScoreRules('key'));
+    }
+
+    public function testReadScoreRulesSkipsNonArrayEntryWithWarning(): void
+    {
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->once())->method('warning');
+        $helper = $this->makeHelper(['key' => ['invalid']], $logger);
+        $this->assertSame([], $helper->readScoreRules('key'));
+    }
+
+    public function testReadScoreRulesKeepsRulesAfterAnInvalidEntry(): void
+    {
+        $helper = $this->makeHelper(['key' => [['sp_score' => 1], 'invalid', ['sp_score' => '2']]]);
+        $rules = $helper->readScoreRules('key');
+        $this->assertSame([1, 2], array_map(static fn(ScoreRuleConfig $rule): int => $rule->score, $rules));
+    }
+
+    public function testReadScoreRulesReadsScore(): void
+    {
+        $helper = $this->makeHelper(['key' => [['sp_score' => 5]]]);
+        $rules = $helper->readScoreRules('key');
+        $this->assertCount(1, $rules);
+        $this->assertInstanceOf(ScoreRuleConfig::class, $rules[0]);
+        $this->assertSame(5, $rules[0]->score);
+    }
+
+    public function testReadScoreRulesReadsMatchAny(): void
+    {
+        $helper = $this->makeHelper(['key' => [
+            ['sp_score' => 3, 'sp_match_any' => ['news', 'article']],
+        ]]);
+        $rules = $helper->readScoreRules('key');
+        $this->assertCount(1, $rules);
+        $this->assertSame(['news', 'article'], $rules[0]->matchAny);
+    }
+
+    public function testReadScoreRulesHandlesInvalidSpScore(): void
+    {
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->once())->method('warning');
+        $helper = $this->makeHelper(['key' => [['sp_score' => 'invalid']]], $logger);
+        $rules = $helper->readScoreRules('key');
+        $this->assertCount(1, $rules);
+        $this->assertSame(0, $rules[0]->score);
+    }
+
+    public function testReadScoreRulesHandlesInvalidMatchAny(): void
+    {
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->atLeastOnce())->method('warning');
+        $helper = $this->makeHelper(['key' => [['sp_match_any' => 'notanarray']]], $logger);
+        $rules = $helper->readScoreRules('key');
+        $this->assertSame([], $rules[0]->matchAny);
+    }
+
+    public function testReadScoreRulesSkipsEmptyMatchAnyEntries(): void
+    {
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->atLeastOnce())->method('warning');
+        $helper = $this->makeHelper(['key' => [['sp_match_any' => ['valid', '', 123]]]], $logger);
+        $rules = $helper->readScoreRules('key');
+        $this->assertSame(['valid'], $rules[0]->matchAny);
+    }
+
+    public function testReadScoreRulesReadsConditionWithBodyTextLength(): void
+    {
+        $helper = $this->makeHelper(['key' => [
+            [
+                'sp_score' => -5,
+                'sp_condition' => ['sp_body_text_length' => 100],
+            ],
+        ]]);
+        $rules = $helper->readScoreRules('key');
+        $this->assertCount(1, $rules);
+        $this->assertInstanceOf(LengthConditionConfig::class, $rules[0]->condition);
+        $this->assertSame(100, $rules[0]->condition->bodyTextLengthLt);
+    }
+
+    public function testReadScoreRulesCastsNumericStringBodyTextLength(): void
+    {
+        $helper = $this->makeHelper(['key' => [['sp_condition' => ['sp_body_text_length' => '100']]]]);
+        $rules = $helper->readScoreRules('key');
+        $this->assertSame(100, $rules[0]->condition?->bodyTextLengthLt);
+    }
+
+    public function testReadScoreRulesHandlesInvalidCondition(): void
+    {
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->once())->method('warning');
+        $helper = $this->makeHelper(['key' => [['sp_condition' => 'notanarray']]], $logger);
+        $rules = $helper->readScoreRules('key');
+        $this->assertNull($rules[0]->condition);
+    }
+
+    public function testReadScoreRulesHandlesInvalidBodyTextLength(): void
+    {
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->once())->method('warning');
+        $helper = $this->makeHelper(['key' => [
+            ['sp_condition' => ['sp_body_text_length' => 'invalid']],
+        ]], $logger);
+        $rules = $helper->readScoreRules('key');
+        $this->assertNull($rules[0]->condition);
+    }
+}

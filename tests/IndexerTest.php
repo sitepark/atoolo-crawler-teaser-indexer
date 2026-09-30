@@ -2,36 +2,38 @@
 
 declare(strict_types=1);
 
-namespace Tests;
+namespace Atoolo\CrawlerIndexer\Tests;
 
-use Atoolo\Crawler\Config\CrawlerConfig;
-use Atoolo\Crawler\Config\CrawlerConfigContext;
-use Atoolo\Crawler\Config\CrawlerConfigHelper;
-use Atoolo\Crawler\Domain\Crawler\Steps\Indexer;
-use Atoolo\Crawler\Exception\ThresholdNotMetException;
-use Atoolo\Resource\ResourceLanguage;
-use Atoolo\Index\Dto\Indexer\IndexerStatus;
-use Atoolo\Index\Service\Indexer\IndexerProgressHandler;
+use Atoolo\CrawlerIndexer\Config\PipelineConfig;
+use Atoolo\CrawlerIndexer\Config\PipelineConfigHelper;
+use Atoolo\CrawlerIndexer\Dto\ExtractedData;
+use Atoolo\CrawlerIndexer\Pipeline\Indexer\Indexer;
+use Atoolo\CrawlerIndexer\Exception\ThresholdNotMetException;
+use Atoolo\Search\Dto\Indexer\IndexerStatus;
+use Atoolo\Search\Service\Indexer\IndexerProgressHandler;
 use Atoolo\Search\Service\Indexer\SolrIndexService;
 use Atoolo\Search\Service\Indexer\SolrIndexUpdater;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
-use Atoolo\Search\Service\Indexer\IndexSchema2xDocument;
-use Atoolo\Search\Service\Indexer\SolrUpdateResult;
+use Solarium\QueryType\Update\Query\Document;
+use Solarium\QueryType\Update\Result as SolrUpdateResult;
 
 final class IndexerTest extends TestCase
 {
-    private function makeConfig(array $overrides = []): CrawlerConfig
+    private PipelineConfig $config;
+
+    private function makeConfig(array $overrides = []): PipelineConfig
     {
-        $ctx = new CrawlerConfigContext(array_merge([
-            'sp_id'                => 'test-source',
+        $ctx = array_merge([
+            'sp_id' => 'test-source',
             'sp_cleanup_threshold' => 0,
             'sp_introText_present' => false,
-            'sp_datetime_present'  => false,
-        ], $overrides));
+            'sp_datetime_present' => false,
+        ], $overrides);
         $logger = $this->createStub(LoggerInterface::class);
-        $helper = new CrawlerConfigHelper($ctx, $logger);
-        return new CrawlerConfig($helper);
+        $helper = new PipelineConfigHelper($ctx, $logger);
+
+        return new PipelineConfig($helper);
     }
 
     private function makeIndexer(
@@ -44,7 +46,7 @@ final class IndexerTest extends TestCase
         $updateResult->method('getStatus')->willReturn(0);
 
         $updater = $this->createMock(SolrIndexUpdater::class);
-        $updater->method('createDocument')->willReturn(new IndexSchema2xDocument());
+        $updater->method('createDocument')->willReturn(new Document());
         $updater->method('update')->willReturn($updateResult);
 
         $defaultIndexService = $this->createMock(SolrIndexService::class);
@@ -53,12 +55,103 @@ final class IndexerTest extends TestCase
         $defaultProgressHandler = $this->createStub(IndexerProgressHandler::class);
         $defaultProgressHandler->method('getStatus')->willReturn(IndexerStatus::empty());
 
+        $this->config = $this->makeConfig($configOverrides);
+
         return new Indexer(
             $progressHandler ?? $defaultProgressHandler,
             $indexService ?? $defaultIndexService,
-            $this->makeConfig($configOverrides),
             $logger ?? $this->createStub(LoggerInterface::class),
         );
+    }
+
+    /**
+     * Builds an Indexer whose updater records every added Solr document into
+     * $added, so tests can inspect dedup and the generated id/url fields.
+     *
+     * @param array<int, Document> $added
+     * @param array<string, mixed> $configOverrides
+     */
+    private function makeCapturingIndexer(array &$added, array $configOverrides = []): Indexer
+    {
+        $updateResult = $this->createMock(SolrUpdateResult::class);
+        $updateResult->method('getStatus')->willReturn(0);
+
+        $updater = $this->createMock(SolrIndexUpdater::class);
+        $updater->method('createDocument')->willReturnCallback(static fn(): Document => new Document());
+        $updater->method('addDocument')->willReturnCallback(
+            static function (Document $document) use (&$added): void {
+                $added[] = $document;
+            },
+        );
+        $updater->method('update')->willReturn($updateResult);
+
+        $indexService = $this->createMock(SolrIndexService::class);
+        $indexService->method('updater')->willReturn($updater);
+
+        $progressHandler = $this->createStub(IndexerProgressHandler::class);
+        $progressHandler->method('getStatus')->willReturn(IndexerStatus::empty());
+
+        $this->config = $this->makeConfig($configOverrides);
+
+        return new Indexer(
+            $progressHandler,
+            $indexService,
+            $this->createStub(LoggerInterface::class),
+        );
+    }
+
+    public function testDeduplicatesDocumentsWithIdenticalContent(): void
+    {
+        $added = [];
+        $indexer = $this->makeCapturingIndexer($added);
+
+        $indexer->doIndex([
+            new ExtractedData('https://example.com/a', 'Same Title'),
+            new ExtractedData('https://example.com/b', 'Same Title'), // same title/intro/date → duplicate
+            new ExtractedData('https://example.com/c', 'Other Title'),
+        ], $this->config);
+
+        $this->assertCount(2, $added);
+    }
+
+    /**
+     * The pipeline hands over its lazy chain, not an array.
+     */
+    public function testIndexesDocumentsFromAGenerator(): void
+    {
+        $added = [];
+        $indexer = $this->makeCapturingIndexer($added);
+
+        $documents = (static function (): \Generator {
+            yield new ExtractedData('https://example.com/a', 'Same Title');
+            yield new ExtractedData('https://example.com/b', 'Same Title');
+            yield new ExtractedData('https://example.com/c', 'Other Title');
+        })();
+
+        $indexer->doIndex($documents, $this->config);
+
+        $this->assertCount(2, $added);
+    }
+
+    public function testMultipleDocumentsFromSameUrlGetDistinctGeneratedIds(): void
+    {
+        $added = [];
+        $indexer = $this->makeCapturingIndexer($added);
+
+        $url = 'https://example.com/overview';
+        $indexer->doIndex([
+            new ExtractedData($url, 'Document One'),
+            new ExtractedData($url, 'Document Two'),
+        ], $this->config);
+
+        $this->assertCount(2, $added);
+
+        $ids = array_map(static fn(Document $d): mixed => $d->getFields()['id'], $added);
+        // The id is no longer the URL, and same-page documents get distinct ids.
+        $this->assertNotSame($url, $ids[0]);
+        $this->assertNotSame($ids[0], $ids[1]);
+        // The URL is still stored in its own field.
+        $this->assertSame($url, $added[0]->getFields()['url']);
     }
 
     public function testDoIndexWithSuccessfulItemsReturnsStatus(): void
@@ -66,9 +159,9 @@ final class IndexerTest extends TestCase
         $indexer = $this->makeIndexer();
 
         $status = $indexer->doIndex([
-            ['url' => 'https://example.com/page1', 'title' => 'Page 1'],
-            ['url' => 'https://example.com/page2', 'title' => 'Page 2'],
-        ]);
+            new ExtractedData('https://example.com/page1', 'Page 1'),
+            new ExtractedData('https://example.com/page2', 'Page 2'),
+        ], $this->config);
 
         $this->assertInstanceOf(IndexerStatus::class, $status);
     }
@@ -81,79 +174,108 @@ final class IndexerTest extends TestCase
         $this->expectException(ThresholdNotMetException::class);
 
         // Processing 0 items → successCount=0 ≤ threshold=5 → ThresholdNotMetException
-        $indexer->doIndex([]);
+        $indexer->doIndex([], $this->config);
     }
 
-    public function testDoIndexWithIntroTextIncludesIntroField(): void
+    public function testDoIndexWithIntroTextPresentSetsIntroField(): void
     {
+        $added = [];
+        $indexer = $this->makeCapturingIndexer($added, ['sp_introText_present' => true]);
+
+        $indexer->doIndex([
+            new ExtractedData('https://example.com/', 'Title', 'Intro text here'),
+        ], $this->config);
+
+        $this->assertCount(1, $added);
+        $this->assertSame('Intro text here', $added[0]->getFields()['sp_intro']);
+    }
+
+    public function testDoIndexWithoutIntroTextPresentOmitsIntroField(): void
+    {
+        $added = [];
+        $indexer = $this->makeCapturingIndexer($added, ['sp_introText_present' => false]);
+
+        $indexer->doIndex([
+            new ExtractedData('https://example.com/', 'Title', 'Intro text here'),
+        ], $this->config);
+
+        $this->assertCount(1, $added);
+        $this->assertArrayNotHasKey('sp_intro', $added[0]->getFields());
+    }
+
+    public function testDoIndexWithDatetimePresentSetsDateField(): void
+    {
+        $added = [];
+        $indexer = $this->makeCapturingIndexer($added, ['sp_datetime_present' => true]);
+        $date = new \DateTimeImmutable('2026-01-01T00:00:00Z');
+
+        $indexer->doIndex([
+            new ExtractedData('https://example.com/', 'Title', null, $date),
+        ], $this->config);
+
+        $this->assertCount(1, $added);
+        $this->assertSame($date, $added[0]->getFields()['sp_date']);
+    }
+
+    public function testDoIndexWithoutDatetimePresentOmitsDateField(): void
+    {
+        $added = [];
+        $indexer = $this->makeCapturingIndexer($added, ['sp_datetime_present' => false]);
+
+        $indexer->doIndex([
+            new ExtractedData('https://example.com/', 'Title', null, new \DateTimeImmutable('2026-01-01')),
+        ], $this->config);
+
+        $this->assertCount(1, $added);
+        $this->assertArrayNotHasKey('sp_date', $added[0]->getFields());
+    }
+
+    public function testDoIndexWithValidDateDoesNotLogWarning(): void
+    {
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->never())->method('warning');
+
+        $indexer = $this->makeIndexer(['sp_datetime_present' => true], logger: $logger);
+
+        $status = $indexer->doIndex([
+            new ExtractedData('https://example.com/', 'Title', null, new \DateTimeImmutable('2026-01-01')),
+        ], $this->config);
+
+        $this->assertInstanceOf(IndexerStatus::class, $status);
+    }
+
+    public function testDoIndexLogsWarningWhenDateFieldCannotBeSet(): void
+    {
+        $document = $this->createMock(Document::class);
+        $document->method('setField')->willReturnCallback(
+            static function (string $name) use (&$document): Document {
+                if ('sp_date' === $name) {
+                    throw new \RuntimeException('invalid date');
+                }
+
+                return $document;
+            },
+        );
+
         $updateResult = $this->createMock(SolrUpdateResult::class);
         $updateResult->method('getStatus')->willReturn(0);
 
-        $document = new IndexSchema2xDocument();
-
         $updater = $this->createMock(SolrIndexUpdater::class);
         $updater->method('createDocument')->willReturn($document);
+        $updater->expects($this->once())->method('addDocument')->with($document);
         $updater->method('update')->willReturn($updateResult);
 
         $indexService = $this->createMock(SolrIndexService::class);
         $indexService->method('updater')->willReturn($updater);
 
-        $progressHandler = $this->createStub(IndexerProgressHandler::class);
-        $progressHandler->method('getStatus')->willReturn(IndexerStatus::empty());
-
-        $indexer = new Indexer(
-            $progressHandler,
-            $indexService,
-            $this->makeConfig(['sp_introText_present' => true]),
-            $this->createStub(LoggerInterface::class),
-        );
-
-        $status = $indexer->doIndex([
-            ['url' => 'https://example.com/', 'title' => 'Title', 'introText' => 'Intro text here'],
-        ]);
-
-        $this->assertInstanceOf(IndexerStatus::class, $status);
-    }
-
-    public function testDoIndexWithDatetimeItemIncludesDateField(): void
-    {
-        $indexer = $this->makeIndexer(['sp_datetime_present' => true]);
-
-        $status = $indexer->doIndex([
-            [
-                'url'    => 'https://example.com/',
-                'title'  => 'Title',
-                'date'   => new \DateTimeImmutable('2026-01-01'),
-            ],
-        ]);
-
-        $this->assertInstanceOf(IndexerStatus::class, $status);
-    }
-
-    public function testDoIndexWithScalarDateConvertsToDateTimeImmutable(): void
-    {
-        $indexer = $this->makeIndexer(['sp_datetime_present' => true]);
-
-        $status = $indexer->doIndex([
-            ['url' => 'https://example.com/', 'title' => 'Title', 'date' => '2026-01-01T00:00:00Z'],
-        ]);
-
-        $this->assertInstanceOf(IndexerStatus::class, $status);
-    }
-
-    public function testDoIndexWithInvalidDateLogsWarningAndContinues(): void
-    {
         $logger = $this->createMock(LoggerInterface::class);
-        $logger->expects($this->once())->method('warning');
+        $logger->expects($this->once())->method('warning')->with('[Indexer] Invalid date format');
 
-        $indexer = $this->makeIndexer(['sp_datetime_present' => true], logger: $logger);
+        $indexer = $this->makeIndexer(['sp_datetime_present' => true], indexService: $indexService, logger: $logger);
 
-        // Invalid date type (object that is not DateTimeInterface) → logs warning
-        $status = $indexer->doIndex([
-            ['url' => 'https://example.com/', 'title' => 'Title', 'date' => new \stdClass()],
-        ]);
-
-        $this->assertInstanceOf(IndexerStatus::class, $status);
+        $indexer->doIndex([
+            new ExtractedData('https://example.com/', 'Title', null, new \DateTimeImmutable('2026-01-01')),
+        ], $this->config);
     }
 
     public function testDoIndexLogsErrorWhenSolrUpdateStatusIsNonZero(): void
@@ -165,7 +287,7 @@ final class IndexerTest extends TestCase
         );
 
         $updater = $this->createMock(SolrIndexUpdater::class);
-        $updater->method('createDocument')->willReturn(new IndexSchema2xDocument());
+        $updater->method('createDocument')->willReturn(new Document());
         $updater->method('update')->willReturn($updateResult);
 
         $indexService = $this->createMock(SolrIndexService::class);
@@ -175,31 +297,31 @@ final class IndexerTest extends TestCase
         $progressHandler->method('getStatus')->willReturn(IndexerStatus::empty());
         $progressHandler->expects($this->once())->method('error');
 
+        $this->config = $this->makeConfig();
         $indexer = new Indexer(
             $progressHandler,
             $indexService,
-            $this->makeConfig(),
             $this->createStub(LoggerInterface::class),
         );
 
         $indexer->doIndex([
-            ['url' => 'https://example.com/', 'title' => 'Title'],
-        ]);
+            new ExtractedData('https://example.com/', 'Title'),
+        ], $this->config);
     }
 
     public function testDoIndexRethrowsWhenSolrUpdateThrows(): void
     {
         $updater = $this->createMock(SolrIndexUpdater::class);
-        $updater->method('createDocument')->willReturn(new IndexSchema2xDocument());
+        $updater->method('createDocument')->willReturn(new Document());
         $updater->method('update')->willThrowException(new \RuntimeException('Solr not reachable'));
 
         $indexService = $this->createMock(SolrIndexService::class);
         $indexService->method('updater')->willReturn($updater);
 
+        $this->config = $this->makeConfig();
         $indexer = new Indexer(
             $this->createStub(IndexerProgressHandler::class),
             $indexService,
-            $this->makeConfig(),
             $this->createStub(LoggerInterface::class),
         );
 
@@ -207,20 +329,21 @@ final class IndexerTest extends TestCase
         $this->expectExceptionMessage('Solr not reachable');
 
         $indexer->doIndex([
-            ['url' => 'https://example.com/', 'title' => 'Title'],
-        ]);
+            new ExtractedData('https://example.com/', 'Title'),
+        ], $this->config);
     }
 
     public function testDoIndexCatchesItemExceptionAndContinues(): void
     {
         $callCount = 0;
         $updater = $this->createMock(SolrIndexUpdater::class);
-        $updater->method('createDocument')->willReturnCallback(function () use (&$callCount): IndexSchema2xDocument {
-            $callCount++;
-            if ($callCount === 1) {
+        $updater->method('createDocument')->willReturnCallback(function () use (&$callCount): Document {
+            ++$callCount;
+            if (1 === $callCount) {
                 throw new \RuntimeException('document creation failed');
             }
-            return new IndexSchema2xDocument();
+
+            return new Document();
         });
 
         $updateResult = $this->createMock(SolrUpdateResult::class);
@@ -236,13 +359,14 @@ final class IndexerTest extends TestCase
         $logger = $this->createMock(LoggerInterface::class);
         $logger->expects($this->once())->method('error');
 
-        $indexer = new Indexer($progressHandler, $indexService, $this->makeConfig(), $logger);
+        $this->config = $this->makeConfig();
+        $indexer = new Indexer($progressHandler, $indexService, $logger);
 
         // Item 1 throws, item 2 succeeds
         $status = $indexer->doIndex([
-            ['url' => 'https://example.com/bad', 'title' => 'Bad'],
-            ['url' => 'https://example.com/good', 'title' => 'Good'],
-        ]);
+            new ExtractedData('https://example.com/bad', 'Bad'),
+            new ExtractedData('https://example.com/good', 'Good'),
+        ], $this->config);
 
         $this->assertInstanceOf(IndexerStatus::class, $status);
     }

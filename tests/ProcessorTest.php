@@ -2,158 +2,126 @@
 
 declare(strict_types=1);
 
-namespace Tests;
+namespace Atoolo\CrawlerIndexer\Tests;
 
-use Atoolo\Crawler\Config\CrawlerConfig;
-use Atoolo\Crawler\Config\CrawlerConfigContext;
-use Atoolo\Crawler\Config\CrawlerConfigHelper;
-use Atoolo\Crawler\Domain\Crawler\Steps\Processor;
+use Atoolo\CrawlerIndexer\Config\PipelineConfig;
+use Atoolo\CrawlerIndexer\Config\PipelineConfigHelper;
+use Atoolo\CrawlerIndexer\Dto\ExtractedData;
+use Atoolo\CrawlerIndexer\Dto\ExtractedDataInterface;
+use Atoolo\CrawlerIndexer\Pipeline\Processor\Processor;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 
 final class ProcessorTest extends TestCase
 {
     private Processor $processor;
-    /**
-     * Sets up the test environment before each test.
-     * Creates a mock logger and initializes the Processor instance.
-     */
+    private PipelineConfig $config;
+
     protected function setUp(): void
     {
-        $ctx = new CrawlerConfigContext([
+        $ctx = [
             'sp_title_max_chars' => 120,
             'sp_introText_max_chars' => 120,
-        ]);
+        ];
 
         $logger = $this->createStub(LoggerInterface::class);
-        $helper = new CrawlerConfigHelper($ctx, $logger);
-        $config = new CrawlerConfig($helper);
-        $this->processor = new Processor($logger, $config);
+        $helper = new PipelineConfigHelper($ctx, $logger);
+        $this->config = new PipelineConfig($helper);
+        $this->processor = new Processor($logger);
     }
-    /**
-     * Tests that the sanitizeText method correctly processes input titles.
-     * Verifies that only clean, safe, and properly formatted titles remain in the output.
-     */
+
     public function testTextLetterProcessorRemovesTagsScriptsAndWhitespace(): void
     {
-        $datetime = new \DateTimeImmutable("2012-10-12T00:00:00", new \DateTimeZone('UTC'));
+        $datetime = new \DateTimeImmutable('2012-10-12T00:00:00', new \DateTimeZone('UTC'));
         $input = [
-            [
-                "url"   => "https://example.com/1",
-                "title" => "<p>Hello <b>World</b></p>",
-                "introText" => "<p>Dies ist <b>eine</b> Einleitung.</p>",
-                "datetime" => $datetime,
-            ],
-            [
-                "url"   => "https://example.com/2",
-                "title" => "<script>alert('XSS');</script>Test",
-                "introText" => "<script>alert('bad');</script>Kurztext",
-                "datetime" => $datetime,
-            ],
-            [
-                "url"   => "https://example.com/3",
-                "title" => "   &uuml;berzeugt   ",
-                "introText" => "   &auml;u&szlig;erst  <i>wichtig</i>   ",
-                "datetime" => $datetime,
-            ],
-            [
-                "url"   => "https://example.com/4",
-                "title" => "",
-                "introText" => "Soll ignoriert werden (kein Titel)",
-                "datetime" => $datetime,
-            ],
-            [
-                "url"   => "https://example.com/5",
-                "title" => "       ",
-                "introText" => "   ",
-                "datetime" => $datetime,
-            ],
-            [
-                "url"   => "https://example.com/6",
-                "title" => str_repeat("a", 200),
-                "introText" => str_repeat("b", 300),
-                "datetime" => $datetime,
-            ],
-            [
-                "url"   => "https://example.com/7",
-                "title" => "<span style='color:red'>Red Text</span>",
-                "introText" => "<span style='color:red'>Roter <b>Intro</b> Text</span>",
-                "datetime" => $datetime,
-            ],
+            new ExtractedData('https://example.com/1', '<p>Hello <b>World</b></p>', '<p>Dies ist <b>eine</b> Einleitung.</p>', $datetime),
+            new ExtractedData('https://example.com/2', "<script>alert('XSS');</script>Test", "<script>alert('bad');</script>Kurztext", $datetime),
+            new ExtractedData('https://example.com/3', '   &uuml;berzeugt   ', '   &auml;u&szlig;erst  <i>wichtig</i>   ', $datetime),
+            new ExtractedData('https://example.com/4', '', 'Is dropped (no title)', $datetime),
+            new ExtractedData('https://example.com/5', '       ', '   ', $datetime),
+            new ExtractedData('https://example.com/6', str_repeat('a', 200), str_repeat('b', 300), $datetime),
+            new ExtractedData('https://example.com/7', "<span style='color:red'>Red Text</span>", "<span style='color:red'>Roter <b>Intro</b> Text</span>", $datetime),
         ];
-
 
         $expected = [
-            [
-                "url"   => "https://example.com/1",
-                "title" => "Hello World",
-                "introText" => "Dies ist eine Einleitung.",
-                "datetime" => $datetime,
-            ],
-            [
-                "url"   => "https://example.com/2",
-                "title" => "Test",
-                "introText" => "Kurztext",
-                "datetime" => $datetime,
-            ],
-            [
-                "url"   => "https://example.com/3",
-                "title" => "überzeugt",
-                "introText" => "äußerst wichtig",
-                "datetime" => $datetime,
-            ],
-            [
-                "url"   => "https://example.com/6",
-                "title" => str_repeat("a", 120) . "…",
-                "introText" => str_repeat("b", 120) . "…",
-                "datetime" => $datetime,
-            ],
-            [
-                "url"   => "https://example.com/7",
-                "title" => "Red Text",
-                "introText" => "Roter Intro Text",
-                "datetime" => $datetime,
-            ],
+            new ExtractedData('https://example.com/1', 'Hello World', 'Dies ist eine Einleitung.', $datetime),
+            new ExtractedData('https://example.com/2', 'Test', 'Kurztext', $datetime),
+            new ExtractedData('https://example.com/3', 'überzeugt', 'äußerst wichtig', $datetime),
+            new ExtractedData('https://example.com/6', str_repeat('a', 119) . '…', str_repeat('b', 119) . '…', $datetime),
+            new ExtractedData('https://example.com/7', 'Red Text', 'Roter Intro Text', $datetime),
         ];
 
+        $result = $this->processor->sanitizeText($input, $this->config);
+        $this->assertEquals($expected, iterator_to_array($result));
+    }
 
-        $result = $this->processor->sanitizeText($input);
-        $this->assertSame($expected, iterator_to_array($result));
+    /**
+     * maxChars is the length of the result, the ellipsis included. Lengths are
+     * counted in characters, not bytes.
+     *
+     * @return iterable<string, array{string, string}>
+     */
+    public static function truncationProvider(): iterable
+    {
+        yield 'shorter than max' => [str_repeat('a', 9), str_repeat('a', 9)];
+        yield 'exactly max' => [str_repeat('a', 10), str_repeat('a', 10)];
+        yield 'one over max' => [str_repeat('a', 11), str_repeat('a', 9) . '…'];
+        yield 'multibyte' => [str_repeat('ä', 11), str_repeat('ä', 9) . '…'];
+    }
+
+    /**
+     * @dataProvider truncationProvider
+     */
+    public function testTruncatedTextIsAtMostMaxChars(string $text, string $expected): void
+    {
+        $logger = $this->createStub(LoggerInterface::class);
+        $ctx = ['sp_title_max_chars' => 10, 'sp_introText_max_chars' => 10];
+        $config = new PipelineConfig(new PipelineConfigHelper($ctx, $logger));
+        $processor = new Processor($logger);
+
+        $result = iterator_to_array($processor->sanitizeText([
+            new ExtractedData('https://example.com/page', $text, $text),
+        ], $config));
+
+        $this->assertCount(1, $result);
+        $this->assertSame($expected, $result[0]->getTitle());
+        $this->assertSame($expected, $result[0]->getIntroText());
+        $this->assertLessThanOrEqual(10, mb_strlen($result[0]->getTitle()));
     }
 
     public function testItemWithoutIntroTextKeyOmitsIntroTextField(): void
     {
-        $datetime = new \DateTimeImmutable("2024-01-01T00:00:00", new \DateTimeZone('UTC'));
+        $datetime = new \DateTimeImmutable('2024-01-01T00:00:00', new \DateTimeZone('UTC'));
         $input = [
-            ['url' => 'https://example.com/page', 'title' => 'Title', 'datetime' => $datetime],
+            new ExtractedData('https://example.com/page', 'Title', null, $datetime),
         ];
 
-        $result = iterator_to_array($this->processor->sanitizeText($input));
+        $result = iterator_to_array($this->processor->sanitizeText($input, $this->config));
 
         $this->assertCount(1, $result);
-        $this->assertArrayNotHasKey('introText', $result[0]);
-        $this->assertSame('Title', $result[0]['title']);
+        $this->assertNull($result[0]->getIntroText());
+        $this->assertSame('Title', $result[0]->getTitle());
     }
 
     public function testItemWithoutDatetimeKeyOmitsDatetimeField(): void
     {
         $input = [
-            ['url' => 'https://example.com/page', 'title' => 'Title'],
+            new ExtractedData('https://example.com/page', 'Title'),
         ];
 
-        $result = iterator_to_array($this->processor->sanitizeText($input));
+        $result = iterator_to_array($this->processor->sanitizeText($input, $this->config));
 
         $this->assertCount(1, $result);
-        $this->assertArrayNotHasKey('datetime', $result[0]);
+        $this->assertNull($result[0]->getDate());
     }
 
     public function testEmptyCleanedTitleAfterStrippingIsDiscarded(): void
     {
         $input = [
-            ['url' => 'https://example.com/page', 'title' => '<script>alert(1)</script>'],
+            new ExtractedData('https://example.com/page', '<script>alert(1)</script>'),
         ];
 
-        $result = iterator_to_array($this->processor->sanitizeText($input));
+        $result = iterator_to_array($this->processor->sanitizeText($input, $this->config));
 
         $this->assertSame([], $result);
     }
@@ -163,18 +131,16 @@ final class ProcessorTest extends TestCase
         $logger = $this->createMock(LoggerInterface::class);
         $logger->expects($this->once())->method('warning');
 
-        $ctx = new CrawlerConfigContext(['sp_title_max_chars' => 120]);
-        $helper = new CrawlerConfigHelper($ctx, $logger);
-        $config = new CrawlerConfig($helper);
-        $processor = new Processor($logger, $config);
+        $ctx = ['sp_title_max_chars' => 120];
+        $helper = new PipelineConfigHelper($ctx, $logger);
+        $config = new PipelineConfig($helper);
+        $processor = new Processor($logger);
 
-        // An item with only whitespace results in empty string after cleanString,
-        // which then triggers the warning in truncate()
         $input = [
-            ['url' => 'https://example.com/page', 'title' => '   '],
+            new ExtractedData('https://example.com/page', '   '),
         ];
 
-        $result = iterator_to_array($processor->sanitizeText($input));
+        $result = iterator_to_array($processor->sanitizeText($input, $config));
 
         $this->assertSame([], $result);
     }
@@ -182,30 +148,47 @@ final class ProcessorTest extends TestCase
     public function testIntroTextEmptyStringIsNotIncludedInOutput(): void
     {
         $input = [
-            ['url' => 'https://example.com/page', 'title' => 'Title', 'introText' => ''],
+            new ExtractedData('https://example.com/page', 'Title', ''),
         ];
 
-        $result = iterator_to_array($this->processor->sanitizeText($input));
+        $result = iterator_to_array($this->processor->sanitizeText($input, $this->config));
 
         $this->assertCount(1, $result);
-        $this->assertArrayNotHasKey('introText', $result[0]);
+        $this->assertNull($result[0]->getIntroText());
     }
 
-    public function testCatchBlockIsTriggeredWhenItemTitleIsInvalidType(): void
+    public function testCatchBlockIsTriggeredWhenItemThrows(): void
     {
-        $ctx    = new CrawlerConfigContext(['sp_title_max_chars' => 120, 'sp_introText_max_chars' => 120]);
+        $ctx = ['sp_title_max_chars' => 120, 'sp_introText_max_chars' => 120];
         $logger = $this->createMock(LoggerInterface::class);
         $logger->expects($this->once())->method('error');
 
-        $helper    = new CrawlerConfigHelper($ctx, $logger);
-        $config    = new CrawlerConfig($helper);
-        $processor = new Processor($logger, $config);
+        $helper = new PipelineConfigHelper($ctx, $logger);
+        $config = new PipelineConfig($helper);
+        $processor = new Processor($logger);
 
-        // Processor.php has declare(strict_types=1), so cleanString(int) causes TypeError
-        $result = iterator_to_array($processor->sanitizeText([
-            ['url' => 'https://example.com/', 'title' => 123],
-        ]));
+        $throwingItem = $this->createMock(ExtractedDataInterface::class);
+        $throwingItem->method('getTitle')->willThrowException(new \RuntimeException('unexpected'));
+
+        $result = iterator_to_array($processor->sanitizeText([$throwingItem], $config));
 
         $this->assertSame([], $result);
+    }
+
+    /**
+     * The Processor is shared across sites, so each call truncates with the
+     * maxChars of the config it is given.
+     */
+    public function testOneProcessorServesSitesWithDifferentConfigs(): void
+    {
+        $logger = $this->createStub(LoggerInterface::class);
+        $processor = new Processor($logger);
+        $input = [new ExtractedData('https://example.com/', str_repeat('a', 20))];
+
+        $short = new PipelineConfig(new PipelineConfigHelper(['sp_title_max_chars' => 5], $logger));
+        $long = new PipelineConfig(new PipelineConfigHelper(['sp_title_max_chars' => 50], $logger));
+
+        $this->assertSame('aaaa…', iterator_to_array($processor->sanitizeText($input, $short))[0]->getTitle());
+        $this->assertSame(str_repeat('a', 20), iterator_to_array($processor->sanitizeText($input, $long))[0]->getTitle());
     }
 }
