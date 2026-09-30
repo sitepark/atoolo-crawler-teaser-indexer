@@ -247,6 +247,17 @@ final class PipelineConfigHelperTest extends TestCase
         ], $helper->startUrlsList('key'));
     }
 
+    public function testStartUrlsListSkipsEmptyStringEntries(): void
+    {
+        $helper = $this->makeHelper(['key' => [
+            '',
+            ['sp_url' => 'https://example.com/a', 'sp_extraction_depth' => 1],
+        ]]);
+        $this->assertSame([
+            ['url' => 'https://example.com/a', 'extraction_depth' => 1],
+        ], $helper->startUrlsList('key'));
+    }
+
     // --- readScoreRules() ---
 
     public function testReadScoreRulesReturnsEmptyForMissingKey(): void

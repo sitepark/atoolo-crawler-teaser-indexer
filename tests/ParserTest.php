@@ -269,6 +269,37 @@ HTML;
     }
 
     /**
+     * An invalid XPath only emits a PHP warning; the catch is reached where
+     * the warning is turned into an exception (Symfony's ErrorHandler in debug).
+     */
+    public function testInvalidSplitSelectorLogsWarningAndFallsBackToWholePage(): void
+    {
+        $this->makeParser([
+            'sp_split_html_document' => ['//div[@'],
+            'sp_title_css' => ['h1'],
+        ]);
+
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->once())->method('warning')
+            ->with('[Parser] Invalid split selector, using whole page');
+        $parser = new Parser($logger, $this->createStub(RelevanceEvaluatorInterface::class));
+
+        set_error_handler(static function (int $severity, string $message): bool {
+            throw new \ErrorException($message, 0, $severity);
+        });
+        try {
+            $result = iterator_to_array($parser->extractData([
+                ['url' => 'https://example.com/', 'html' => '<html><body><h1>Single Page</h1></body></html>'],
+            ], $this->config), false);
+        } finally {
+            restore_error_handler();
+        }
+
+        $this->assertCount(1, $result);
+        $this->assertSame('Single Page', $result[0]->getTitle());
+    }
+
+    /**
      * Complex, noisy page (nav/wrapper/footer) split via an XPath ":has"-style
      * selector. The innermost-only variant yields exactly the leaf blocks,
      * each parsed with its own title/intro/date - proving the block tags are

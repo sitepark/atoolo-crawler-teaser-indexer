@@ -244,6 +244,40 @@ final class IndexerTest extends TestCase
         $this->assertInstanceOf(IndexerStatus::class, $status);
     }
 
+    public function testDoIndexLogsWarningWhenDateFieldCannotBeSet(): void
+    {
+        $document = $this->createMock(Document::class);
+        $document->method('setField')->willReturnCallback(
+            static function (string $name) use (&$document): Document {
+                if ('sp_date' === $name) {
+                    throw new \RuntimeException('invalid date');
+                }
+
+                return $document;
+            },
+        );
+
+        $updateResult = $this->createMock(SolrUpdateResult::class);
+        $updateResult->method('getStatus')->willReturn(0);
+
+        $updater = $this->createMock(SolrIndexUpdater::class);
+        $updater->method('createDocument')->willReturn($document);
+        $updater->expects($this->once())->method('addDocument')->with($document);
+        $updater->method('update')->willReturn($updateResult);
+
+        $indexService = $this->createMock(SolrIndexService::class);
+        $indexService->method('updater')->willReturn($updater);
+
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->once())->method('warning')->with('[Indexer] Invalid date format');
+
+        $indexer = $this->makeIndexer(['sp_datetime_present' => true], indexService: $indexService, logger: $logger);
+
+        $indexer->doIndex([
+            new ExtractedData('https://example.com/', 'Title', null, new \DateTimeImmutable('2026-01-01')),
+        ], $this->config);
+    }
+
     public function testDoIndexLogsErrorWhenSolrUpdateStatusIsNonZero(): void
     {
         $updateResult = $this->createMock(SolrUpdateResult::class);

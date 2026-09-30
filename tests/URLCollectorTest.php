@@ -345,4 +345,53 @@ final class URLCollectorTest extends TestCase
 
         iterator_to_array($collector->collect($this->config));
     }
+
+    public function testDuplicateStartUrlIsFetchedOnlyOnce(): void
+    {
+        $collector = $this->createCollector(
+            $this->stubFetcher([$this->urlPrefix => '<div id="content"></div>']),
+            $this->createStub(LoggerInterface::class),
+            $this->createStub(RobotsTxtCheckerInterface::class),
+            [
+                'sp_start_urls' => [
+                    ['sp_url' => $this->urlPrefix, 'sp_extraction_depth' => 0],
+                    ['sp_url' => $this->urlPrefix, 'sp_extraction_depth' => 0],
+                ],
+            ],
+        );
+
+        $this->assertSame([$this->urlPrefix], $this->fetchedUrls($collector->collect($this->config)));
+    }
+
+    public function testChunkWithoutFetchedPagesYieldsNothing(): void
+    {
+        $collector = $this->createCollector(
+            $this->stubFetcher([]),
+            $this->createStub(LoggerInterface::class),
+            $this->createStub(RobotsTxtCheckerInterface::class),
+        );
+
+        $this->assertSame([], iterator_to_array($collector->collect($this->config)));
+    }
+
+    public function testLinkSelectorMatchingNonLinkElementIsLoggedAndIgnored(): void
+    {
+        $messages = [];
+        $logger = $this->createStub(LoggerInterface::class);
+        $logger->method('debug')->willReturnCallback(
+            static function (string $message) use (&$messages): void {
+                $messages[] = $message;
+            },
+        );
+
+        $collector = $this->createCollector(
+            $this->stubFetcher([$this->urlPrefix => '<div id="content"><div>No link</div></div>']),
+            $logger,
+            $this->createStub(RobotsTxtCheckerInterface::class),
+            ['sp_link_selector' => '#content div'],
+        );
+
+        $this->assertSame([$this->urlPrefix], $this->fetchedUrls($collector->collect($this->config)));
+        $this->assertContains('Failed to parse link', $messages);
+    }
 }

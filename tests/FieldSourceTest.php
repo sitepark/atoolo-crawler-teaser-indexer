@@ -214,4 +214,27 @@ final class FieldSourceTest extends TestCase
             );
         }
     }
+
+    public function testVisibleTextReturnsNullAndLogsErrorForInvalidSelector(): void
+    {
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->once())->method('error')->with('Failed to parse CSS selector');
+
+        $source = new FieldSource(new Crawler(self::HTML), $logger);
+
+        $this->assertNull($source->visibleText('a['));
+    }
+
+    public function testMetaReturnsNullAndLogsErrorWhenQueryFails(): void
+    {
+        $crawler = $this->createStub(Crawler::class);
+        $crawler->method('filterXPath')->willThrowException(new \RuntimeException('query failed'));
+
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->once())->method('error')->with('Failed to parse meta tag');
+
+        $source = new FieldSource($crawler, $logger);
+
+        $this->assertNull($source->meta('og:title'));
+    }
 }

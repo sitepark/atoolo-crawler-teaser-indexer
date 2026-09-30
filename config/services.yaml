@@ -19,7 +19,6 @@ services:
             - "../src/Dto"
             - "../src/Exception"
             - "../src/Pipeline/Parser/FieldSource.php"
-            - "../src/Pipeline/Parser/ContentScoringRule.php"
             - "../src/Pipeline/RelevanceEvaluator/ScoreRuleConfig.php"
 
     # Shared by PipelineCommand (development) and StartPipelineMessageHandler
