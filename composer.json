@@ -20,7 +20,7 @@
         "symfony/framework-bundle": "^6.4.41 || ^7.4.20",
         "symfony/http-client": "^6.4.41 || ^7.4.20",
         "symfony/monolog-bundle": "^3.11.2",
-        "symfony/runtime": "^6.4.41 || ^7.4.14",
+        "symfony/runtime": "^8.1.10",
         "symfony/yaml": "^6.4.41 || ^7.4.20"
     },
     "config": {
