@@ -49,7 +49,7 @@
     },
     "require-dev": {
         "dealerdirect/phpcodesniffer-composer-installer": "^1.2.1",
-        "infection/infection": "^0.29.9",
+        "infection/infection": "^0.35.8",
         "overtrue/phplint": "^9.1",
         "phpcompatibility/php-compatibility": "^9.3.5",
         "phpdocumentor/type-resolver": "^2.1",
