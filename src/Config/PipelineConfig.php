@@ -96,7 +96,7 @@ final class PipelineConfig
      */
     public function stripFragments(): array
     {
-        return $this->crawlerConfigHelper->stringList('sp_strip_fragments');
+        return $this->crawlerConfigHelper->stringList('sp_strip_fragments', false);
     }
 
     /** @return list<string> */
