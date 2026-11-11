@@ -13,7 +13,7 @@
         "atoolo/search-bundle": "^1.12",
         "spatie/robots-txt": "^2.5.4",
         "symfony/console": "^6.4.41 || ^7.4.20",
-        "symfony/css-selector": "^6.4.34 || ^7.4.18",
+        "symfony/css-selector": "^8.1.10",
         "symfony/dom-crawler": "^6.4.40 || ^7.4.17",
         "symfony/dotenv": "^6.4.39 || ^7.4.18",
         "symfony/flex": "^2.10",
