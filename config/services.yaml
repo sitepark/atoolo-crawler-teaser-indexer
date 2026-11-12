@@ -31,6 +31,7 @@ services:
     Atoolo\CrawlerIndexer\Messenger\Schedule:
         arguments:
             $schedule: "%atoolo.crawler.schedule%"
+            $resourceChannel: "@atoolo_resource.resource_channel"
 
     # --- Pipeline -----------------------------------------------------------
     # The steps are shared services; the per-site PipelineConfig is passed per
